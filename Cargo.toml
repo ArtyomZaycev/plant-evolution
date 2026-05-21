@@ -1,0 +1,10 @@
+[package]
+name = "plant-evolution"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+eframe = "0.34.2"
+egui = "0.34.2"
+rand = "0.10.1"
+winit = "0.30.13"
