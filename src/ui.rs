@@ -35,21 +35,18 @@ impl eframe::App for PlantEvolutionApp {
         });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
-            egui::Panel::bottom("cell_info").show_inside(ui, |ui| {
-                match self.highlited_cell {
-                    Some((x, y)) => {
-                        let cell_name = match &self.map.map[y][x] {
-                            MapCell::Air => "air".to_owned(),
-                            MapCell::Soil(_) => "soil".to_owned(),
-                            MapCell::Plant(plant_cell) => format!("plant {}", plant_cell.t),
-                        };
-                        ui.label(format!("({}, {}) => {}", x, y, cell_name));
-                    },
-                    None => {
-                        ui.label("Nothing selected");
-                    },
+            egui::Panel::bottom("cell_info").show_inside(ui, |ui| match self.highlited_cell {
+                Some((x, y)) => {
+                    let cell_name = match &self.map.map[y][x] {
+                        MapCell::Air => "air".to_owned(),
+                        MapCell::Soil(_) => "soil".to_owned(),
+                        MapCell::Plant(plant_cell) => format!("plant {}", plant_cell.t),
+                    };
+                    ui.label(format!("({}, {}) => {}", x, y, cell_name));
                 }
-                
+                None => {
+                    ui.label("Nothing selected");
+                }
             });
             Frame::canvas(ui.style()).show(ui, |ui| {
                 let (mut response, painter) =
@@ -80,18 +77,32 @@ impl eframe::App for PlantEvolutionApp {
 
                 self.map.map.iter().enumerate().for_each(|(i, row)| {
                     row.iter().enumerate().for_each(|(j, cell)| {
-                        let rect = Rect::from_min_size(response.rect.min + Vec2 { x: j as f32 * self.cell_size, y: i as f32 * self.cell_size }, Vec2 { x: self.cell_size, y: self.cell_size });
+                        let rect = Rect::from_min_size(
+                            response.rect.min
+                                + Vec2 {
+                                    x: j as f32 * self.cell_size,
+                                    y: i as f32 * self.cell_size,
+                                },
+                            Vec2 {
+                                x: self.cell_size,
+                                y: self.cell_size,
+                            },
+                        );
                         let color = match cell {
                             MapCell::Air => Color32::LIGHT_BLUE,
                             MapCell::Soil(_) => Color32::YELLOW,
                             MapCell::Plant(_) => Color32::GREEN,
                         };
 
-                        let color = if self.highlited_cell == Some((j, i)) {Color32::BROWN} else {color};
+                        let color = if self.highlited_cell == Some((j, i)) {
+                            Color32::BROWN
+                        } else {
+                            color
+                        };
                         painter.rect_filled(rect, 0., color);
                     });
                 });
-                    
+
                 pointer_pos.inspect(|pos| {
                     painter.circle_filled(*pos, 2., Color32::RED);
                 });

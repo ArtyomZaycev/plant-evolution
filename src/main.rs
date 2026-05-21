@@ -55,17 +55,18 @@ fn run() {
         })),
         ..Default::default()
     };
-    
+
     eframe::run_native(
         "Plant Evolution",
         options,
-        Box::new(|cc| {
-            Ok(Box::new(PlantEvolutionApp::new(map)))
-        }),
-    ).unwrap();
+        Box::new(|cc| Ok(Box::new(PlantEvolutionApp::new(map)))),
+    )
+    .unwrap();
 }
 
 fn main() {
-    let h = thread::Builder::new().stack_size(32 * 1024 * 1024).spawn(run);
+    let h = thread::Builder::new()
+        .stack_size(32 * 1024 * 1024)
+        .spawn(run);
     let _ = h.unwrap().join();
 }

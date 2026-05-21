@@ -350,22 +350,16 @@ impl MapData {
             let (_, y, x, cell_type) = max_data;
             if self.plant_nutrition.power >= self.cells[cell_type].cost {
                 self.plant_nutrition.power -= self.cells[cell_type].cost;
-                self
-                        .map
-                        .iter_mut()
-                        .enumerate()
-                        .for_each(|(i, row)| {
-                            row.iter_mut()
-                                .enumerate()
-                                .for_each(|(j, c)| {
-                                    if i == y && j == x {
-                                        *c = MapCell::Plant(PlantCell {
-                                            t: cell_type,
-                                            input: PlantCellInput::default(),
-                                        });
-                                    }
-                                });
-                        });
+                self.map.iter_mut().enumerate().for_each(|(i, row)| {
+                    row.iter_mut().enumerate().for_each(|(j, c)| {
+                        if i == y && j == x {
+                            *c = MapCell::Plant(PlantCell {
+                                t: cell_type,
+                                input: PlantCellInput::default(),
+                            });
+                        }
+                    });
+                });
             }
         }
     }
@@ -393,7 +387,7 @@ impl MapData {
                                 })
                             } else if i <= MAP_SIZE.1 / 2 {
                                 MapCell::Air
-                            } else  {
+                            } else {
                                 MapCell::Soil(SoilParameters::default())
                             }
                         })
