@@ -1,11 +1,13 @@
 use egui::{Color32, Frame, Pos2, Rect, Sense, Vec2, emath};
 
-use crate::map::{MAP_SIZE, MapCell, MapData};
+use crate::{evolution::*, map::*};
 
 pub struct PlantEvolutionApp {
     cell_size: f32,
 
     map: MapData,
+    
+    run: bool,
     highlited_cell: Option<(usize, usize)>,
 }
 
@@ -14,17 +16,31 @@ impl PlantEvolutionApp {
         Self {
             cell_size: 6.,
             map,
+            run: false,
             highlited_cell: None,
         }
     }
 }
 
 impl eframe::App for PlantEvolutionApp {
-    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         egui::Panel::right("control_menu").show_inside(ui, |ui| {
-            if ui.button("Tick!").clicked() {
-                self.map.tick();
-            }
+            ui.horizontal(|ui| {
+                ui.label(format!("Step: {}", self.map.time));
+                ui.label(format!("Score: {}", calculate_score(&self.map)));
+            });
+
+            ui.horizontal(|ui| {
+                ui.toggle_value(&mut self.run, "Run");
+                if ui.button("Tick!").clicked() || self.run {
+                    self.map.tick();
+                    ui.ctx().request_repaint();
+                }
+                if ui.button("Restart").clicked() {
+                    let (a, b, c) = get_basic_map_data();
+                    self.map.restart(a, b, c);
+                }
+            });
 
             ui.label("Nutritions:");
             ui.label(format!("Sunlight: {}", self.map.plant_nutrition.sunlight));
@@ -32,6 +48,17 @@ impl eframe::App for PlantEvolutionApp {
             ui.label(format!("Minerals: {}", self.map.plant_nutrition.minerals));
             ui.label(format!("Water: {}", self.map.plant_nutrition.water));
             ui.label(format!("Power: {}", self.map.plant_nutrition.power));
+
+            self.map.cells.iter().enumerate().for_each(|(i, cell)| {
+                ui.collapsing(format!("Cell {}", i), |ui| {
+                    ui.label(format!("Sunlight: {}", cell.sunlight_consumption));
+                    ui.label(format!("Air: {}", cell.air_consumption));
+                    ui.label(format!("Minerals: {}", cell.minerals_consumption));
+                    ui.label(format!("Water: {}", cell.water_consumption));
+                    ui.label(format!("Power: {}", cell.power_production_speed));
+                    ui.label(format!("Cost: {}", cell.cost));
+                });
+            });
         });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {

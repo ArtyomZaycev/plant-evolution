@@ -56,7 +56,7 @@ pub struct MapData {
 impl MapData {
     fn calc_sunlight(&self, x: usize, y: usize) -> f32 {
         let basic_sunlight = (MAP_SIZE.1 - y) as f32 / MAP_SIZE.1 as f32;
-        (0..MAP_SIZE.1).fold(basic_sunlight, |sunlight, i: usize| match &self.map[i][x] {
+        (0..y).fold(basic_sunlight, |sunlight, i: usize| match &self.map[i][x] {
             MapCell::Air => sunlight,
             MapCell::Soil(_) => 0.,
             MapCell::Plant(_) => sunlight / 2.,
@@ -320,6 +320,12 @@ impl MapData {
                                 cells[i][nj][c] += weights[c].calc_cell(&plant_cell.input);
                             })
                         }
+                        if j == PLANT_CENTER.0 {
+                            let weights = &weights.weights[1];
+                            (0..NUMBER_OF_CELLS).into_iter().for_each(|c| {
+                                cells[i][j - 1][c] += weights[c].calc_cell(&plant_cell.input);
+                            })
+                        }
                     }
                     _ => {}
                 });
@@ -401,10 +407,63 @@ impl MapData {
         }
     }
 
+    pub fn restart(&mut self, cells: [PlantCellAbilities; NUMBER_OF_CELLS], evolution_data: PlantEvolutionData, plant_nutrition: PlantNutrition) {
+        let new_map = Self::generate(cells, evolution_data, plant_nutrition);
+
+        self.cells = new_map.cells;
+        self.evolution_data = new_map.evolution_data;
+        self.time = 0;
+        self.plant_nutrition = new_map.plant_nutrition;
+        self.map = new_map.map;
+    }
+
     pub fn tick(&mut self) {
         self.map = self.calculate_plant_inputs();
         self.plant_nutrition = self.calculate_plant_nutritions();
         self.grow_plant();
         self.time += 1;
     }
+}
+
+pub fn get_basic_map_data() -> ([PlantCellAbilities; NUMBER_OF_CELLS], PlantEvolutionData, PlantNutrition) {
+    let basic_cell = PlantCellAbilities {
+        sunlight_consumption: 0.1,
+        air_consumption: 0.1,
+        minerals_consumption: 0.1,
+        water_consumption: 0.1,
+        power_production_speed: 0.1,
+        cost: 0.,
+    }
+    .populate_cost();
+
+    let cells = [
+        PlantCellAbilities {
+            sunlight_consumption: 1.,
+            air_consumption: 1.,
+            minerals_consumption: 1.,
+            water_consumption: 1.,
+            power_production_speed: 1.,
+            cost: 0.,
+        }
+        .populate_cost(),
+        basic_cell.clone(),
+        basic_cell.clone(),
+        basic_cell.clone(),
+        basic_cell.clone(),
+        basic_cell.clone(),
+        basic_cell.clone(),
+        basic_cell.clone(),
+    ];
+
+    let evolution_data = PlantEvolutionData::generate();
+
+    let plant_nutrition = PlantNutrition {
+        sunlight: 100.,
+        air: 100.,
+        minerals: 100.,
+        water: 100.,
+        power: 10.,
+    };
+
+    (cells, evolution_data, plant_nutrition)
 }

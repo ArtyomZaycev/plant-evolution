@@ -6,6 +6,7 @@ use crate::{cell::*, map::*, ui::*};
 mod cell;
 mod map;
 mod ui;
+mod evolution;
 
 fn run() {
     let plant_nutrition = PlantNutrition {
@@ -25,6 +26,7 @@ fn run() {
         cost: 0.,
     }
     .populate_cost();
+
     let cells = [
         PlantCellAbilities {
             sunlight_consumption: 1.,
@@ -49,7 +51,7 @@ fn run() {
     let map = MapData::generate(cells, evolution_data, plant_nutrition);
 
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
+        viewport: egui::ViewportBuilder::default().with_inner_size([1024.0, 720.0]),
         event_loop_builder: Some(Box::new(|b| {
             b.with_any_thread(true);
         })),
@@ -59,7 +61,7 @@ fn run() {
     eframe::run_native(
         "Plant Evolution",
         options,
-        Box::new(|cc| Ok(Box::new(PlantEvolutionApp::new(map)))),
+        Box::new(|_| Ok(Box::new(PlantEvolutionApp::new(map)))),
     )
     .unwrap();
 }
