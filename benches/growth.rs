@@ -5,6 +5,8 @@ use plant_evolution_lib::map::*;
 
 extern crate plant_evolution_lib;
 
+// cargo flamegraph --bench growth
+
 fn growth_benchmark() {
     let number_of_plants: usize = 10;
     let mut maps = (0..number_of_plants)
@@ -30,7 +32,7 @@ fn run_big_stack_thread<F: FnOnce() + Send + 'static>(f: F) {
 fn criterion_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("sample-size-example");
     group.sample_size(10).measurement_time(Duration::from_secs(60));
-    group.bench_function("growth 100", |b| b.iter(|| run_big_stack_thread(growth_benchmark)));
+    group.bench_function("growth", |b| b.iter(|| run_big_stack_thread(growth_benchmark)));
     group.finish();
 }
 

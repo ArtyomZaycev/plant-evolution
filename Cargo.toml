@@ -17,6 +17,9 @@ egui = "0.34.2"
 rand = "0.10.1"
 winit = "0.30.13"
 
+[profile.bench]
+debug = true
+
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }
 
