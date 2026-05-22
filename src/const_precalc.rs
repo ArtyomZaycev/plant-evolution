@@ -9,7 +9,8 @@ pub const PLANT_CENTER: (usize, usize) = (MAP_SIZE.0 / 2, MAP_SIZE.1 / 2 + 2);
 pub type DxDy_2d = (usize, usize, f32);
 pub type DxDyProximity = (usize, usize, f32, f32);
 pub static DXDY_2D: OnceLock<[[Vec<DxDy_2d>; MAP_SIZE.0]; MAP_SIZE.1]> = OnceLock::new();
-pub static PROXIMITY_DXDY: OnceLock<[[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.1]> = OnceLock::new();
+pub static PROXIMITY_DXDY: OnceLock<[[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.1]> =
+    OnceLock::new();
 
 pub fn populate_consts() {
     use crate::const_precalc::DXDY_2D;
@@ -59,7 +60,7 @@ fn distance(x1: f32, y1: f32, x2: f32, y2: f32) -> f32 {
 fn generate_proximity_dxdy() -> [[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.1] {
     let cx = PLANT_CENTER.0 as f32;
     let cy = PLANT_CENTER.1 as f32;
-    
+
     core::array::from_fn(|y| {
         core::array::from_fn(|x| {
             let mut dxdy = Vec::new();
@@ -72,11 +73,11 @@ fn generate_proximity_dxdy() -> [[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.1] {
                     if i != y && j != x {
                         let x = j as f32;
                         let y = i as f32;
-                        
+
                         let ab = distance(px, py, x, y);
                         let ac = distance(px, py, cx, cy);
                         let bc = distance(x, y, cx, cy);
-                        
+
                         let angle =
                             ((ab.powi(2) + ac.powi(2) + bc.powi(2)) / (2. * ab * ac)).acos();
 

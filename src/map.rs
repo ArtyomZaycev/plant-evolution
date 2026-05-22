@@ -86,8 +86,9 @@ impl MapData {
         y: usize,
     ) -> [PlantCellProximityData; NUMBER_OF_CELLS] {
         let mut proximity_data = [PlantCellProximityData::default(); NUMBER_OF_CELLS];
-        PROXIMITY_DXDY.get().unwrap()[y][x].iter().for_each(|&(j, i, distance, angle)| {
-            match &self.map[i][j] {
+        PROXIMITY_DXDY.get().unwrap()[y][x]
+            .iter()
+            .for_each(|&(j, i, distance, angle)| match &self.map[i][j] {
                 MapCell::Plant(cell) => {
                     if proximity_data[cell.t].distance == 1. {
                         proximity_data[cell.t] = PlantCellProximityData {
@@ -95,10 +96,9 @@ impl MapData {
                             direction: angle,
                         }
                     }
-                },
+                }
                 _ => {}
-            }
-        });
+            });
         proximity_data
     }
 }
