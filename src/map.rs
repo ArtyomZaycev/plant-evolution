@@ -50,7 +50,6 @@ pub struct MapData {
 }
 
 impl MapData {
-    #[inline(never)]
     fn calc_sunlight(&self, x: usize, y: usize) -> f32 {
         let basic_sunlight = (MAP_SIZE.1 - y) as f32 / MAP_SIZE.1 as f32;
         (0..y).fold(basic_sunlight, |sunlight, i: usize| match &self.map[i][x] {
@@ -60,30 +59,6 @@ impl MapData {
         })
     }
 
-    #[inline(never)]
-    fn calc_air_get_cell(&self, x: usize, y: usize, dx: i32, dy: i32) -> MapCell {
-        let new_x = x as i32 + dx;
-        let new_x = if new_x < 0 {
-            0
-        } else if new_x >= MAP_SIZE.0 as i32 {
-            MAP_SIZE.0 - 1
-        } else {
-            new_x as usize
-        };
-
-        let new_y = y as i32 + dy;
-        let new_y = if new_y < 0 {
-            0
-        } else if new_y >= MAP_SIZE.0 as i32 {
-            MAP_SIZE.1 - 1
-        } else {
-            new_y as usize
-        };
-
-        self.map[new_y][new_x].clone()
-    }
-
-    #[inline(never)]
     fn calc_nutrition(&self, x: usize, y: usize) -> (f32, f32, f32) {
         let dxdy = &DXDY_2D.get().unwrap()[y][x];
         let sum = dxdy.iter().fold(
@@ -105,11 +80,6 @@ impl MapData {
         )
     }
 
-    fn distance(x1: f32, y1: f32, x2: f32, y2: f32) -> f32 {
-        ((x1 - x2).powi(2) + (y1 - y2).powi(2)).sqrt()
-    }
-
-    #[inline(never)]
     fn calc_cells_proximity_data(
         &self,
         x: usize,
