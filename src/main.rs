@@ -1,12 +1,6 @@
+use plant_evolution_lib::ui::PlantEvolutionApp;
 use std::thread;
 use winit::platform::windows::EventLoopBuilderExtWindows;
-
-use crate::{cell::*, map::*, ui::*};
-
-mod cell;
-mod map;
-mod ui;
-mod evolution;
 
 fn run() {
     let options = eframe::NativeOptions {

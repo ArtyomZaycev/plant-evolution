@@ -3,8 +3,23 @@ name = "plant-evolution"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "plant_evolution_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "plant_evolution_app"
+path = "src/main.rs"
+
 [dependencies]
 eframe = "0.34.2"
 egui = "0.34.2"
 rand = "0.10.1"
 winit = "0.30.13"
+
+[dev-dependencies]
+criterion = { version = "0.8", features = ["html_reports"] }
+
+[[bench]]
+name = "growth"
+harness = false

@@ -8,7 +8,7 @@ pub struct PlantEvolutionApp {
     selected_map_index: usize,
     number_of_plants: usize,
     maps: Vec<MapData>,
-    
+
     run: bool,
     highlited_cell: Option<(usize, usize)>,
 }
@@ -16,10 +16,12 @@ pub struct PlantEvolutionApp {
 impl PlantEvolutionApp {
     pub fn new() -> Self {
         let number_of_plants: usize = 100;
-        let maps = (0..number_of_plants).map(|_| {
-            let (a, b, c) = get_basic_map_data();
-            MapData::generate(a, b, c)
-        }).collect();
+        let maps = (0..number_of_plants)
+            .map(|_| {
+                let (a, b, c) = get_basic_map_data();
+                MapData::generate(a, b, c)
+            })
+            .collect();
         Self {
             cell_size: 6.,
             selected_map_index: 0,
@@ -49,9 +51,7 @@ impl eframe::App for PlantEvolutionApp {
                     self.number_of_plants = number;
                 }
 
-                if ui.button("Evolve!").clicked() {
-
-                }
+                if ui.button("Evolve!").clicked() {}
             });
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.set_min_width(80.);
@@ -89,22 +89,32 @@ impl eframe::App for PlantEvolutionApp {
             });
 
             ui.label("Nutritions:");
-            ui.label(format!("Sunlight: {}", self.get_map().plant_nutrition.sunlight));
+            ui.label(format!(
+                "Sunlight: {}",
+                self.get_map().plant_nutrition.sunlight
+            ));
             ui.label(format!("Air: {}", self.get_map().plant_nutrition.air));
-            ui.label(format!("Minerals: {}", self.get_map().plant_nutrition.minerals));
+            ui.label(format!(
+                "Minerals: {}",
+                self.get_map().plant_nutrition.minerals
+            ));
             ui.label(format!("Water: {}", self.get_map().plant_nutrition.water));
             ui.label(format!("Power: {}", self.get_map().plant_nutrition.power));
 
-            self.get_map().cells.iter().enumerate().for_each(|(i, cell)| {
-                ui.collapsing(format!("Cell {}", i), |ui| {
-                    ui.label(format!("Sunlight: {}", cell.sunlight_consumption));
-                    ui.label(format!("Air: {}", cell.air_consumption));
-                    ui.label(format!("Minerals: {}", cell.minerals_consumption));
-                    ui.label(format!("Water: {}", cell.water_consumption));
-                    ui.label(format!("Power: {}", cell.power_production_speed));
-                    ui.label(format!("Cost: {}", cell.cost));
+            self.get_map()
+                .cells
+                .iter()
+                .enumerate()
+                .for_each(|(i, cell)| {
+                    ui.collapsing(format!("Cell {}", i), |ui| {
+                        ui.label(format!("Sunlight: {}", cell.sunlight_consumption));
+                        ui.label(format!("Air: {}", cell.air_consumption));
+                        ui.label(format!("Minerals: {}", cell.minerals_consumption));
+                        ui.label(format!("Water: {}", cell.water_consumption));
+                        ui.label(format!("Power: {}", cell.power_production_speed));
+                        ui.label(format!("Cost: {}", cell.cost));
+                    });
                 });
-            });
         });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {

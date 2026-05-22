@@ -407,7 +407,12 @@ impl MapData {
         }
     }
 
-    pub fn restart(&mut self, cells: [PlantCellAbilities; NUMBER_OF_CELLS], evolution_data: PlantEvolutionData, plant_nutrition: PlantNutrition) {
+    pub fn restart(
+        &mut self,
+        cells: [PlantCellAbilities; NUMBER_OF_CELLS],
+        evolution_data: PlantEvolutionData,
+        plant_nutrition: PlantNutrition,
+    ) {
         let new_map = Self::generate(cells, evolution_data, plant_nutrition);
 
         self.cells = new_map.cells;
@@ -425,7 +430,11 @@ impl MapData {
     }
 }
 
-pub fn get_basic_map_data() -> ([PlantCellAbilities; NUMBER_OF_CELLS], PlantEvolutionData, PlantNutrition) {
+pub fn get_basic_map_data() -> (
+    [PlantCellAbilities; NUMBER_OF_CELLS],
+    PlantEvolutionData,
+    PlantNutrition,
+) {
     let basic_cell = PlantCellAbilities {
         sunlight_consumption: 0.1,
         air_consumption: 0.1,
