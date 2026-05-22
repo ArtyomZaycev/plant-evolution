@@ -8,16 +8,14 @@ extern crate plant_evolution_lib;
 // cargo flamegraph --bench growth
 
 fn growth_benchmark() {
-    populate_consts();
-
-    let number_of_plants: usize = 10;
+    let number_of_plants: usize = 100;
     let mut maps = (0..number_of_plants)
         .map(|_| {
             let (a, b, c) = get_basic_map_data();
             MapData::generate(a, b, c)
         })
         .collect::<Vec<_>>();
-    (0..100).for_each(|_| {
+    (0..400).for_each(|_| {
         maps.iter_mut().for_each(|map| {
             map.tick();
         });
@@ -30,6 +28,10 @@ fn run_big_stack_thread<F: FnOnce() + Send + 'static>(f: F) {
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
+    run_big_stack_thread(|| {
+        populate_consts();
+    });
+
     let mut group = c.benchmark_group("sample-size-example");
     group
         .sample_size(10)
