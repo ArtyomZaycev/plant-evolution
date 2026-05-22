@@ -1,10 +1,6 @@
 use std::f32;
 
-use crate::cell::*;
-
-// (X, Y)
-pub const MAP_SIZE: (usize, usize) = (128, 128);
-pub const PLANT_CENTER: (usize, usize) = (MAP_SIZE.0 / 2, MAP_SIZE.1 / 2 + 2);
+use crate::{cell::*, const_precalc::*};
 
 #[derive(Debug, Clone)]
 pub struct PlantCell {
@@ -54,6 +50,7 @@ pub struct MapData {
 }
 
 impl MapData {
+    #[inline(never)]
     fn calc_sunlight(&self, x: usize, y: usize) -> f32 {
         let basic_sunlight = (MAP_SIZE.1 - y) as f32 / MAP_SIZE.1 as f32;
         (0..y).fold(basic_sunlight, |sunlight, i: usize| match &self.map[i][x] {
@@ -63,6 +60,7 @@ impl MapData {
         })
     }
 
+    #[inline(never)]
     fn calc_air_get_cell(&self, x: usize, y: usize, dx: i32, dy: i32) -> MapCell {
         let new_x = x as i32 + dx;
         let new_x = if new_x < 0 {
@@ -84,156 +82,80 @@ impl MapData {
 
         self.map[new_y][new_x].clone()
     }
-    fn calc_air(&self, x: usize, y: usize) -> f32 {
-        let air_sum = (-2..=2).fold(0, |air, dx: i32| {
-            (-2..=2).fold(air, |air, dy: i32| {
-                let distance = dx.abs() + dy.abs();
-                if distance > 0 && distance < 4 {
-                    let cell = self.calc_air_get_cell(x, y, dx, dy);
-                    match cell {
-                        MapCell::Air => air + (4 - distance),
-                        MapCell::Soil(_) => air,
-                        MapCell::Plant(_) => air + (4 - distance) / 3,
-                    }
-                } else {
-                    air
-                }
-            })
-        });
-        air_sum as f32 / 36.
-    }
-    fn calc_minerals(&self, x: usize, y: usize) -> f32 {
-        let minerals_sum = (-2..=2).fold(0., |minerals, dx: i32| {
-            (-2..=2).fold(minerals, |minerals, dy: i32| {
-                let distance = dx.abs() + dy.abs();
-                if distance > 0 && distance < 4 {
-                    let cell = self.calc_air_get_cell(x, y, dx, dy);
-                    match cell {
-                        MapCell::Air => minerals,
-                        MapCell::Soil(soil_parameters) => minerals + soil_parameters.minerals,
-                        MapCell::Plant(_) => minerals,
-                    }
-                } else {
-                    minerals
-                }
-            })
-        });
-        minerals_sum as f32 / 36.
-    }
-    fn calc_water(&self, x: usize, y: usize) -> f32 {
-        let water_sum = (-2..=2).fold(0., |water, dx: i32| {
-            (-2..=2).fold(water, |water, dy: i32| {
-                let distance = dx.abs() + dy.abs();
-                if distance > 0 && distance < 4 {
-                    let cell = self.calc_air_get_cell(x, y, dx, dy);
-                    match cell {
-                        MapCell::Air => water,
-                        MapCell::Soil(soil_parameters) => water + soil_parameters.water,
-                        MapCell::Plant(_) => water,
-                    }
-                } else {
-                    water
-                }
-            })
-        });
-        water_sum as f32 / 36.
+
+    #[inline(never)]
+    fn calc_nutrition(&self, x: usize, y: usize) -> (f32, f32, f32) {
+        let dxdy = &DXDY_2D.get().unwrap()[y][x];
+        let sum = dxdy.iter().fold(
+            (0., 0., 0.),
+            |(air, minerals, water), &(nx, ny, distance)| match &self.map[ny][nx] {
+                MapCell::Air => (air + (4. - distance), minerals, water),
+                MapCell::Soil(soil_parameters) => (
+                    air,
+                    minerals + soil_parameters.minerals,
+                    water + soil_parameters.water,
+                ),
+                MapCell::Plant(_) => (air + (4. - distance) / 3., minerals, water),
+            },
+        );
+        (
+            sum.0 / dxdy.len() as f32,
+            sum.1 / dxdy.len() as f32,
+            sum.2 / dxdy.len() as f32,
+        )
     }
 
     fn distance(x1: f32, y1: f32, x2: f32, y2: f32) -> f32 {
         ((x1 - x2).powi(2) + (y1 - y2).powi(2)).sqrt()
     }
+
+    #[inline(never)]
     fn calc_cells_proximity_data(
         &self,
         x: usize,
         y: usize,
     ) -> [PlantCellProximityData; NUMBER_OF_CELLS] {
-        let cx = PLANT_CENTER.0 as f32;
-        let cy = PLANT_CENTER.1 as f32;
-        let px = x as f32;
-        let py = y as f32;
-        let mut new_proximity_data = [PlantCellProximityData::default(); NUMBER_OF_CELLS];
-        self.map.iter().enumerate().for_each(|(i, row)| {
-            row.iter().enumerate().for_each(|(j, cell)| {
-                if i != y && j != x {
-                    match cell {
-                        MapCell::Plant(plant_cell) => {
-                            let x = j as f32;
-                            let y = i as f32;
-
-                            let ab = Self::distance(px, py, x, y);
-                            let ac = Self::distance(px, py, cx, cy);
-                            let bc = Self::distance(x, y, cx, cy);
-
-                            let angle =
-                                ((ab.powi(2) + ac.powi(2) + bc.powi(2)) / (2. * ab * ac)).acos();
-                            if angle < f32::consts::FRAC_PI_4 {
-                                let line_angle = {
-                                    let x1 = px;
-                                    let y1 = py;
-                                    let x2 = 2. * x1 - cx;
-                                    let y2 = cy;
-                                    let d = (y2 - y1) * (x - x1) - (x2 - x1) * (y - y1);
-                                    if d < 0. {
-                                        angle + f32::consts::FRAC_PI_4
-                                    } else {
-                                        f32::consts::FRAC_PI_4 - angle
-                                    }
-                                };
-                                let distance = ab;
-                                // TODO: Prefer smaller angle
-                                if distance < new_proximity_data[plant_cell.t].distance {
-                                    new_proximity_data[plant_cell.t] = PlantCellProximityData {
-                                        distance: distance
-                                            / Self::distance(
-                                                0.,
-                                                0.,
-                                                MAP_SIZE.0 as f32,
-                                                MAP_SIZE.1 as f32,
-                                            ),
-                                        direction: line_angle,
-                                    };
-                                }
-                            }
+        let mut proximity_data = [PlantCellProximityData::default(); NUMBER_OF_CELLS];
+        PROXIMITY_DXDY.get().unwrap()[y][x].iter().for_each(|&(j, i, distance, angle)| {
+            match &self.map[i][j] {
+                MapCell::Plant(cell) => {
+                    if proximity_data[cell.t].distance == 1. {
+                        proximity_data[cell.t] = PlantCellProximityData {
+                            distance,
+                            direction: angle,
                         }
-                        _ => {}
                     }
-                }
-            });
+                },
+                _ => {}
+            }
         });
-
-        new_proximity_data
+        proximity_data
     }
 }
 
 impl MapData {
-    fn calculate_plant_inputs(&self) -> [[MapCell; MAP_SIZE.0]; MAP_SIZE.1] {
-        self.map
-            .iter()
-            .enumerate()
-            .map(|(i, row)| {
-                row.iter()
-                    .enumerate()
-                    .map(|(j, cell)| match cell {
-                        MapCell::Air => cell.clone(),
-                        MapCell::Soil(_) => cell.clone(),
-                        MapCell::Plant(plant_cell) => MapCell::Plant(PlantCell {
-                            t: plant_cell.t,
-                            input: PlantCellInput {
-                                sunlight: self.calc_sunlight(j, i),
-                                air: self.calc_air(j, i),
-                                minerals: self.calc_minerals(j, i),
-                                water: self.calc_water(j, i),
-                                cells_proximity_data: self.calc_cells_proximity_data(j, i),
-                            },
-                        }),
-                    })
-                    .collect::<Vec<MapCell>>()
-                    .try_into()
-                    .unwrap()
-            })
-            .collect::<Vec<[MapCell; MAP_SIZE.0]>>()
-            .try_into()
-            .unwrap()
+    fn populate_plant_inputs(&mut self) {
+        for i in 0..MAP_SIZE.1 {
+            for j in 0..MAP_SIZE.0 {
+                match self.map[i][j].clone() {
+                    MapCell::Plant(cell) => {
+                        let (air, minerals, water) = self.calc_nutrition(j, i);
+                        let input = PlantCellInput {
+                            sunlight: self.calc_sunlight(j, i),
+                            air,
+                            minerals,
+                            water,
+                            cells_proximity_data: self.calc_cells_proximity_data(j, i),
+                        };
+                        self.map[i][j] = MapCell::Plant(PlantCell {
+                            input: input,
+                            ..cell
+                        });
+                    }
+                    _ => {}
+                }
+            }
+        }
     }
 
     fn calculate_plant_nutritions(&self) -> PlantNutrition {
@@ -423,7 +345,7 @@ impl MapData {
     }
 
     pub fn tick(&mut self) {
-        self.map = self.calculate_plant_inputs();
+        self.populate_plant_inputs();
         self.plant_nutrition = self.calculate_plant_nutritions();
         self.grow_plant();
         self.time += 1;

@@ -1,6 +1,6 @@
 use rand::{RngExt, rngs::ThreadRng};
 
-pub const NUMBER_OF_CELLS: usize = 8;
+use crate::const_precalc::*;
 
 #[derive(Debug, Clone)]
 pub struct PlantCellAbilities {

@@ -1,8 +1,10 @@
-use plant_evolution_lib::ui::PlantEvolutionApp;
+use plant_evolution_lib::{populate_consts, ui::PlantEvolutionApp};
 use std::thread;
 use winit::platform::windows::EventLoopBuilderExtWindows;
 
 fn run() {
+    populate_consts();
+
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([1024.0, 720.0]),
         event_loop_builder: Some(Box::new(|b| {

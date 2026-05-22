@@ -1,6 +1,6 @@
 use egui::{Color32, Frame, Pos2, Rect, Sense, TextEdit, Vec2, emath};
 
-use crate::{evolution::*, map::*};
+use crate::{const_precalc::*, evolution::*, map::*};
 
 pub struct PlantEvolutionApp {
     cell_size: f32,
