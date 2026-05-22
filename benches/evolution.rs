@@ -1,13 +1,13 @@
-use std::{thread, time::Duration};
+use std::{hint::black_box, thread, time::Duration};
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use plant_evolution_lib::{map::*, populate_consts};
+use plant_evolution_lib::{random_evolution::*, map::*, populate_consts};
 
 extern crate plant_evolution_lib;
 
-// cargo flamegraph --bench growth
+// cargo flamegraph --bench evolution
 
-fn growth_benchmark() {
+fn evolution_benchmark() {
     let number_of_plants: usize = 100;
     let mut maps = (0..number_of_plants)
         .map(|_| {
@@ -15,11 +15,8 @@ fn growth_benchmark() {
             MapData::generate(a, b)
         })
         .collect::<Vec<_>>();
-    (0..400).for_each(|_| {
-        maps.iter_mut().for_each(|map| {
-            map.tick();
-        });
-    });
+    run_evolution_random(None, &mut maps, 10, 200, 0.6, 0.05);
+    black_box(maps);
 }
 
 fn run_big_stack_thread<F: FnOnce() + Send + 'static>(f: F) {
@@ -32,12 +29,12 @@ fn criterion_benchmark(c: &mut Criterion) {
         populate_consts();
     });
 
-    let mut group = c.benchmark_group("sample-size-example");
+    let mut group = c.benchmark_group("evolution-group");
     group
-        .sample_size(20)
+        .sample_size(10)
         .measurement_time(Duration::from_secs(60));
-    group.bench_function("growth", |b| {
-        b.iter(|| run_big_stack_thread(growth_benchmark))
+    group.bench_function("random-evolution", |b| {
+        b.iter(|| run_big_stack_thread(evolution_benchmark))
     });
     group.finish();
 }

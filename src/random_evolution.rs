@@ -1,3 +1,5 @@
+use std::sync::mpsc;
+
 use rand::RngExt;
 
 use crate::{cell::*, evolution::*, map::*};
@@ -131,9 +133,22 @@ impl RandomEvolution for PlantCellProximityData {
     }
 }
 
-pub fn run_evolution_random(maps: &mut Vec<MapData>, evolutions: usize, evolve_steps: usize, change_chance: f32, change_entropy: f32) {
+pub fn run_evolution_random(
+    sender: Option<mpsc::Sender<RunningEvolutionData>>,
+    maps: &mut Vec<MapData>,
+    evolutions: usize,
+    evolve_steps: usize,
+    change_chance: f32,
+    change_entropy: f32,
+) {
     let mut rng = rand::rng();
-    run_evolution(maps, |maps| {
-        maps.evolve_random(&mut rng, change_chance, change_entropy);
-    }, evolutions, evolve_steps);
+    run_evolution(
+        sender,
+        maps,
+        |maps| {
+            maps.evolve_random(&mut rng, change_chance, change_entropy);
+        },
+        evolutions,
+        evolve_steps,
+    );
 }

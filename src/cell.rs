@@ -13,26 +13,19 @@ pub struct PlantCellAbilities {
 
 impl PlantCellAbilities {
     pub fn populate_cost(&mut self) {
-        self.cost = 1.
-            + (self.sunlight_consumption
-                + self.air_consumption
-                + self.minerals_consumption
-                + self.water_consumption
-                + self.power_production_speed * 2.)
-                .powi(2);
+        self.cost = (1.
+            + self.sunlight_consumption
+            + self.air_consumption
+            + self.minerals_consumption
+            + self.water_consumption
+            + self.power_production_speed * 4.)
+            .powi(3);
     }
 
     pub fn with_populated_cost(self) -> Self {
-        Self {
-            cost: 1.
-                + (self.sunlight_consumption
-                    + self.air_consumption
-                    + self.minerals_consumption
-                    + self.water_consumption
-                    + self.power_production_speed * 2.)
-                    .powi(2),
-            ..self
-        }
+        let mut s = self;
+        s.populate_cost();
+        s
     }
 }
 

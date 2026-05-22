@@ -1,3 +1,5 @@
+use std::sync::mpsc;
+
 use rand::RngExt;
 
 use crate::{cell::*, const_precalc::*, map::*};
@@ -155,18 +157,51 @@ pub fn sample_maps(maps: &mut Vec<MapData>) {
 
     // always 11
     let samples_per_best = maps.len() / sample_size + 1;
-    best_evolution_data.iter().enumerate().for_each(|(i, evolution_data)| {
-        maps.iter_mut().skip(samples_per_best * i).take(samples_per_best).for_each(|map| {
-            map.evolution_data = evolution_data.clone();
-            map.restart();
+    best_evolution_data
+        .iter()
+        .enumerate()
+        .for_each(|(i, evolution_data)| {
+            maps.iter_mut()
+                .skip(samples_per_best * i)
+                .take(samples_per_best)
+                .for_each(|map| {
+                    map.evolution_data = evolution_data.clone();
+                    map.restart();
+                });
         });
-    });
 }
 
-pub fn run_evolution<F: FnMut(&mut Vec<MapData>)>(maps: &mut Vec<MapData>, mut evolve: F, evolutions: usize, evolve_steps: usize) {
-    (0..evolutions).for_each(|_| {
-        (0..evolve_steps).for_each(|_| {
+#[derive(Debug)]
+pub struct RunningEvolutionData {
+    pub evolution_total: usize,
+    pub tick_total: usize,
+
+    pub evolution: usize,
+    pub tick: usize,
+}
+
+pub fn run_evolution<F: FnMut(&mut Vec<MapData>)>(
+    sender: Option<mpsc::Sender<RunningEvolutionData>>,
+    maps: &mut Vec<MapData>,
+    mut evolve: F,
+    evolutions: usize,
+    evolve_steps: usize,
+) {
+    (0..evolutions).for_each(|evolution: usize| {
+        (0..evolve_steps).for_each(|tick| {
             maps.iter_mut().for_each(|map| map.tick());
+            if tick % 100 == 0 {
+                let data = RunningEvolutionData {
+                    evolution_total: evolutions,
+                    tick_total: evolve_steps,
+                    evolution,
+                    tick,
+                };
+                println!("Data: {data:?}");
+                if let Some(sender) = &sender {
+                    let _ = sender.send(data);
+                }
+            }
         });
         evolve(maps);
     });

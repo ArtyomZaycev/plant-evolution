@@ -17,8 +17,8 @@ pub struct SoilParameters {
 impl Default for SoilParameters {
     fn default() -> Self {
         Self {
-            minerals: 1.,
-            water: 1.,
+            minerals: 0.1,
+            water: 0.1,
         }
     }
 }
@@ -316,10 +316,10 @@ pub fn get_basic_map_data() -> (PlantEvolutionData, PlantNutrition) {
     let evolution_data = PlantEvolutionData::generate();
 
     let plant_nutrition = PlantNutrition {
-        sunlight: 100.,
-        air: 100.,
-        minerals: 100.,
-        water: 100.,
+        sunlight: 5.,
+        air: 2.,
+        minerals: 1.,
+        water: 1.,
         power: 10.,
     };
 

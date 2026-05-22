@@ -26,3 +26,7 @@ criterion = { version = "0.8", features = ["html_reports"] }
 [[bench]]
 name = "growth"
 harness = false
+
+[[bench]]
+name = "evolution"
+harness = false
