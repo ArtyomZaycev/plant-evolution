@@ -1,6 +1,8 @@
-use egui::{Color32, Frame, Pos2, Rect, Sense, TextEdit, Vec2, emath};
+use std::thread::{self, JoinHandle};
 
-use crate::{const_precalc::*, evolution::*, map::*};
+use egui::{Button, Color32, Frame, Pos2, Rect, Sense, TextEdit, Vec2, emath};
+
+use crate::{const_precalc::*, evolution::*, map::*, random_evolution::*};
 
 pub struct PlantEvolutionApp {
     cell_size: f32,
@@ -10,6 +12,7 @@ pub struct PlantEvolutionApp {
     maps: Vec<MapData>,
 
     run: bool,
+    evolution_running_handler: Option<JoinHandle<Vec<MapData>>>,
     highlited_cell: Option<(usize, usize)>,
 }
 
@@ -18,8 +21,8 @@ impl PlantEvolutionApp {
         let number_of_plants: usize = 100;
         let maps = (0..number_of_plants)
             .map(|_| {
-                let (a, b, c) = get_basic_map_data();
-                MapData::generate(a, b, c)
+                let (a, b) = get_basic_map_data();
+                MapData::generate(a, b)
             })
             .collect();
         Self {
@@ -28,6 +31,7 @@ impl PlantEvolutionApp {
             number_of_plants,
             maps,
             run: false,
+            evolution_running_handler: None,
             highlited_cell: None,
         }
     }
@@ -43,15 +47,31 @@ impl PlantEvolutionApp {
 
 impl eframe::App for PlantEvolutionApp {
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        if self.evolution_running_handler.as_ref().is_some_and(|h| h.is_finished()) {
+            self.maps = self.evolution_running_handler.take().unwrap().join().unwrap();
+        }
+
         egui::Panel::left("evolution_menu").show_inside(ui, |ui| {
             ui.horizontal(|ui| {
-                let mut text = self.number_of_plants.to_string();
+                /*let mut text = self.number_of_plants.to_string();
                 TextEdit::singleline(&mut text).desired_width(64.).show(ui);
                 if let Ok(number) = text.parse() {
                     self.number_of_plants = number;
+                }*/
+
+                if ui.add_enabled(self.evolution_running_handler.is_none(), Button::new("Evolve!")).clicked() {
+                    self.run = false;
+                    sample_maps(&mut self.maps);
+                    self.maps.evolve_random(&mut rand::rng(), 0.5, 0.01);
                 }
 
-                if ui.button("Evolve!").clicked() {}
+                if ui.add_enabled(self.evolution_running_handler.is_none(), Button::new("Run Evolution")).clicked() {
+                    let mut maps = self.maps.clone();
+                    self.evolution_running_handler = Some(thread::Builder::new().stack_size(32 * 1024 * 1024).spawn(|| {
+                        run_evolution_random(&mut maps, 100, 200, 0.5, 0.01);
+                        maps
+                    }).unwrap());
+                }
             });
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.set_min_width(80.);
@@ -82,8 +102,8 @@ impl eframe::App for PlantEvolutionApp {
                 }
                 if ui.button("Restart").clicked() {
                     self.maps.iter_mut().for_each(|map| {
-                        let (a, b, c) = get_basic_map_data();
-                        map.restart(a, b, c);
+                        map.evolution_data = PlantEvolutionData::generate();
+                        map.restart();
                     });
                 }
             });
@@ -102,7 +122,8 @@ impl eframe::App for PlantEvolutionApp {
             ui.label(format!("Power: {}", self.get_map().plant_nutrition.power));
 
             self.get_map()
-                .cells
+                .evolution_data
+                .cells_abilities
                 .iter()
                 .enumerate()
                 .for_each(|(i, cell)| {

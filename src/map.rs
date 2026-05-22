@@ -1,6 +1,6 @@
 use std::f32;
 
-use crate::{cell::*, const_precalc::*};
+use crate::{cell::*, const_precalc::*, evolution::PlantEvolutionData, random_evolution::*};
 
 #[derive(Debug, Clone)]
 pub struct PlantCell {
@@ -40,9 +40,10 @@ pub struct PlantNutrition {
     pub power: f32,
 }
 
+#[derive(Debug, Clone)]
 pub struct MapData {
-    pub cells: [PlantCellAbilities; NUMBER_OF_CELLS],
     pub evolution_data: PlantEvolutionData,
+    pub starting_plant_nutrition: PlantNutrition,
 
     pub time: i32,
     pub plant_nutrition: PlantNutrition,
@@ -137,14 +138,19 @@ impl MapData {
                     MapCell::Plant(plant_cell) => PlantNutrition {
                         sunlight: nutrition.sunlight
                             + plant_cell.input.sunlight
-                                * self.cells[plant_cell.t].sunlight_consumption,
+                                * self.evolution_data.cells_abilities[plant_cell.t]
+                                    .sunlight_consumption,
                         air: nutrition.air
-                            + plant_cell.input.air * self.cells[plant_cell.t].air_consumption,
+                            + plant_cell.input.air
+                                * self.evolution_data.cells_abilities[plant_cell.t].air_consumption,
                         minerals: nutrition.minerals
                             + plant_cell.input.minerals
-                                * self.cells[plant_cell.t].minerals_consumption,
+                                * self.evolution_data.cells_abilities[plant_cell.t]
+                                    .minerals_consumption,
                         water: nutrition.water
-                            + plant_cell.input.water * self.cells[plant_cell.t].water_consumption,
+                            + plant_cell.input.water
+                                * self.evolution_data.cells_abilities[plant_cell.t]
+                                    .water_consumption,
                         power: nutrition.power,
                     },
                     _ => nutrition,
@@ -162,8 +168,9 @@ impl MapData {
                     .into_iter()
                     .reduce(f32::min)
                     .unwrap();
-                    let produced =
-                        min_resource.min(self.cells[plant_cell.t].power_production_speed);
+                    let produced = min_resource.min(
+                        self.evolution_data.cells_abilities[plant_cell.t].power_production_speed,
+                    );
                     PlantNutrition {
                         sunlight: nutrition.sunlight - produced,
                         air: nutrition.air - produced,
@@ -246,8 +253,8 @@ impl MapData {
 
         if max_data.0 >= 0. {
             let (_, y, x, cell_type) = max_data;
-            if self.plant_nutrition.power >= self.cells[cell_type].cost {
-                self.plant_nutrition.power -= self.cells[cell_type].cost;
+            if self.plant_nutrition.power >= self.evolution_data.cells_abilities[cell_type].cost {
+                self.plant_nutrition.power -= self.evolution_data.cells_abilities[cell_type].cost;
                 self.map.iter_mut().enumerate().for_each(|(i, row)| {
                     row.iter_mut().enumerate().for_each(|(j, c)| {
                         if i == y && j == x {
@@ -264,54 +271,37 @@ impl MapData {
 }
 
 impl MapData {
-    pub fn generate(
-        cells: [PlantCellAbilities; NUMBER_OF_CELLS],
-        evolution_data: PlantEvolutionData,
-        plant_nutrition: PlantNutrition,
-    ) -> Self {
+    fn get_basic_map() -> [[MapCell; MAP_SIZE.0]; MAP_SIZE.1] {
+        core::array::from_fn(|i| {
+            core::array::from_fn(|j| {
+                if i == PLANT_CENTER.1 && j == PLANT_CENTER.0 {
+                    MapCell::Plant(PlantCell {
+                        t: 0,
+                        input: PlantCellInput::default(),
+                    })
+                } else if i <= MAP_SIZE.1 / 2 {
+                    MapCell::Air
+                } else {
+                    MapCell::Soil(SoilParameters::default())
+                }
+            })
+        })
+    }
+
+    pub fn generate(evolution_data: PlantEvolutionData, plant_nutrition: PlantNutrition) -> Self {
         Self {
-            cells,
             evolution_data,
+            starting_plant_nutrition: plant_nutrition.clone(),
             time: 0,
             plant_nutrition,
-            map: (0..MAP_SIZE.1)
-                .map(|i| {
-                    (0..MAP_SIZE.0)
-                        .map(|j| {
-                            if i == PLANT_CENTER.1 && j == PLANT_CENTER.0 {
-                                MapCell::Plant(PlantCell {
-                                    t: 0,
-                                    input: PlantCellInput::default(),
-                                })
-                            } else if i <= MAP_SIZE.1 / 2 {
-                                MapCell::Air
-                            } else {
-                                MapCell::Soil(SoilParameters::default())
-                            }
-                        })
-                        .collect::<Vec<MapCell>>()
-                        .try_into()
-                        .unwrap()
-                })
-                .collect::<Vec<[MapCell; MAP_SIZE.0]>>()
-                .try_into()
-                .unwrap(),
+            map: Self::get_basic_map(),
         }
     }
 
-    pub fn restart(
-        &mut self,
-        cells: [PlantCellAbilities; NUMBER_OF_CELLS],
-        evolution_data: PlantEvolutionData,
-        plant_nutrition: PlantNutrition,
-    ) {
-        let new_map = Self::generate(cells, evolution_data, plant_nutrition);
-
-        self.cells = new_map.cells;
-        self.evolution_data = new_map.evolution_data;
+    pub fn restart(&mut self) {
         self.time = 0;
-        self.plant_nutrition = new_map.plant_nutrition;
-        self.map = new_map.map;
+        self.plant_nutrition = self.starting_plant_nutrition.clone();
+        self.map = Self::get_basic_map();
     }
 
     pub fn tick(&mut self) {
@@ -322,40 +312,7 @@ impl MapData {
     }
 }
 
-pub fn get_basic_map_data() -> (
-    [PlantCellAbilities; NUMBER_OF_CELLS],
-    PlantEvolutionData,
-    PlantNutrition,
-) {
-    let basic_cell = PlantCellAbilities {
-        sunlight_consumption: 0.1,
-        air_consumption: 0.1,
-        minerals_consumption: 0.1,
-        water_consumption: 0.1,
-        power_production_speed: 0.1,
-        cost: 0.,
-    }
-    .populate_cost();
-
-    let cells = [
-        PlantCellAbilities {
-            sunlight_consumption: 1.,
-            air_consumption: 1.,
-            minerals_consumption: 1.,
-            water_consumption: 1.,
-            power_production_speed: 1.,
-            cost: 0.,
-        }
-        .populate_cost(),
-        basic_cell.clone(),
-        basic_cell.clone(),
-        basic_cell.clone(),
-        basic_cell.clone(),
-        basic_cell.clone(),
-        basic_cell.clone(),
-        basic_cell.clone(),
-    ];
-
+pub fn get_basic_map_data() -> (PlantEvolutionData, PlantNutrition) {
     let evolution_data = PlantEvolutionData::generate();
 
     let plant_nutrition = PlantNutrition {
@@ -366,5 +323,13 @@ pub fn get_basic_map_data() -> (
         power: 10.,
     };
 
-    (cells, evolution_data, plant_nutrition)
+    (evolution_data, plant_nutrition)
+}
+
+impl RandomEvolution for MapData {
+    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) {
+        self.evolution_data
+            .evolve_random(rng, change_chance, change_entropy);
+        self.restart();
+    }
 }

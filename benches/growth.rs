@@ -11,8 +11,8 @@ fn growth_benchmark() {
     let number_of_plants: usize = 100;
     let mut maps = (0..number_of_plants)
         .map(|_| {
-            let (a, b, c) = get_basic_map_data();
-            MapData::generate(a, b, c)
+            let (a, b) = get_basic_map_data();
+            MapData::generate(a, b)
         })
         .collect::<Vec<_>>();
     (0..400).for_each(|_| {
