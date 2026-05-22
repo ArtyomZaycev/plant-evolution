@@ -1,55 +1,101 @@
-use egui::{Color32, Frame, Pos2, Rect, Sense, Vec2, emath};
+use egui::{Color32, Frame, Pos2, Rect, Sense, TextEdit, Vec2, emath};
 
 use crate::{evolution::*, map::*};
 
 pub struct PlantEvolutionApp {
     cell_size: f32,
 
-    map: MapData,
+    selected_map_index: usize,
+    number_of_plants: usize,
+    maps: Vec<MapData>,
     
     run: bool,
     highlited_cell: Option<(usize, usize)>,
 }
 
 impl PlantEvolutionApp {
-    pub fn new(map: MapData) -> Self {
+    pub fn new() -> Self {
+        let number_of_plants: usize = 100;
+        let maps = (0..number_of_plants).map(|_| {
+            let (a, b, c) = get_basic_map_data();
+            MapData::generate(a, b, c)
+        }).collect();
         Self {
             cell_size: 6.,
-            map,
+            selected_map_index: 0,
+            number_of_plants,
+            maps,
             run: false,
             highlited_cell: None,
         }
+    }
+
+    fn get_map(&self) -> &MapData {
+        &self.maps[self.selected_map_index]
+    }
+
+    fn get_map_mut(&mut self) -> &mut MapData {
+        &mut self.maps[self.selected_map_index]
     }
 }
 
 impl eframe::App for PlantEvolutionApp {
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
-        egui::Panel::right("control_menu").show_inside(ui, |ui| {
+        egui::Panel::left("evolution_menu").show_inside(ui, |ui| {
             ui.horizontal(|ui| {
-                ui.label(format!("Step: {}", self.map.time));
-                ui.label(format!("Score: {}", calculate_score(&self.map)));
+                let mut text = self.number_of_plants.to_string();
+                TextEdit::singleline(&mut text).desired_width(64.).show(ui);
+                if let Ok(number) = text.parse() {
+                    self.number_of_plants = number;
+                }
+
+                if ui.button("Evolve!").clicked() {
+
+                }
+            });
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                ui.set_min_width(80.);
+                self.maps.iter().enumerate().for_each(|(i, _)| {
+                    let mut selected = i == self.selected_map_index;
+                    ui.toggle_value(&mut selected, format!("Plant {}", i + 1));
+                    if selected {
+                        self.selected_map_index = i;
+                    }
+                });
+            });
+        });
+
+        egui::Panel::right("control_menu").show_inside(ui, |ui| {
+            ui.set_min_width(200.);
+            ui.horizontal(|ui| {
+                ui.label(format!("Step: {}", self.get_map().time));
+                ui.label(format!("Score: {}", calculate_score(&self.get_map())));
             });
 
             ui.horizontal(|ui| {
                 ui.toggle_value(&mut self.run, "Run");
                 if ui.button("Tick!").clicked() || self.run {
-                    self.map.tick();
+                    self.maps.iter_mut().for_each(|map| {
+                        map.tick();
+                    });
                     ui.ctx().request_repaint();
                 }
                 if ui.button("Restart").clicked() {
-                    let (a, b, c) = get_basic_map_data();
-                    self.map.restart(a, b, c);
+                    self.maps.iter_mut().for_each(|map| {
+                        let (a, b, c) = get_basic_map_data();
+                        map.restart(a, b, c);
+                    });
                 }
             });
 
             ui.label("Nutritions:");
-            ui.label(format!("Sunlight: {}", self.map.plant_nutrition.sunlight));
-            ui.label(format!("Air: {}", self.map.plant_nutrition.air));
-            ui.label(format!("Minerals: {}", self.map.plant_nutrition.minerals));
-            ui.label(format!("Water: {}", self.map.plant_nutrition.water));
-            ui.label(format!("Power: {}", self.map.plant_nutrition.power));
+            ui.label(format!("Sunlight: {}", self.get_map().plant_nutrition.sunlight));
+            ui.label(format!("Air: {}", self.get_map().plant_nutrition.air));
+            ui.label(format!("Minerals: {}", self.get_map().plant_nutrition.minerals));
+            ui.label(format!("Water: {}", self.get_map().plant_nutrition.water));
+            ui.label(format!("Power: {}", self.get_map().plant_nutrition.power));
 
-            self.map.cells.iter().enumerate().for_each(|(i, cell)| {
+            self.get_map().cells.iter().enumerate().for_each(|(i, cell)| {
                 ui.collapsing(format!("Cell {}", i), |ui| {
                     ui.label(format!("Sunlight: {}", cell.sunlight_consumption));
                     ui.label(format!("Air: {}", cell.air_consumption));
@@ -64,7 +110,7 @@ impl eframe::App for PlantEvolutionApp {
         egui::CentralPanel::default().show_inside(ui, |ui| {
             egui::Panel::bottom("cell_info").show_inside(ui, |ui| match self.highlited_cell {
                 Some((x, y)) => {
-                    let cell_name = match &self.map.map[y][x] {
+                    let cell_name = match &self.get_map().map[y][x] {
                         MapCell::Air => "air".to_owned(),
                         MapCell::Soil(_) => "soil".to_owned(),
                         MapCell::Plant(plant_cell) => format!("plant {}", plant_cell.t),
@@ -102,7 +148,7 @@ impl eframe::App for PlantEvolutionApp {
                     }
                 });
 
-                self.map.map.iter().enumerate().for_each(|(i, row)| {
+                self.get_map().map.iter().enumerate().for_each(|(i, row)| {
                     row.iter().enumerate().for_each(|(j, cell)| {
                         let rect = Rect::from_min_size(
                             response.rect.min
