@@ -6,20 +6,21 @@ pub const NUMBER_OF_CELLS: usize = 8;
 pub const MAP_SIZE: (usize, usize) = (128, 128);
 pub const PLANT_CENTER: (usize, usize) = (MAP_SIZE.0 / 2, MAP_SIZE.1 / 2 + 2);
 
-pub type DxDy_2d = (usize, usize, f32);
+pub type DxDy2d = (usize, usize, f32);
 pub type DxDyProximity = (usize, usize, f32, f32);
-pub static DXDY_2D: OnceLock<[[Vec<DxDy_2d>; MAP_SIZE.0]; MAP_SIZE.1]> = OnceLock::new();
+pub type GrowthDir = (usize, usize, usize);
+pub static DXDY_2D: OnceLock<[[Vec<DxDy2d>; MAP_SIZE.0]; MAP_SIZE.1]> = OnceLock::new();
 pub static PROXIMITY_DXDY: OnceLock<[[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.1]> =
     OnceLock::new();
+pub static GROWTH_DIRECTION: OnceLock<[[Vec<GrowthDir>; MAP_SIZE.0]; MAP_SIZE.1]> = OnceLock::new();
 
 pub fn populate_consts() {
-    use crate::const_precalc::DXDY_2D;
-
     DXDY_2D.set(generate_dxdy()).unwrap();
     PROXIMITY_DXDY.set(generate_proximity_dxdy()).unwrap();
+    GROWTH_DIRECTION.set(generate_drowth_direction()).unwrap();
 }
 
-fn generate_dxdy() -> [[Vec<DxDy_2d>; MAP_SIZE.0]; MAP_SIZE.1] {
+fn generate_dxdy() -> [[Vec<DxDy2d>; MAP_SIZE.0]; MAP_SIZE.1] {
     core::array::from_fn(|i| {
         core::array::from_fn(|j| {
             let mut dxdy = Vec::new();
@@ -57,6 +58,22 @@ fn generate_dxdy() -> [[Vec<DxDy_2d>; MAP_SIZE.0]; MAP_SIZE.1] {
 fn distance(x1: f32, y1: f32, x2: f32, y2: f32) -> f32 {
     ((x1 - x2).powi(2) + (y1 - y2).powi(2)).sqrt()
 }
+
+// ln(22)
+const MAX_DIFFERENTIATED_DISTANCE: f32 = 3.091042;
+// Becomes 0.1 around d=16
+fn normalize_distance(d: f32) -> f32 {
+    if d > 17. {
+        0.1
+    } else {
+        (1. - d.ln() / MAX_DIFFERENTIATED_DISTANCE).max(0.1)
+    }
+}
+
+fn normalize_angle(a: f32) -> f32 {
+    a / std::f32::consts::FRAC_PI_2
+}
+
 fn generate_proximity_dxdy() -> [[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.1] {
     let cx = PLANT_CENTER.0 as f32;
     let cy = PLANT_CENTER.1 as f32;
@@ -68,6 +85,8 @@ fn generate_proximity_dxdy() -> [[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.1] {
             let px = x as f32;
             let py = y as f32;
 
+            let ac = distance(px, py, cx, cy);
+
             for i in 0..MAP_SIZE.1 {
                 for j in 0..MAP_SIZE.0 {
                     if i != y && j != x {
@@ -75,20 +94,22 @@ fn generate_proximity_dxdy() -> [[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.1] {
                         let y = i as f32;
 
                         let ab = distance(px, py, x, y);
-                        let ac = distance(px, py, cx, cy);
                         let bc = distance(x, y, cx, cy);
 
                         let angle =
-                            ((ab.powi(2) + ac.powi(2) + bc.powi(2)) / (2. * ab * ac)).acos();
+                            ((ab.powi(2) + ac.powi(2) - bc.powi(2)) / (2. * ab * ac)).acos();
 
-                        if angle < std::f32::consts::FRAC_PI_4 {
+                        if ab <= ac && angle < std::f32::consts::FRAC_PI_4 {
                             let distance = ab;
+
+                            // determine on which side of the line between p and center is point we're checking
                             let line_angle = {
                                 let x1 = px;
                                 let y1 = py;
-                                let x2 = 2. * x1 - cx;
+                                let x2 = cx;
                                 let y2 = cy;
                                 let d = (y2 - y1) * (x - x1) - (x2 - x1) * (y - y1);
+
                                 if d < 0. {
                                     angle + std::f32::consts::FRAC_PI_4
                                 } else {
@@ -96,8 +117,15 @@ fn generate_proximity_dxdy() -> [[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.1] {
                                 }
                             };
 
-                            // TODO: Normalize distance & line_angle
-                            dxdy.push(((distance, angle), (j, i, distance, line_angle)));
+                            dxdy.push((
+                                (distance, angle),
+                                (
+                                    j,
+                                    i,
+                                    normalize_distance(distance),
+                                    normalize_angle(line_angle),
+                                ),
+                            ));
                         }
                     }
                 }
@@ -105,6 +133,32 @@ fn generate_proximity_dxdy() -> [[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.1] {
 
             dxdy.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
             dxdy.into_iter().map(|v| v.1).collect()
+        })
+    })
+}
+
+fn generate_drowth_direction() -> [[Vec<GrowthDir>; MAP_SIZE.0]; MAP_SIZE.1] {
+    core::array::from_fn(|i| {
+        core::array::from_fn(|j| {
+            let mut dirs = Vec::new();
+            if i > 0 {
+                dirs.push((j, i - 1, 0));
+            }
+            if i + 1 < MAP_SIZE.1 {
+                dirs.push((j, i + 1, 2));
+            }
+            if j == PLANT_CENTER.0 {
+                dirs.push((j - 1, i, 1));
+                dirs.push((j + 1, i, 1));
+            } else {
+                if j < PLANT_CENTER.0 && j > 0 {
+                    dirs.push((j - 1, i, 1));
+                }
+                if j >= PLANT_CENTER.0 && j + 1 < MAP_SIZE.0 {
+                    dirs.push((j + 1, i, 1));
+                }
+            }
+            dirs
         })
     })
 }

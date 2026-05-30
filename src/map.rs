@@ -181,72 +181,35 @@ impl MapData {
         let mut cells: [[[f32; NUMBER_OF_CELLS]; MAP_SIZE.0]; MAP_SIZE.1] =
             [[[0 as f32; NUMBER_OF_CELLS]; MAP_SIZE.0]; MAP_SIZE.1];
 
+        let mut max_data = (-1., 0, 0, 0);
         self.plants_pos.iter().for_each(|&(j, i)| {
             if let MapCell::Plant(plant_cell) = &self.map[i][j] {
                 let weights = &self.evolution_data.cells_evolution_data[plant_cell.t];
-                if i > 0 {
-                    let weights = &weights.weights[0];
-                    (0..NUMBER_OF_CELLS).into_iter().for_each(|c| {
-                        cells[i - 1][j][c] += weights[c].calc_cell(&plant_cell.input);
+                GROWTH_DIRECTION.get().unwrap()[i][j]
+                    .iter()
+                    .for_each(|&(nj, ni, d)| {
+                        if let MapCell::Plant(_) = &self.map[ni][nj] {
+                        } else {
+                            let weights = &weights.weights[d];
+                            (0..NUMBER_OF_CELLS).into_iter().for_each(|c| {
+                                cells[ni][nj][c] += weights[c].calc_cell(&plant_cell.input);
+                                if cells[ni][nj][c] > max_data.0 {
+                                    max_data = (cells[ni][nj][c], nj, ni, c);
+                                }
+                            })
+                        }
                     });
-                }
-                if i + 1 < MAP_SIZE.1 {
-                    let weights = &weights.weights[2];
-                    (0..NUMBER_OF_CELLS).into_iter().for_each(|c| {
-                        cells[i + 1][j][c] += weights[c].calc_cell(&plant_cell.input);
-                    });
-                }
-                let nj = if j < PLANT_CENTER.0 && j > 0 {
-                    j - 1
-                } else if j >= PLANT_CENTER.0 && j + 1 < MAP_SIZE.0 {
-                    j + 1
-                } else {
-                    j
-                };
-                if nj != j {
-                    let weights = &weights.weights[1];
-                    (0..NUMBER_OF_CELLS).into_iter().for_each(|c| {
-                        cells[i][nj][c] += weights[c].calc_cell(&plant_cell.input);
-                    })
-                }
-                if j == PLANT_CENTER.0 {
-                    let weights = &weights.weights[1];
-                    (0..NUMBER_OF_CELLS).into_iter().for_each(|c| {
-                        cells[i][j - 1][c] += weights[c].calc_cell(&plant_cell.input);
-                    })
-                }
             }
         });
 
-        let max_data = cells
-            .iter()
-            .enumerate()
-            .fold((-1. as f32, 0, 0, 0), |acc, (i, row)| {
-                row.iter().enumerate().fold(acc, |acc, (j, a)| {
-                    a.iter().enumerate().fold(acc, |acc, (c, &weight)| {
-                        let new_acc = if weight > acc.0 {
-                            (weight, i, j, c)
-                        } else {
-                            acc
-                        };
-
-                        match &self.map[i][j] {
-                            MapCell::Air => new_acc,
-                            MapCell::Soil(_) => new_acc,
-                            MapCell::Plant(_) => acc,
-                        }
-                    })
-                })
-            });
-
         if max_data.0 >= 0. {
-            let (_, y, x, cell_type) = max_data;
+            let (_, x, y, cell_type) = max_data;
             if self.plant_nutrition.power >= self.evolution_data.cells_abilities[cell_type].cost {
                 self.plant_nutrition.power -= self.evolution_data.cells_abilities[cell_type].cost;
                 self.map[y][x] = MapCell::Plant(PlantCell {
-                        t: cell_type,
-                        input: PlantCellInput::default(),
-                    });
+                    t: cell_type,
+                    input: PlantCellInput::default(),
+                });
                 self.plants_pos.push((x, y));
             }
         }
