@@ -55,14 +55,17 @@ impl eframe::App for PlantEvolutionApp {
         egui::Panel::left("evolution_menu").show_inside(ui, |ui| {
             ui.horizontal(|ui| {
                 if ui.add_enabled(true, Button::new("Evolve!")).clicked() {
-                    self.command_sender
-                        .send(EngineCommand::Evolve)
-                        .unwrap();
+                    self.command_sender.send(EngineCommand::Evolve).unwrap();
                 }
 
-                if ui.toggle_value(&mut self.run_evolution, "Run Evolution").changed() {
+                if ui
+                    .toggle_value(&mut self.run_evolution, "Run Evolution")
+                    .changed()
+                {
                     if self.run_evolution {
-                        self.command_sender.send(EngineCommand::RunEvolution).unwrap();
+                        self.command_sender
+                            .send(EngineCommand::RunEvolution)
+                            .unwrap();
                     } else {
                         self.command_sender
                             .send(EngineCommand::StopRunEvolution)
@@ -156,9 +159,13 @@ impl eframe::App for PlantEvolutionApp {
                         let cell_name = match &self.get_map().map[y][x] {
                             MapCell::Air => "air".to_owned(),
                             MapCell::Soil(_) => "soil".to_owned(),
-                            MapCell::Plant(plant_cell) => format!("plant {}", plant_cell.t),
                         };
-                        ui.label(format!("({}, {}) => {}", x, y, cell_name));
+                        let plant_name = if self.get_map().plants[y][x].t != usize::MAX {
+                            format!("plant {}", self.get_map().plants[y][x].t)
+                        } else {
+                            "".to_owned()
+                        };
+                        ui.label(format!("({}, {}) => {} {}", x, y, cell_name, plant_name));
                     }
                     None => {
                         ui.label("Nothing selected");
@@ -185,8 +192,8 @@ impl eframe::App for PlantEvolutionApp {
                         }
                     });
 
-                    self.get_map().map.iter().enumerate().for_each(|(i, row)| {
-                        row.iter().enumerate().for_each(|(j, cell)| {
+                    for i in 0..MAP_SIZE.1 {
+                        for j in 0..MAP_SIZE.0 {
                             let rect = Rect::from_min_size(
                                 response.rect.min
                                     + Vec2 {
@@ -198,10 +205,14 @@ impl eframe::App for PlantEvolutionApp {
                                     y: self.cell_size,
                                 },
                             );
-                            let color = match cell {
-                                MapCell::Air => Color32::LIGHT_BLUE,
-                                MapCell::Soil(_) => Color32::YELLOW,
-                                MapCell::Plant(_) => Color32::GREEN,
+
+                            let color = if self.get_map().plants[i][j].t != usize::MAX {
+                                Color32::GREEN
+                            } else {
+                                match self.get_map().map[i][j] {
+                                    MapCell::Air => Color32::LIGHT_BLUE,
+                                    MapCell::Soil(_) => Color32::YELLOW,
+                                }
                             };
 
                             let color = if self.highlited_cell == Some((j, i)) {
@@ -210,8 +221,8 @@ impl eframe::App for PlantEvolutionApp {
                                 color
                             };
                             painter.rect_filled(rect, 0., color);
-                        });
-                    });
+                        }
+                    }
 
                     pointer_pos.inspect(|pos| {
                         painter.circle_filled(*pos, 2., Color32::RED);

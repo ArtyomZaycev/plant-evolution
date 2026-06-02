@@ -28,23 +28,8 @@ fn generate_dxdy() -> [[Vec<DxDy2d>; MAP_SIZE.0]; MAP_SIZE.1] {
                 (-2..=2).for_each(|dy: i32| {
                     let distance = dx.abs() + dy.abs();
                     if distance > 0 && distance < 4 {
-                        let new_x = j as i32 + dx;
-                        let new_x = if new_x < 0 {
-                            0
-                        } else if new_x >= MAP_SIZE.0 as i32 {
-                            MAP_SIZE.0 - 1
-                        } else {
-                            new_x as usize
-                        };
-
-                        let new_y = i as i32 + dy;
-                        let new_y = if new_y < 0 {
-                            0
-                        } else if new_y >= MAP_SIZE.0 as i32 {
-                            MAP_SIZE.1 - 1
-                        } else {
-                            new_y as usize
-                        };
+                        let new_x = (j as i32 + dx).clamp(0, MAP_SIZE.0 as i32 - 1) as usize;
+                        let new_y = (i as i32 + dy).clamp(0, MAP_SIZE.1 as i32 - 1) as usize;
 
                         dxdy.push((new_x, new_y, distance as f32));
                     }

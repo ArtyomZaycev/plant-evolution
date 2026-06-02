@@ -7,7 +7,7 @@ use crate::{cell::*, evolution::*, map::*};
 pub type Rng = rand::rngs::ThreadRng;
 
 fn apply_change_chance<F: FnOnce()>(change_chance: f32, random: f32, f: F) {
-    if random > change_chance {
+    if random < change_chance {
         f();
     }
 }

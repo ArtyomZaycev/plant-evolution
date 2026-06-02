@@ -8,6 +8,15 @@ pub struct PlantCell {
     pub input: PlantCellInput,
 }
 
+impl Default for PlantCell {
+    fn default() -> Self {
+        Self {
+            t: usize::MAX,
+            input: Default::default(),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SoilParameters {
     pub minerals: f32,
@@ -27,7 +36,6 @@ impl Default for SoilParameters {
 pub enum MapCell {
     Air,
     Soil(SoilParameters),
-    Plant(PlantCell),
 }
 
 #[derive(Debug, Default, Clone)]
@@ -53,9 +61,11 @@ pub struct MapData {
 
     pub plants_pos: Vec<(usize, usize)>,
     pub map: [[MapCell; MAP_SIZE.0]; MAP_SIZE.1],
+    pub plants: [[PlantCell; MAP_SIZE.0]; MAP_SIZE.1],
 }
 
 impl MapData {
+    // This is wrong, bad bad Deepseek, stupid stupid me
     fn populate_sunlight(&mut self) {
         let mut sorted_plants = self.plants_pos.clone();
         sorted_plants.sort();
@@ -68,30 +78,35 @@ impl MapData {
             }
             let light = (0.5f32).powi(count as i32);
             count += 1;
-            if let MapCell::Plant(cell) = &mut self.map[y][x] {
-                cell.input.sunlight = light;
-            }
+            self.plants[y][x].input.sunlight = light;
         });
     }
 
     fn calc_nutrition(&self, x: usize, y: usize) -> (f32, f32, f32) {
         let dxdy = &DXDY_2D.get().unwrap()[y][x];
-        let sum = dxdy.iter().fold(
-            (0., 0., 0.),
-            |(air, minerals, water), &(nx, ny, distance)| match &self.map[ny][nx] {
-                MapCell::Air => (air + (4. - distance), minerals, water),
-                MapCell::Soil(soil_parameters) => (
-                    air,
-                    minerals + soil_parameters.minerals,
-                    water + soil_parameters.water,
-                ),
-                MapCell::Plant(_) => (air + (4. - distance) / 3., minerals, water),
-            },
-        );
+
+        let mut air = 0.;
+        let mut minerals = 0.;
+        let mut water = 0.;
+        for &(nx, ny, distance) in dxdy {
+            match &self.map[ny][nx] {
+                MapCell::Air => {
+                    if self.plants[ny][nx].t == usize::MAX {
+                        air += 4. - distance
+                    } else {
+                        air += (4. - distance) / 3.;
+                    }
+                }
+                MapCell::Soil(soil_parameters) => {
+                    minerals += soil_parameters.minerals;
+                    water += soil_parameters.water;
+                }
+            }
+        }
         (
-            sum.0 / dxdy.len() as f32,
-            sum.1 / dxdy.len() as f32,
-            sum.2 / dxdy.len() as f32,
+            air / dxdy.len() as f32,
+            minerals / dxdy.len() as f32,
+            water / dxdy.len() as f32,
         )
     }
 
@@ -103,16 +118,14 @@ impl MapData {
         let mut proximity_data = [PlantCellProximityData::default(); NUMBER_OF_CELLS];
         PROXIMITY_DXDY.get().unwrap()[y][x]
             .iter()
-            .for_each(|&(j, i, distance, angle)| match &self.map[i][j] {
-                MapCell::Plant(cell) => {
-                    if proximity_data[cell.t].distance == 2. {
-                        proximity_data[cell.t] = PlantCellProximityData {
-                            distance,
-                            direction: angle,
-                        }
+            .for_each(|&(j, i, distance, angle)| {
+                let cell = &self.plants[i][j];
+                if cell.t != usize::MAX && proximity_data[cell.t].distance == 2. {
+                    proximity_data[cell.t] = PlantCellProximityData {
+                        distance,
+                        direction: angle,
                     }
                 }
-                _ => {}
             });
         proximity_data
     }
@@ -120,23 +133,15 @@ impl MapData {
 
 impl MapData {
     fn populate_plant_inputs(&mut self) {
-        for k in 0..self.plants_pos.len() {
-            let (j, i) = self.plants_pos[k];
-
+        for &(j, i) in &self.plants_pos {
             let (air, minerals, water) = self.calc_nutrition(j, i);
-            let input = PlantCellInput {
+            self.plants[i][j].input = PlantCellInput {
                 sunlight: 0.,
                 air,
                 minerals,
                 water,
                 cells_proximity_data: self.calc_cells_proximity_data(j, i),
             };
-            if let MapCell::Plant(cell) = &self.map[i][j] {
-                self.map[i][j] = MapCell::Plant(PlantCell {
-                    t: cell.t,
-                    input: input,
-                });
-            }
         }
         self.populate_sunlight();
     }
@@ -146,28 +151,22 @@ impl MapData {
             self.plants_pos
                 .iter()
                 .fold(PlantNutrition::default(), |nutrition, &(j, i)| {
-                    if let MapCell::Plant(cell) = &self.map[i][j] {
-                        PlantNutrition {
-                            sunlight: nutrition.sunlight
-                                + cell.input.sunlight
-                                    * self.evolution_data.cells_abilities[cell.t]
-                                        .sunlight_consumption,
-                            air: nutrition.air
-                                + cell.input.air
-                                    * self.evolution_data.cells_abilities[cell.t].air_consumption,
-                            minerals: nutrition.minerals
-                                + cell.input.minerals
-                                    * self.evolution_data.cells_abilities[cell.t]
-                                        .minerals_consumption,
-                            water: nutrition.water
-                                + cell.input.water
-                                    * self.evolution_data.cells_abilities[cell.t].water_consumption,
-                            power: nutrition.power
-                                + self.evolution_data.cells_abilities[cell.t]
-                                    .power_production_speed,
-                        }
-                    } else {
-                        nutrition
+                    let cell = &self.plants[i][j];
+                    PlantNutrition {
+                        sunlight: nutrition.sunlight
+                            + cell.input.sunlight
+                                * self.evolution_data.cells_abilities[cell.t].sunlight_consumption,
+                        air: nutrition.air
+                            + cell.input.air
+                                * self.evolution_data.cells_abilities[cell.t].air_consumption,
+                        minerals: nutrition.minerals
+                            + cell.input.minerals
+                                * self.evolution_data.cells_abilities[cell.t].minerals_consumption,
+                        water: nutrition.water
+                            + cell.input.water
+                                * self.evolution_data.cells_abilities[cell.t].water_consumption,
+                        power: nutrition.power
+                            + self.evolution_data.cells_abilities[cell.t].power_production_speed,
                     }
                 });
 
@@ -193,32 +192,31 @@ impl MapData {
     fn grow_plant(&mut self) {
         let mut max_data = (-1., 0, 0, 0);
         self.plants_pos.iter().for_each(|&(j, i)| {
-            if let MapCell::Plant(plant_cell) = &self.map[i][j] {
-                let evolution = &self.evolution_data.cells_evolution_data[plant_cell.t];
-                GROWTH_DIRECTION.get().unwrap()[i][j]
-                    .iter()
-                    .for_each(|&(nj, ni, d)| {
-                        if !matches!(self.map[ni][nj], MapCell::Plant(_)) {
-                            let weights = &evolution.weights[d];
-                            for c in 0..NUMBER_OF_CELLS {
-                                let score = weights[c].calc_cell(&plant_cell.input);
-                                if score > max_data.0 {
-                                    max_data = (score, nj, ni, c);
-                                }
+            let plant_cell = &self.plants[i][j];
+            let evolution = &self.evolution_data.cells_evolution_data[plant_cell.t];
+            GROWTH_DIRECTION.get().unwrap()[i][j]
+                .iter()
+                .for_each(|&(nj, ni, d)| {
+                    if self.plants[ni][nj].t == usize::MAX {
+                        let weights = &evolution.weights[d];
+                        for c in 0..NUMBER_OF_CELLS {
+                            let score = weights[c].calc_cell(&plant_cell.input);
+                            if score > max_data.0 {
+                                max_data = (score, nj, ni, c);
                             }
                         }
-                    });
-            }
+                    }
+                });
         });
 
         if max_data.0 >= 0. {
             let (_, x, y, cell_type) = max_data;
             if self.plant_nutrition.power >= self.evolution_data.cells_abilities[cell_type].cost {
                 self.plant_nutrition.power -= self.evolution_data.cells_abilities[cell_type].cost;
-                self.map[y][x] = MapCell::Plant(PlantCell {
+                self.plants[y][x] = PlantCell {
                     t: cell_type,
                     input: PlantCellInput::default(),
-                });
+                };
                 self.plants_pos.push((x, y));
             }
         }
@@ -226,31 +224,45 @@ impl MapData {
 }
 
 impl MapData {
-    fn get_basic_map() -> [[MapCell; MAP_SIZE.0]; MAP_SIZE.1] {
-        core::array::from_fn(|i| {
-            core::array::from_fn(|j| {
-                if i == PLANT_CENTER.1 && j == PLANT_CENTER.0 {
-                    MapCell::Plant(PlantCell {
-                        t: 0,
-                        input: PlantCellInput::default(),
-                    })
-                } else if i <= MAP_SIZE.1 / 2 {
-                    MapCell::Air
-                } else {
-                    MapCell::Soil(SoilParameters::default())
-                }
-            })
-        })
+    fn get_basic_map() -> (
+        [[MapCell; MAP_SIZE.0]; MAP_SIZE.1],
+        [[PlantCell; MAP_SIZE.0]; MAP_SIZE.1],
+    ) {
+        (
+            core::array::from_fn(|i| {
+                core::array::from_fn(|j| {
+                    if i <= MAP_SIZE.1 / 2 {
+                        MapCell::Air
+                    } else {
+                        MapCell::Soil(SoilParameters::default())
+                    }
+                })
+            }),
+            core::array::from_fn(|i| {
+                core::array::from_fn(|j| {
+                    if i == PLANT_CENTER.1 && j == PLANT_CENTER.0 {
+                        PlantCell {
+                            t: 0,
+                            input: PlantCellInput::default(),
+                        }
+                    } else {
+                        PlantCell::default()
+                    }
+                })
+            }),
+        )
     }
 
     pub fn generate(evolution_data: PlantEvolutionData, plant_nutrition: PlantNutrition) -> Self {
+        let (map, plants) = Self::get_basic_map();
         Self {
             evolution_data,
             starting_plant_nutrition: plant_nutrition.clone(),
             time: 0,
             plant_nutrition,
             plants_pos: vec![PLANT_CENTER],
-            map: Self::get_basic_map(),
+            map,
+            plants,
         }
     }
 
@@ -258,7 +270,7 @@ impl MapData {
         self.time = 0;
         self.plant_nutrition = self.starting_plant_nutrition.clone();
         self.plants_pos = vec![PLANT_CENTER];
-        self.map = Self::get_basic_map();
+        (self.map, self.plants) = Self::get_basic_map();
     }
 
     pub fn tick(&mut self) {

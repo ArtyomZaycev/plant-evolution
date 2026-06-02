@@ -29,7 +29,9 @@ pub struct RunEvolutionParameters {
 
 impl Default for RunEvolutionParameters {
     fn default() -> Self {
-        Self { ticks_per_evolution: 500 }
+        Self {
+            ticks_per_evolution: 500,
+        }
     }
 }
 
@@ -79,7 +81,7 @@ pub fn run_engine(
                     });
                     slow_maps.force_write(maps.clone());
                 }
-                
+
                 EngineCommand::Tick => {
                     maps.iter_mut().for_each(|map| {
                         map.tick();
@@ -93,47 +95,60 @@ pub fn run_engine(
                     state = EngineState::Stale;
                     slow_maps.force_write(maps.clone());
                 }
-                
+
                 EngineCommand::UpdateEvolutionParameters(new_evolution_parameters) => {
                     evolution_parameters = new_evolution_parameters;
-                },
+                }
                 EngineCommand::Evolve => {
                     sample_maps(&mut maps);
-                    maps.evolve_random(&mut rand::rng(), evolution_parameters.change_chance, evolution_parameters.change_entropy);
+                    maps.evolve_random(
+                        &mut rand::rng(),
+                        evolution_parameters.change_chance,
+                        evolution_parameters.change_entropy,
+                    );
                     slow_maps.force_write(maps.clone());
                 }
                 EngineCommand::UpdateRunEvolutionParameters(new_run_evolution_parameters) => {
                     run_evolution_parameters = new_run_evolution_parameters;
-                },
+                }
                 EngineCommand::RunEvolution => {
                     state = EngineState::RunEvolution;
-                },
+                }
                 EngineCommand::StopRunEvolution => {
                     state = EngineState::Stale;
                     slow_maps.force_write(maps.clone());
-                },
+                }
             }
         }
 
-        match state  {
-            EngineState::Stale => {},
+        match state {
+            EngineState::Stale => {}
             EngineState::RunTick => {
                 maps.iter_mut().for_each(|map| {
                     map.tick();
                 });
                 slow_maps.slow_write(&maps);
-            },
+            }
             EngineState::RunEvolution => {
-                (0..(ENGINE_RUN_EVOLUTION_TICKS_PER_SLOW_WRITE.min(run_evolution_parameters.ticks_per_evolution.saturating_sub(maps[0].time)))).for_each(|_| {
-                    maps.iter_mut().for_each(|map| map.tick());
-                    slow_maps.slow_write(&maps);
-                });
+                (0..(ENGINE_RUN_EVOLUTION_TICKS_PER_SLOW_WRITE.min(
+                    run_evolution_parameters
+                        .ticks_per_evolution
+                        .saturating_sub(maps[0].time),
+                )))
+                    .for_each(|_| {
+                        maps.iter_mut().for_each(|map| map.tick());
+                        slow_maps.slow_write(&maps);
+                    });
                 slow_maps.slow_write(&maps);
                 if maps[0].time >= run_evolution_parameters.ticks_per_evolution {
                     sample_maps(&mut maps);
-                    maps.evolve_random(&mut rng, evolution_parameters.change_chance, evolution_parameters.change_entropy);
+                    maps.evolve_random(
+                        &mut rng,
+                        evolution_parameters.change_chance,
+                        evolution_parameters.change_entropy,
+                    );
                 }
-            },
+            }
         }
     }
 }

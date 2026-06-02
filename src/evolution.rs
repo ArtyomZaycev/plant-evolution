@@ -129,15 +129,11 @@ impl PlantEvolutionData {
 }
 
 pub fn calculate_score(map: &MapData) -> f32 {
-    map.map.iter().fold(0., |acc, row| {
-        row.iter().fold(acc, |acc, cell| match cell {
-            MapCell::Air => acc,
-            MapCell::Soil(_) => acc,
-            MapCell::Plant(plant_cell) => {
-                acc + map.evolution_data.cells_abilities[plant_cell.t].cost
-            }
-        })
-    })
+    let mut score = 0.;
+    for &(j, i) in &map.plants_pos {
+        score += map.evolution_data.cells_abilities[map.plants[i][j].t].cost;
+    }
+    score
 }
 
 pub fn sample_maps(maps: &mut Vec<MapData>) {
