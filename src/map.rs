@@ -1,4 +1,4 @@
-use std::f32;
+use std::{cell::LazyCell, f32};
 
 use crate::{cell::*, const_precalc::*, evolution::PlantEvolutionData, random_evolution::*};
 
@@ -13,6 +13,19 @@ impl Default for PlantCell {
         Self {
             t: usize::MAX,
             input: Default::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AirParameters {
+    pub sunlight: f32,
+}
+
+impl Default for AirParameters {
+    fn default() -> Self {
+        Self {
+            sunlight: 0.,
         }
     }
 }
@@ -34,7 +47,7 @@ impl Default for SoilParameters {
 
 #[derive(Debug, Clone)]
 pub enum MapCell {
-    Air,
+    Air(AirParameters),
     Soil(SoilParameters),
 }
 
@@ -65,21 +78,25 @@ pub struct MapData {
 }
 
 impl MapData {
-    // This is wrong, bad bad Deepseek, stupid stupid me
-    fn populate_sunlight(&mut self) {
-        let mut sorted_plants = self.plants_pos.clone();
-        sorted_plants.sort();
-        let mut count = 0usize;
-        let mut last_x = usize::MAX;
-        sorted_plants.iter().for_each(|&(x, y)| {
-            if x != last_x {
-                count = 0;
-                last_x = x;
+    fn update_sunlight(&mut self, x: usize, y: usize) {
+        let mut sunlight = if y == 0 {
+            1.
+        } else {
+            match &self.map[y - 1][x] {
+                MapCell::Air(air_parameters) => air_parameters.sunlight * 0.5,
+                MapCell::Soil(_) => 0.,
             }
-            let light = (0.5f32).powi(count as i32);
-            count += 1;
-            self.plants[y][x].input.sunlight = light;
-        });
+        };
+        
+        for i in y + 1..MAP_SIZE.1 {
+            match &mut self.map[i][x] {
+                MapCell::Air(air_parameters) => {
+                    air_parameters.sunlight = sunlight;
+                    sunlight *= 0.99;
+                },
+                MapCell::Soil(_) => break,
+            }
+        }
     }
 
     fn calc_nutrition(&self, x: usize, y: usize) -> (f32, f32, f32) {
@@ -90,7 +107,7 @@ impl MapData {
         let mut water = 0.;
         for &(nx, ny, distance) in dxdy {
             match &self.map[ny][nx] {
-                MapCell::Air => {
+                MapCell::Air(_) => {
                     if self.plants[ny][nx].t == usize::MAX {
                         air += 4. - distance
                     } else {
@@ -98,8 +115,13 @@ impl MapData {
                     }
                 }
                 MapCell::Soil(soil_parameters) => {
-                    minerals += soil_parameters.minerals;
-                    water += soil_parameters.water;
+                    if self.plants[ny][nx].t == usize::MAX {
+                        minerals += soil_parameters.minerals;
+                        water += soil_parameters.water;
+                    } else {
+                        minerals += soil_parameters.minerals / 6.;
+                        water += soil_parameters.water / 6.;
+                    }
                 }
             }
         }
@@ -136,14 +158,16 @@ impl MapData {
         for &(j, i) in &self.plants_pos {
             let (air, minerals, water) = self.calc_nutrition(j, i);
             self.plants[i][j].input = PlantCellInput {
-                sunlight: 0.,
+                sunlight: match &self.map[i][j] {
+                    MapCell::Air(air_parameters) => air_parameters.sunlight,
+                    MapCell::Soil(_) => 0.,
+                },
                 air,
                 minerals,
                 water,
                 cells_proximity_data: self.calc_cells_proximity_data(j, i),
             };
         }
-        self.populate_sunlight();
     }
 
     fn calculate_plant_nutritions(&self) -> PlantNutrition {
@@ -218,21 +242,29 @@ impl MapData {
                     input: PlantCellInput::default(),
                 };
                 self.plants_pos.push((x, y));
+                self.update_sunlight(x, y);
             }
         }
     }
 }
 
 impl MapData {
-    fn get_basic_map() -> (
+    const BASIC_MAP_DATA: LazyCell<(
+            [[MapCell; MAP_SIZE.0]; MAP_SIZE.1],
+            [[PlantCell; MAP_SIZE.0]; MAP_SIZE.1],
+        )> = LazyCell::new(MapData::generate_basic_map);
+
+    fn generate_basic_map() -> (
         [[MapCell; MAP_SIZE.0]; MAP_SIZE.1],
         [[PlantCell; MAP_SIZE.0]; MAP_SIZE.1],
     ) {
+        let mut sunlight = 1.;
         (
             core::array::from_fn(|i| {
+                sunlight *= 0.99;
                 core::array::from_fn(|j| {
                     if i <= MAP_SIZE.1 / 2 {
-                        MapCell::Air
+                        MapCell::Air(AirParameters { sunlight })
                     } else {
                         MapCell::Soil(SoilParameters::default())
                     }
@@ -254,7 +286,7 @@ impl MapData {
     }
 
     pub fn generate(evolution_data: PlantEvolutionData, plant_nutrition: PlantNutrition) -> Self {
-        let (map, plants) = Self::get_basic_map();
+        let (map, plants) = Self::BASIC_MAP_DATA.clone();
         Self {
             evolution_data,
             starting_plant_nutrition: plant_nutrition.clone(),
@@ -270,7 +302,7 @@ impl MapData {
         self.time = 0;
         self.plant_nutrition = self.starting_plant_nutrition.clone();
         self.plants_pos = vec![PLANT_CENTER];
-        (self.map, self.plants) = Self::get_basic_map();
+        (self.map, self.plants) = Self::BASIC_MAP_DATA.clone();
     }
 
     pub fn tick(&mut self) {

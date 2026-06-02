@@ -156,16 +156,15 @@ impl eframe::App for PlantEvolutionApp {
             } else {
                 egui::Panel::bottom("cell_info").show_inside(ui, |ui| match self.highlited_cell {
                     Some((x, y)) => {
-                        let cell_name = match &self.get_map().map[y][x] {
-                            MapCell::Air => "air".to_owned(),
-                            MapCell::Soil(_) => "soil".to_owned(),
-                        };
-                        let plant_name = if self.get_map().plants[y][x].t != usize::MAX {
-                            format!("plant {}", self.get_map().plants[y][x].t)
+                        let cell_info = format!("cell_info {:?};", &self.get_map().map[y][x]);
+                        ui.label(format!("({}, {}) => {}", x, y, cell_info));
+
+                        let plant_info = if self.get_map().plants[y][x].t != usize::MAX {
+                            format!("plant {}, sunlight: {}, air: {}, minerals: {}, water: {}", self.get_map().plants[y][x].t, self.get_map().plants[y][x].input.sunlight, self.get_map().plants[y][x].input.air, self.get_map().plants[y][x].input.minerals, self.get_map().plants[y][x].input.water)
                         } else {
                             "".to_owned()
                         };
-                        ui.label(format!("({}, {}) => {} {}", x, y, cell_name, plant_name));
+                        ui.label(format!("{}", plant_info));
                     }
                     None => {
                         ui.label("Nothing selected");
@@ -210,7 +209,7 @@ impl eframe::App for PlantEvolutionApp {
                                 Color32::GREEN
                             } else {
                                 match self.get_map().map[i][j] {
-                                    MapCell::Air => Color32::LIGHT_BLUE,
+                                    MapCell::Air(_) => Color32::LIGHT_BLUE,
                                     MapCell::Soil(_) => Color32::YELLOW,
                                 }
                             };

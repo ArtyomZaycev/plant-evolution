@@ -151,7 +151,6 @@ pub fn sample_maps(maps: &mut Vec<MapData>) {
         .map(|map| map.evolution_data.clone())
         .collect::<Vec<_>>();
 
-    // always 11
     let samples_per_best = maps.len() / sample_size + 1;
     best_evolution_data
         .iter()

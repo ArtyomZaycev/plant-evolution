@@ -28,7 +28,7 @@ where
     pub fn new(data: T) -> Self {
         Self {
             read_update_interval: 10,
-            write_update_interval: 10,
+            write_update_interval: 20,
             last_read: 0.into(),
             last_write: get_timestamp().into(),
             data: Mutex::new(data),
