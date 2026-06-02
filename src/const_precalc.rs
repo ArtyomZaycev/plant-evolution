@@ -17,7 +17,7 @@ pub static GROWTH_DIRECTION: OnceLock<[[Vec<GrowthDir>; MAP_SIZE.0]; MAP_SIZE.1]
 pub fn populate_consts() {
     DXDY_2D.set(generate_dxdy()).unwrap();
     PROXIMITY_DXDY.set(generate_proximity_dxdy()).unwrap();
-    GROWTH_DIRECTION.set(generate_drowth_direction()).unwrap();
+    GROWTH_DIRECTION.set(generate_growth_direction()).unwrap();
 }
 
 fn generate_dxdy() -> [[Vec<DxDy2d>; MAP_SIZE.0]; MAP_SIZE.1] {
@@ -85,22 +85,29 @@ fn generate_proximity_dxdy() -> [[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.1] {
             let px = x as f32;
             let py = y as f32;
 
-            let ac = distance(px, py, cx, cy);
+            let ac: f32 = distance(px, py, cx, cy);
+            // Only cells within `ac` distance can satisfy `ab <= ac`,
+            // so restrict the search to a bounding box of radius `ac` around (x, y).
+            let radius = ac.ceil() as usize;
+            let y_start = y.saturating_sub(radius);
+            let y_end = (y + radius).min(MAP_SIZE.1 - 1);
+            let x_start = x.saturating_sub(radius);
+            let x_end = (x + radius).min(MAP_SIZE.0 - 1);
 
-            for i in 0..MAP_SIZE.1 {
-                for j in 0..MAP_SIZE.0 {
-                    if i != y && j != x {
-                        let x = j as f32;
-                        let y = i as f32;
+            for i in y_start..=y_end {
+                for j in x_start..=x_end {
+                    if i != y || j != x {
+                        let xf = j as f32;
+                        let yf = i as f32;
 
-                        let ab = distance(px, py, x, y);
-                        let bc = distance(x, y, cx, cy);
+                        let ab = distance(px, py, xf, yf);
+                        let bc = distance(xf, yf, cx, cy);
 
                         let angle =
                             ((ab.powi(2) + ac.powi(2) - bc.powi(2)) / (2. * ab * ac)).acos();
 
                         if ab <= ac && angle < std::f32::consts::FRAC_PI_4 {
-                            let distance = ab;
+                            let dist = ab;
 
                             // determine on which side of the line between p and center is point we're checking
                             let line_angle = {
@@ -108,7 +115,7 @@ fn generate_proximity_dxdy() -> [[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.1] {
                                 let y1 = py;
                                 let x2 = cx;
                                 let y2 = cy;
-                                let d = (y2 - y1) * (x - x1) - (x2 - x1) * (y - y1);
+                                let d = (y2 - y1) * (xf - x1) - (x2 - x1) * (yf - y1);
 
                                 if d < 0. {
                                     angle + std::f32::consts::FRAC_PI_4
@@ -118,11 +125,11 @@ fn generate_proximity_dxdy() -> [[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.1] {
                             };
 
                             dxdy.push((
-                                (distance, angle),
+                                (dist, angle),
                                 (
                                     j,
                                     i,
-                                    normalize_distance(distance),
+                                    normalize_distance(dist),
                                     normalize_angle(line_angle),
                                 ),
                             ));
@@ -137,7 +144,7 @@ fn generate_proximity_dxdy() -> [[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.1] {
     })
 }
 
-fn generate_drowth_direction() -> [[Vec<GrowthDir>; MAP_SIZE.0]; MAP_SIZE.1] {
+fn generate_growth_direction() -> [[Vec<GrowthDir>; MAP_SIZE.0]; MAP_SIZE.1] {
     core::array::from_fn(|i| {
         core::array::from_fn(|j| {
             let mut dirs = Vec::new();

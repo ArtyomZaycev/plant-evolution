@@ -53,13 +53,27 @@ pub struct MapData {
 }
 
 impl MapData {
-    fn calc_sunlight(&self, x: usize, y: usize) -> f32 {
-        let basic_sunlight = (MAP_SIZE.1 - y) as f32 / MAP_SIZE.1 as f32;
-        (0..y).fold(basic_sunlight, |sunlight, i: usize| match &self.map[i][x] {
-            MapCell::Air => sunlight,
-            MapCell::Soil(_) => 0.,
-            MapCell::Plant(_) => sunlight / 2.,
-        })
+    fn populate_sunlight(&mut self) {
+        let mut column_sunlight = [[0f32; MAP_SIZE.1]; MAP_SIZE.0];
+        self.plants_pos.iter().for_each(|&(x, y)| {
+            if column_sunlight[0][x] == 0. {
+                let mut light = 1.0;
+                for y in 0..MAP_SIZE.1 {
+                    column_sunlight[y][x] = light;
+                    light = match self.map[y][x] {
+                        MapCell::Plant(_) => light / 2.,
+                        MapCell::Soil(_) => 0.,
+                        MapCell::Air => light,
+                    };
+                    if light == 0. {
+                        break;
+                    }
+                }
+            }
+            if let MapCell::Plant(cell) = &mut self.map[y][x] {
+                cell.input.sunlight = column_sunlight[y][x];
+            }
+        });
     }
 
     fn calc_nutrition(&self, x: usize, y: usize) -> (f32, f32, f32) {
@@ -93,7 +107,7 @@ impl MapData {
             .iter()
             .for_each(|&(j, i, distance, angle)| match &self.map[i][j] {
                 MapCell::Plant(cell) => {
-                    if proximity_data[cell.t].distance == 1. {
+                    if proximity_data[cell.t].distance == 2. {
                         proximity_data[cell.t] = PlantCellProximityData {
                             distance,
                             direction: angle,
@@ -113,7 +127,7 @@ impl MapData {
 
             let (air, minerals, water) = self.calc_nutrition(j, i);
             let input = PlantCellInput {
-                sunlight: self.calc_sunlight(j, i),
+                sunlight: 0.,
                 air,
                 minerals,
                 water,
@@ -126,6 +140,7 @@ impl MapData {
                 });
             }
         }
+        self.populate_sunlight();
     }
 
     fn calculate_plant_nutritions(&self) -> PlantNutrition {

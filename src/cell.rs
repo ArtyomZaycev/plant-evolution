@@ -38,7 +38,7 @@ pub struct PlantCellProximityData {
 impl Default for PlantCellProximityData {
     fn default() -> Self {
         Self {
-            distance: 1.,
+            distance: 2.,
             direction: 0.5,
         }
     }
