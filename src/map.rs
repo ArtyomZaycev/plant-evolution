@@ -193,25 +193,28 @@ impl MapData {
     }
 
     fn grow_plant(&mut self) {
-        let mut cells: [[[f32; NUMBER_OF_CELLS]; MAP_SIZE.0]; MAP_SIZE.1] =
-            [[[0 as f32; NUMBER_OF_CELLS]; MAP_SIZE.0]; MAP_SIZE.1];
+        use std::collections::HashMap;
+
+        // Only track frontier positions (empty cells adjacent to plant cells)
+        // instead of allocating a full 128×128×8 array on the stack.
+        let mut cells: HashMap<(usize, usize), [f32; NUMBER_OF_CELLS]> = HashMap::new();
 
         let mut max_data = (-1., 0, 0, 0);
         self.plants_pos.iter().for_each(|&(j, i)| {
             if let MapCell::Plant(plant_cell) = &self.map[i][j] {
-                let weights = &self.evolution_data.cells_evolution_data[plant_cell.t];
+                let evolution: &crate::evolution::CellEvolutionData = &self.evolution_data.cells_evolution_data[plant_cell.t];
                 GROWTH_DIRECTION.get().unwrap()[i][j]
                     .iter()
                     .for_each(|&(nj, ni, d)| {
-                        if let MapCell::Plant(_) = &self.map[ni][nj] {
-                        } else {
-                            let weights = &weights.weights[d];
-                            (0..NUMBER_OF_CELLS).into_iter().for_each(|c| {
-                                cells[ni][nj][c] += weights[c].calc_cell(&plant_cell.input);
-                                if cells[ni][nj][c] > max_data.0 {
-                                    max_data = (cells[ni][nj][c], nj, ni, c);
+                        if !matches!(self.map[ni][nj], MapCell::Plant(_)) {
+                            let entry = cells.entry((nj, ni)).or_default();
+                            let weights = &evolution.weights[d];
+                            for c in 0..NUMBER_OF_CELLS {
+                                entry[c] += weights[c].calc_cell(&plant_cell.input);
+                                if entry[c] > max_data.0 {
+                                    max_data = (entry[c], nj, ni, c);
                                 }
-                            })
+                            }
                         }
                     });
             }
