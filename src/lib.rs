@@ -1,8 +1,13 @@
+#![feature(integer_atomics)]
+#![feature(lock_value_accessors)]
+
 pub mod cell;
 mod const_precalc;
+pub mod engine;
 pub mod evolution;
 pub mod map;
 pub mod random_evolution;
+pub mod slow_mutex;
 pub mod ui;
 
 pub use const_precalc::populate_consts;

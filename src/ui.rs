@@ -1,47 +1,37 @@
-use std::{
-    sync::mpsc,
-    thread::{self, JoinHandle},
-};
+use std::sync::{Arc, mpsc};
 
-use egui::{Button, Color32, Frame, Pos2, Rect, Sense, TextEdit, Vec2, emath};
+use egui::{Button, Color32, Frame, Pos2, Rect, Sense, Vec2};
 
-use crate::{const_precalc::*, evolution::*, map::*, random_evolution::*};
+use crate::{const_precalc::*, engine::EngineCommand, evolution::*, map::*, slow_mutex::SlowMutex};
 
 pub struct PlantEvolutionApp {
     cell_size: f32,
 
     selected_map_index: usize,
-    number_of_plants: usize,
     maps: Vec<MapData>,
+
+    maps_version: u128,
+    command_sender: mpsc::Sender<EngineCommand>,
+    slow_maps: Arc<SlowMutex<Vec<MapData>>>,
 
     run: bool,
 
-    evolution_running_channel: (
-        mpsc::Sender<RunningEvolutionData>,
-        mpsc::Receiver<RunningEvolutionData>,
-    ),
-    evolution_running_handler: Option<JoinHandle<Vec<MapData>>>,
     highlited_cell: Option<(usize, usize)>,
 }
 
 impl PlantEvolutionApp {
-    pub fn new() -> Self {
-        let number_of_plants: usize = 100;
-        let maps = (0..number_of_plants)
-            .map(|_| {
-                let (a, b) = get_basic_map_data();
-                MapData::generate(a, b)
-            })
-            .collect();
-        let (tx, rx) = mpsc::channel();
+    pub fn new(
+        sender: mpsc::Sender<EngineCommand>,
+        slow_maps: Arc<SlowMutex<Vec<MapData>>>,
+    ) -> Self {
         Self {
             cell_size: 6.,
             selected_map_index: 0,
-            number_of_plants,
-            maps,
+            maps_version: 0,
+            command_sender: sender,
+            maps: slow_maps.force_read(),
+            slow_maps,
             run: false,
-            evolution_running_channel: (tx, rx),
-            evolution_running_handler: None,
             highlited_cell: None,
         }
     }
@@ -49,59 +39,30 @@ impl PlantEvolutionApp {
     fn get_map(&self) -> &MapData {
         &self.maps[self.selected_map_index]
     }
-
-    fn get_map_mut(&mut self) -> &mut MapData {
-        &mut self.maps[self.selected_map_index]
-    }
 }
 
 impl eframe::App for PlantEvolutionApp {
-    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
-        if self.evolution_running_handler.is_some() {
-            ui.ctx().request_repaint();
-        }
+    fn ui(&mut self, ui: &mut egui::Ui, _: &mut eframe::Frame) {
+        ui.ctx().request_repaint();
 
-        if self
-            .evolution_running_handler
-            .as_ref()
-            .is_some_and(|h| h.is_finished())
-        {
-            self.maps = self
-                .evolution_running_handler
-                .take()
-                .unwrap()
-                .join()
-                .unwrap();
+        if let Some((maps, version)) = self.slow_maps.slow_read_versioned(self.maps_version) {
+            self.maps_version = version;
+            self.maps = maps;
         }
 
         egui::Panel::left("evolution_menu").show_inside(ui, |ui| {
             ui.horizontal(|ui| {
-                /*let mut text = self.number_of_plants.to_string();
-                TextEdit::singleline(&mut text).desired_width(64.).show(ui);
-                if let Ok(number) = text.parse() {
-                    self.number_of_plants = number;
-                }*/
-
-                if ui
-                    .add_enabled(
-                        self.evolution_running_handler.is_none(),
-                        Button::new("Evolve!"),
-                    )
-                    .clicked()
-                {
-                    self.run = false;
-                    sample_maps(&mut self.maps);
-                    self.maps.evolve_random(&mut rand::rng(), 0.6, 0.05);
+                if ui.add_enabled(true, Button::new("Evolve!")).clicked() {
+                    self.command_sender
+                        .send(EngineCommand::Evolve {
+                            change_change: 0.6,
+                            change_entropy: 0.05,
+                        })
+                        .unwrap();
                 }
 
-                if ui
-                    .add_enabled(
-                        self.evolution_running_handler.is_none(),
-                        Button::new("Run Evolution"),
-                    )
-                    .clicked()
-                {
-                    let mut maps = self.maps.clone();
+                if ui.add_enabled(true, Button::new("Run Evolution")).clicked() {
+                    /*let mut maps = self.maps.clone();
                     let sender = self.evolution_running_channel.0.clone();
                     println!("self.evolution_running_handler");
                     self.evolution_running_handler = Some(
@@ -113,7 +74,7 @@ impl eframe::App for PlantEvolutionApp {
                             })
                             .unwrap(),
                     );
-                    println!("self.evolution_running_handler after");
+                    println!("self.evolution_running_handler after");*/
                 }
             });
             egui::ScrollArea::vertical().show(ui, |ui| {
@@ -128,7 +89,7 @@ impl eframe::App for PlantEvolutionApp {
             });
         });
 
-        if self.evolution_running_handler.is_none() {
+        if true {
             egui::Panel::right("control_menu").show_inside(ui, |ui| {
                 ui.set_min_width(200.);
                 ui.horizontal(|ui| {
@@ -137,18 +98,20 @@ impl eframe::App for PlantEvolutionApp {
                 });
 
                 ui.horizontal(|ui| {
-                    ui.toggle_value(&mut self.run, "Run");
-                    if ui.button("Tick!").clicked() || self.run {
-                        self.maps.iter_mut().for_each(|map| {
-                            map.tick();
-                        });
-                        ui.ctx().request_repaint();
+                    if ui.toggle_value(&mut self.run, "Run").changed() {
+                        if self.run {
+                            self.command_sender.send(EngineCommand::RunTick).unwrap();
+                        } else {
+                            self.command_sender
+                                .send(EngineCommand::StopRunTick)
+                                .unwrap();
+                        }
+                    };
+                    if ui.button("Tick!").clicked() {
+                        self.command_sender.send(EngineCommand::Tick).unwrap();
                     }
                     if ui.button("Restart").clicked() {
-                        self.maps.iter_mut().for_each(|map| {
-                            map.evolution_data = PlantEvolutionData::generate();
-                            map.restart();
-                        });
+                        self.command_sender.send(EngineCommand::Restart).unwrap();
                     }
                 });
 
@@ -184,8 +147,8 @@ impl eframe::App for PlantEvolutionApp {
         }
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
-            if self.evolution_running_handler.is_some() {
-                ui.label("Long term evolution is running");
+            if false {
+                /*ui.label("Long term evolution is running");
                 if let Some(data) = self.evolution_running_channel.1.iter().last() {
                     ui.label("Progress:");
                     ui.label(format!(
@@ -193,7 +156,7 @@ impl eframe::App for PlantEvolutionApp {
                         data.evolution, data.evolution_total
                     ));
                     ui.label(format!("Ticks: {}/{}", data.tick, data.tick_total));
-                }
+                }*/
             } else {
                 egui::Panel::bottom("cell_info").show_inside(ui, |ui| match self.highlited_cell {
                     Some((x, y)) => {
@@ -209,14 +172,8 @@ impl eframe::App for PlantEvolutionApp {
                     }
                 });
                 Frame::canvas(ui.style()).show(ui, |ui| {
-                    let (mut response, painter) =
+                    let (response, painter) =
                         ui.allocate_painter(ui.available_size_before_wrap(), Sense::empty());
-
-                    let to_screen = emath::RectTransform::from_to(
-                        Rect::from_min_size(Pos2::ZERO, response.rect.square_proportions()),
-                        response.rect,
-                    );
-                    let from_screen = to_screen.inverse();
 
                     let pointer_pos: Option<Pos2> = ui.ctx().input(|i| i.pointer.latest_pos());
                     self.highlited_cell = pointer_pos.and_then(|pos| {

@@ -126,12 +126,7 @@ fn generate_proximity_dxdy() -> [[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.1] {
 
                             dxdy.push((
                                 (dist, angle),
-                                (
-                                    j,
-                                    i,
-                                    normalize_distance(dist),
-                                    normalize_angle(line_angle),
-                                ),
+                                (j, i, normalize_distance(dist), normalize_angle(line_angle)),
                             ));
                         }
                     }
