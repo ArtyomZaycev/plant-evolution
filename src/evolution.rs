@@ -136,7 +136,7 @@ pub fn calculate_score(map: &MapData) -> f32 {
     score
 }
 
-pub fn sample_maps(maps: &mut Vec<MapData>) {
+fn sample_maps(maps: &mut Vec<MapData>, samples: usize) {
     maps.sort_by(|a, b| {
         calculate_score(a)
             .partial_cmp(&calculate_score(b))
@@ -144,26 +144,38 @@ pub fn sample_maps(maps: &mut Vec<MapData>) {
             .reverse()
     });
 
-    let sample_size = maps.len() / 10;
+    let sample_size = maps.len() / samples;
     let best_evolution_data = maps
         .iter()
         .take(sample_size)
         .map(|map| map.evolution_data.clone())
         .collect::<Vec<_>>();
 
-    let samples_per_best = maps.len() / sample_size + 1;
     best_evolution_data
         .iter()
         .enumerate()
         .for_each(|(i, evolution_data)| {
             maps.iter_mut()
-                .skip(samples_per_best * i)
-                .take(samples_per_best)
+                .skip(samples * i)
+                .take(samples)
                 .for_each(|map| {
                     map.evolution_data = evolution_data.clone();
                     map.restart();
                 });
         });
+}
+
+pub fn sample_evolve_maps<F: FnMut(&mut MapData)>(
+    maps: &mut Vec<MapData>,
+    samples: usize,
+    mut evolve: F,
+) {
+    sample_maps(maps, samples);
+    for (i, map) in maps.iter_mut().enumerate() {
+        if i % samples != 0 {
+            evolve(map)
+        }
+    }
 }
 
 #[derive(Debug)]

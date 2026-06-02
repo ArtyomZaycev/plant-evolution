@@ -13,7 +13,7 @@ fn apply_change_chance<F: FnOnce()>(change_chance: f32, random: f32, f: F) {
 }
 
 fn randomize_value(value: &mut f32, random: f32, entropy: f32) {
-    // if entropy = 1, value can be changed for MIN to MAX
+    // if entropy = 1, value can be changed from MIN to MAX
     *value = (*value + (random - 0.5) * 2. * entropy).clamp(0., 1.);
 }
 

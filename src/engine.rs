@@ -1,7 +1,7 @@
 use std::sync::{Arc, mpsc};
 
 use crate::{
-    evolution::{PlantEvolutionData, sample_maps},
+    evolution::{PlantEvolutionData, sample_evolve_maps},
     map::MapData,
     random_evolution::RandomEvolution,
     slow_mutex::SlowMutex,
@@ -9,6 +9,7 @@ use crate::{
 
 #[derive(Debug, Clone, Copy)]
 pub struct EvolutionParameters {
+    samples: usize,
     change_chance: f32,
     change_entropy: f32,
 }
@@ -16,8 +17,9 @@ pub struct EvolutionParameters {
 impl Default for EvolutionParameters {
     fn default() -> Self {
         Self {
-            change_chance: 0.6,
-            change_entropy: 0.05,
+            samples: 10,
+            change_chance: 0.9,
+            change_entropy: 0.1,
         }
     }
 }
@@ -100,12 +102,13 @@ pub fn run_engine(
                     evolution_parameters = new_evolution_parameters;
                 }
                 EngineCommand::Evolve => {
-                    sample_maps(&mut maps);
-                    maps.evolve_random(
-                        &mut rand::rng(),
-                        evolution_parameters.change_chance,
-                        evolution_parameters.change_entropy,
-                    );
+                    sample_evolve_maps(&mut maps, evolution_parameters.samples, |map| {
+                        map.evolve_random(
+                            &mut rng,
+                            evolution_parameters.change_chance,
+                            evolution_parameters.change_entropy,
+                        )
+                    });
                     slow_maps.force_write(maps.clone());
                 }
                 EngineCommand::UpdateRunEvolutionParameters(new_run_evolution_parameters) => {
@@ -141,12 +144,13 @@ pub fn run_engine(
                     });
                 slow_maps.slow_write(&maps);
                 if maps[0].time >= run_evolution_parameters.ticks_per_evolution {
-                    sample_maps(&mut maps);
-                    maps.evolve_random(
-                        &mut rng,
-                        evolution_parameters.change_chance,
-                        evolution_parameters.change_entropy,
-                    );
+                    sample_evolve_maps(&mut maps, evolution_parameters.samples, |map| {
+                        map.evolve_random(
+                            &mut rng,
+                            evolution_parameters.change_chance,
+                            evolution_parameters.change_entropy,
+                        )
+                    });
                 }
             }
         }

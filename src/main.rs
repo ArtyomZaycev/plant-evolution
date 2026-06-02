@@ -20,7 +20,7 @@ fn main() {
     };
 
     let maps = Arc::new(SlowMutex::new(
-        (0..100)
+        (0..200)
             .map(|_| {
                 let (a, b) = get_basic_map_data();
                 MapData::generate(a, b)

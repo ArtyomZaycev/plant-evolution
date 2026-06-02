@@ -143,91 +143,91 @@ impl eframe::App for PlantEvolutionApp {
         }
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
-            if false {
-                /*ui.label("Long term evolution is running");
-                if let Some(data) = self.evolution_running_channel.1.iter().last() {
-                    ui.label("Progress:");
-                    ui.label(format!(
-                        "Evolutions: {}/{}",
-                        data.evolution, data.evolution_total
-                    ));
-                    ui.label(format!("Ticks: {}/{}", data.tick, data.tick_total));
-                }*/
-            } else {
-                egui::Panel::bottom("cell_info").show_inside(ui, |ui| match self.highlited_cell {
-                    Some((x, y)) => {
-                        let cell_info = format!("cell_info {:?};", &self.get_map().map[y][x]);
-                        ui.label(format!("({}, {}) => {}", x, y, cell_info));
+            egui::Panel::bottom("cell_info").show_inside(ui, |ui| match self.highlited_cell {
+                Some((x, y)) => {
+                    let cell_info = format!("cell_info {:?};", &self.get_map().map[y][x]);
+                    ui.label(format!("({}, {}) => {}", x, y, cell_info));
 
-                        let plant_info = if self.get_map().plants[y][x].t != usize::MAX {
-                            format!("plant {}, sunlight: {}, air: {}, minerals: {}, water: {}", self.get_map().plants[y][x].t, self.get_map().plants[y][x].input.sunlight, self.get_map().plants[y][x].input.air, self.get_map().plants[y][x].input.minerals, self.get_map().plants[y][x].input.water)
-                        } else {
-                            "".to_owned()
-                        };
-                        ui.label(format!("{}", plant_info));
-                    }
-                    None => {
-                        ui.label("Nothing selected");
-                    }
-                });
-                Frame::canvas(ui.style()).show(ui, |ui| {
-                    let (response, painter) =
-                        ui.allocate_painter(ui.available_size_before_wrap(), Sense::empty());
+                    let plant_info = if self.get_map().plants[y][x].t != usize::MAX {
+                        format!(
+                            "plant {}, sunlight: {}, air: {}, minerals: {}, water: {}",
+                            self.get_map().plants[y][x].t,
+                            self.get_map().plants[y][x].input.sunlight,
+                            self.get_map().plants[y][x].input.air,
+                            self.get_map().plants[y][x].input.minerals,
+                            self.get_map().plants[y][x].input.water
+                        )
+                    } else {
+                        "".to_owned()
+                    };
+                    ui.label(format!("{}", plant_info));
+                }
+                None => {
+                    ui.label("Nothing selected");
+                }
+            });
 
-                    let pointer_pos: Option<Pos2> = ui.ctx().input(|i| i.pointer.latest_pos());
-                    self.highlited_cell = pointer_pos.and_then(|pos| {
-                        let pos = pos - response.rect.min;
-                        if pos.x < 0. || pos.y < 0. {
+            ui.horizontal(|ui| {
+                ui.label("Growth:");
+            });
+
+            Frame::canvas(ui.style()).show(ui, |ui| {
+                let (response, painter) =
+                    ui.allocate_painter(ui.available_size_before_wrap(), Sense::empty());
+
+                let pointer_pos: Option<Pos2> = ui.ctx().input(|i| i.pointer.latest_pos());
+                self.highlited_cell = pointer_pos.and_then(|pos| {
+                    let pos = pos - response.rect.min;
+                    if pos.x < 0. || pos.y < 0. {
+                        None
+                    } else {
+                        let x = (pos.x / self.cell_size) as usize;
+                        let y = (pos.y / self.cell_size) as usize;
+
+                        if x >= MAP_SIZE.0 || y >= MAP_SIZE.1 {
                             None
                         } else {
-                            let x = (pos.x / self.cell_size) as usize;
-                            let y = (pos.y / self.cell_size) as usize;
-
-                            if x >= MAP_SIZE.0 || y >= MAP_SIZE.1 {
-                                None
-                            } else {
-                                Some((x, y))
-                            }
-                        }
-                    });
-
-                    for i in 0..MAP_SIZE.1 {
-                        for j in 0..MAP_SIZE.0 {
-                            let rect = Rect::from_min_size(
-                                response.rect.min
-                                    + Vec2 {
-                                        x: j as f32 * self.cell_size,
-                                        y: i as f32 * self.cell_size,
-                                    },
-                                Vec2 {
-                                    x: self.cell_size,
-                                    y: self.cell_size,
-                                },
-                            );
-
-                            let color = if self.get_map().plants[i][j].t != usize::MAX {
-                                Color32::GREEN
-                            } else {
-                                match self.get_map().map[i][j] {
-                                    MapCell::Air(_) => Color32::LIGHT_BLUE,
-                                    MapCell::Soil(_) => Color32::YELLOW,
-                                }
-                            };
-
-                            let color = if self.highlited_cell == Some((j, i)) {
-                                Color32::BROWN
-                            } else {
-                                color
-                            };
-                            painter.rect_filled(rect, 0., color);
+                            Some((x, y))
                         }
                     }
-
-                    pointer_pos.inspect(|pos| {
-                        painter.circle_filled(*pos, 2., Color32::RED);
-                    });
                 });
-            }
+
+                for i in 0..MAP_SIZE.1 {
+                    for j in 0..MAP_SIZE.0 {
+                        let rect = Rect::from_min_size(
+                            response.rect.min
+                                + Vec2 {
+                                    x: j as f32 * self.cell_size,
+                                    y: i as f32 * self.cell_size,
+                                },
+                            Vec2 {
+                                x: self.cell_size,
+                                y: self.cell_size,
+                            },
+                        );
+
+                        let color = if self.get_map().plants[i][j].t != usize::MAX {
+                            Color32::GREEN
+                        } else {
+                            match self.get_map().map[i][j] {
+                                MapCell::Air(_) => Color32::LIGHT_BLUE,
+                                MapCell::Soil(_) => Color32::YELLOW,
+                            }
+                        };
+
+                        let color = if self.highlited_cell == Some((j, i)) {
+                            Color32::BROWN
+                        } else {
+                            color
+                        };
+                        painter.rect_filled(rect, 0., color);
+                    }
+                }
+
+                pointer_pos.inspect(|pos| {
+                    painter.circle_filled(*pos, 2., Color32::RED);
+                });
+            });
         });
     }
 }

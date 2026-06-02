@@ -24,9 +24,7 @@ pub struct AirParameters {
 
 impl Default for AirParameters {
     fn default() -> Self {
-        Self {
-            sunlight: 0.,
-        }
+        Self { sunlight: 0. }
     }
 }
 
@@ -87,13 +85,13 @@ impl MapData {
                 MapCell::Soil(_) => 0.,
             }
         };
-        
+
         for i in y + 1..MAP_SIZE.1 {
             match &mut self.map[i][x] {
                 MapCell::Air(air_parameters) => {
                     air_parameters.sunlight = sunlight;
                     sunlight *= 0.99;
-                },
+                }
                 MapCell::Soil(_) => break,
             }
         }
@@ -250,9 +248,9 @@ impl MapData {
 
 impl MapData {
     const BASIC_MAP_DATA: LazyCell<(
-            [[MapCell; MAP_SIZE.0]; MAP_SIZE.1],
-            [[PlantCell; MAP_SIZE.0]; MAP_SIZE.1],
-        )> = LazyCell::new(MapData::generate_basic_map);
+        [[MapCell; MAP_SIZE.0]; MAP_SIZE.1],
+        [[PlantCell; MAP_SIZE.0]; MAP_SIZE.1],
+    )> = LazyCell::new(MapData::generate_basic_map);
 
     fn generate_basic_map() -> (
         [[MapCell; MAP_SIZE.0]; MAP_SIZE.1],
