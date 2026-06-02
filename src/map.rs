@@ -188,26 +188,19 @@ impl MapData {
     }
 
     fn grow_plant(&mut self) {
-        use std::collections::HashMap;
-
-        // Only track frontier positions (empty cells adjacent to plant cells)
-        // instead of allocating a full 128×128×8 array on the stack.
-        let mut cells: HashMap<(usize, usize), [f32; NUMBER_OF_CELLS]> = HashMap::new();
-
         let mut max_data = (-1., 0, 0, 0);
         self.plants_pos.iter().for_each(|&(j, i)| {
             if let MapCell::Plant(plant_cell) = &self.map[i][j] {
-                let evolution: &crate::evolution::CellEvolutionData = &self.evolution_data.cells_evolution_data[plant_cell.t];
+                let evolution = &self.evolution_data.cells_evolution_data[plant_cell.t];
                 GROWTH_DIRECTION.get().unwrap()[i][j]
                     .iter()
                     .for_each(|&(nj, ni, d)| {
                         if !matches!(self.map[ni][nj], MapCell::Plant(_)) {
-                            let entry = cells.entry((nj, ni)).or_default();
                             let weights = &evolution.weights[d];
                             for c in 0..NUMBER_OF_CELLS {
-                                entry[c] += weights[c].calc_cell(&plant_cell.input);
-                                if entry[c] > max_data.0 {
-                                    max_data = (entry[c], nj, ni, c);
+                                let score = weights[c].calc_cell(&plant_cell.input);
+                                if score > max_data.0 {
+                                    max_data = (score, nj, ni, c);
                                 }
                             }
                         }
