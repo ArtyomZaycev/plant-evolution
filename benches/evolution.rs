@@ -15,7 +15,7 @@ fn evolution_benchmark() {
             MapData::generate(a, b)
         })
         .collect::<Vec<_>>();
-    run_evolution_random(None, &mut maps, 10, 200, 0.6, 0.05);
+    run_evolution_random(None, &mut maps, 100, 200, 0.6, 0.05);
     black_box(maps);
 }
 

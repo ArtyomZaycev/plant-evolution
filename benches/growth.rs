@@ -15,7 +15,7 @@ fn growth_benchmark() {
             MapData::generate(a, b)
         })
         .collect::<Vec<_>>();
-    (0..400).for_each(|_| {
+    (0..2000).for_each(|_| {
         maps.iter_mut().for_each(|map| {
             map.tick();
         });
