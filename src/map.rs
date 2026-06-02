@@ -40,12 +40,15 @@ pub struct PlantNutrition {
     pub power: f32,
 }
 
+// TODO: Separate for into MapData (for ui) and FullMapData (for engine)
 #[derive(Debug, Clone)]
 pub struct MapData {
     pub evolution_data: PlantEvolutionData,
+
+    // TODO: Move outside
     pub starting_plant_nutrition: PlantNutrition,
 
-    pub time: i32,
+    pub time: u32,
     pub plant_nutrition: PlantNutrition,
 
     pub plants_pos: Vec<(usize, usize)>,

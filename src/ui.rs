@@ -15,6 +15,7 @@ pub struct PlantEvolutionApp {
     slow_maps: Arc<SlowMutex<Vec<MapData>>>,
 
     run: bool,
+    run_evolution: bool,
 
     highlited_cell: Option<(usize, usize)>,
 }
@@ -32,6 +33,7 @@ impl PlantEvolutionApp {
             maps: slow_maps.force_read(),
             slow_maps,
             run: false,
+            run_evolution: false,
             highlited_cell: None,
         }
     }
@@ -54,27 +56,18 @@ impl eframe::App for PlantEvolutionApp {
             ui.horizontal(|ui| {
                 if ui.add_enabled(true, Button::new("Evolve!")).clicked() {
                     self.command_sender
-                        .send(EngineCommand::Evolve {
-                            change_change: 0.6,
-                            change_entropy: 0.05,
-                        })
+                        .send(EngineCommand::Evolve)
                         .unwrap();
                 }
 
-                if ui.add_enabled(true, Button::new("Run Evolution")).clicked() {
-                    /*let mut maps = self.maps.clone();
-                    let sender = self.evolution_running_channel.0.clone();
-                    println!("self.evolution_running_handler");
-                    self.evolution_running_handler = Some(
-                        thread::Builder::new()
-                            .stack_size(32 * 1024 * 1024)
-                            .spawn(|| {
-                                run_evolution_random(Some(sender), &mut maps, 100, 200, 0.6, 0.05);
-                                maps
-                            })
-                            .unwrap(),
-                    );
-                    println!("self.evolution_running_handler after");*/
+                if ui.toggle_value(&mut self.run_evolution, "Run Evolution").changed() {
+                    if self.run_evolution {
+                        self.command_sender.send(EngineCommand::RunEvolution).unwrap();
+                    } else {
+                        self.command_sender
+                            .send(EngineCommand::StopRunEvolution)
+                            .unwrap();
+                    }
                 }
             });
             egui::ScrollArea::vertical().show(ui, |ui| {
