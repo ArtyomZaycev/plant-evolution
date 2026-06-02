@@ -54,24 +54,19 @@ pub struct MapData {
 
 impl MapData {
     fn populate_sunlight(&mut self) {
-        let mut column_sunlight = [[0f32; MAP_SIZE.1]; MAP_SIZE.0];
-        self.plants_pos.iter().for_each(|&(x, y)| {
-            if column_sunlight[0][x] == 0. {
-                let mut light = 1.0;
-                for y in 0..MAP_SIZE.1 {
-                    column_sunlight[y][x] = light;
-                    light = match self.map[y][x] {
-                        MapCell::Plant(_) => light / 2.,
-                        MapCell::Soil(_) => 0.,
-                        MapCell::Air => light,
-                    };
-                    if light == 0. {
-                        break;
-                    }
-                }
+        let mut sorted_plants = self.plants_pos.clone();
+        sorted_plants.sort();
+        let mut count = 0usize;
+        let mut last_x = usize::MAX;
+        sorted_plants.iter().for_each(|&(x, y)| {
+            if x != last_x {
+                count = 0;
+                last_x = x;
             }
+            let light = (0.5f32).powi(count as i32);
+            count += 1;
             if let MapCell::Plant(cell) = &mut self.map[y][x] {
-                cell.input.sunlight = column_sunlight[y][x];
+                cell.input.sunlight = light;
             }
         });
     }
@@ -266,6 +261,7 @@ impl MapData {
     pub fn restart(&mut self) {
         self.time = 0;
         self.plant_nutrition = self.starting_plant_nutrition.clone();
+        self.plants_pos = vec![PLANT_CENTER];
         self.map = Self::get_basic_map();
     }
 
