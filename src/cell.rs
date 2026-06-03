@@ -7,6 +7,7 @@ pub struct PlantCellAbilities {
     pub minerals_consumption: f32,
     pub water_consumption: f32,
     pub power_production_speed: f32,
+    pub seed: bool,
 
     pub cost: f32,
 }
@@ -19,7 +20,8 @@ impl PlantCellAbilities {
             + self.minerals_consumption
             + self.water_consumption
             + self.power_production_speed.sqrt() * 4.)
-            .powi(3) / 10.;
+            .powi(3) / 10.
+            + if self.seed {50.} else {0.};
     }
 
     pub fn with_populated_cost(self) -> Self {

@@ -281,11 +281,13 @@ impl MapData {
     fn recalc_next_cell_suicide(&mut self) {
         self.next_cell_suicide = (f32::NEG_INFINITY, 0, 0);
         self.plants_pos.iter().for_each(|&(j, i)| {
-            let plant_cell = &self.plants[i][j];
-            let evolution = &self.evolution_data.cells_evolution_data[plant_cell.t];
-            let score = evolution.calc_suicide(&plant_cell.input);
-            if score > self.next_cell_suicide.0 {
-                self.next_cell_suicide = (score, j, i);
+            if j != PLANT_CENTER.0 || i != PLANT_CENTER.1 {
+                let plant_cell = &self.plants[i][j];
+                let evolution = &self.evolution_data.cells_evolution_data[plant_cell.t];
+                let score = evolution.calc_suicide(&plant_cell.input);
+                if score > self.next_cell_suicide.0 {
+                    self.next_cell_suicide = (score, j, i);
+                }
             }
         });
     }

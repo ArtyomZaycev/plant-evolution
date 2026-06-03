@@ -138,6 +138,7 @@ impl eframe::App for PlantEvolutionApp {
                         ui.label(format!("Minerals: {}", cell.minerals_consumption));
                         ui.label(format!("Water: {}", cell.water_consumption));
                         ui.label(format!("Power: {}", cell.power_production_speed));
+                        ui.label(format!("Seed: {}", cell.seed));
                         ui.label(format!("Cost: {}", cell.cost));
                     });
                 });
@@ -230,6 +231,15 @@ impl eframe::App for PlantEvolutionApp {
                             color
                         };
                         painter.rect_filled(rect, 0., color);
+
+                        if self.get_map().plants[i][j].is_some() && self.get_map().evolution_data.cells_abilities[self.get_map().plants[i][j].t].seed {
+                            
+                            painter.circle_filled(response.rect.min
+                                + Vec2 {
+                                    x: j as f32 * self.cell_size + 0.5 * self.cell_size,
+                                    y: i as f32 * self.cell_size + 0.5 * self.cell_size,
+                                }, self.cell_size * 0.4, Color32::YELLOW);
+                        }
                     }
                 }
 

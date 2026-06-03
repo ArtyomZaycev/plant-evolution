@@ -114,24 +114,21 @@ impl PlantEvolutionData {
             minerals_consumption: 0.1,
             water_consumption: 0.1,
             power_production_speed: 0.1,
+            seed: false,
             cost: 0.,
         }
         .with_populated_cost();
 
-        let cells = [
-            PlantCellAbilities {
-                sunlight_consumption: 1.,
-                air_consumption: 1.,
-                minerals_consumption: 1.,
-                water_consumption: 1.,
-                power_production_speed: 0.2,
-                cost: 0.,
-            }
-            .with_populated_cost(),
-            basic_cell.clone(),
-            basic_cell.clone(),
-            basic_cell.clone(),
-        ];
+        let mut cells = std::array::repeat(basic_cell);
+        cells[0] = PlantCellAbilities {
+            sunlight_consumption: 0.,
+            air_consumption: 0.,
+            minerals_consumption: 1.,
+            water_consumption: 1.,
+            power_production_speed: 0.4,
+            seed: false,
+            cost: 0.,
+        }.with_populated_cost();
 
         Self {
             cells_evolution_data: (0..NUMBER_OF_CELLS)
@@ -145,29 +142,52 @@ impl PlantEvolutionData {
 }
 
 pub fn calculate_score(map: &MapData) -> f32 {
+    let mut seeds = vec![];
+
     let nutrition =
         map.plants_pos
             .iter()
             .fold(PlantNutrition::default(), |nutrition, &(j, i)| {
                 let cell = &map.plants[i][j];
+                let cell_abilities = &map.evolution_data.cells_abilities[cell.t];
+                if cell_abilities.seed && matches!(map.map[i][j], MapCell::Air(_)) {
+                    seeds.push((j, i));
+                }
                 PlantNutrition {
                     sunlight: nutrition.sunlight
                         + cell.input.sunlight
-                            * map.evolution_data.cells_abilities[cell.t].sunlight_consumption,
+                            * cell_abilities.sunlight_consumption,
                     air: nutrition.air
                         + cell.input.air
-                            * map.evolution_data.cells_abilities[cell.t].air_consumption,
+                            * cell_abilities.air_consumption,
                     minerals: nutrition.minerals
                         + cell.input.minerals
-                            * map.evolution_data.cells_abilities[cell.t].minerals_consumption,
+                            * cell_abilities.minerals_consumption,
                     water: nutrition.water
                         + cell.input.water
-                            * map.evolution_data.cells_abilities[cell.t].water_consumption,
+                            * cell_abilities.water_consumption,
                     power: 0.,
                 }
             });
 
-    [
+    let mut seeds_score = 0.;
+    for &(x, y) in &seeds {
+        let mut min_distance = f32::INFINITY;
+        for &(x2, y2) in &seeds {
+            if x == x2 && y == y2 {
+                continue;
+            }
+            min_distance = min_distance.min((x as f32 - x2 as f32).powi(2) + (y as f32 - y2 as f32).powi(2));
+        }
+        min_distance = min_distance.sqrt();
+        if min_distance >= 5. {
+            seeds_score += 2.;
+        } else {
+            seeds_score += 1.
+        }
+    }
+
+    seeds_score + [
         nutrition.sunlight,
         nutrition.air,
         nutrition.minerals,
@@ -175,7 +195,7 @@ pub fn calculate_score(map: &MapData) -> f32 {
     ]
     .into_iter()
     .reduce(f32::min)
-    .unwrap()
+    .unwrap() * 4.
 }
 
 #[hotpath::measure]

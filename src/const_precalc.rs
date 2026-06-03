@@ -1,6 +1,6 @@
 use std::sync::OnceLock;
 
-pub const NUMBER_OF_CELLS: usize = 4;
+pub const NUMBER_OF_CELLS: usize = 8;
 
 // (X, Y)
 pub const MAP_SIZE: (usize, usize) = (128, 128);

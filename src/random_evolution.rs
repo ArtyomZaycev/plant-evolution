@@ -30,6 +30,19 @@ fn randomize_value_change_chance(
     });
 }
 
+fn randomize_bool_value_change_chance(
+    value: &mut bool,
+    rng: &mut Rng,
+    change_chance: f32,
+    change_entropy: f32,
+) {
+    apply_change_chance(change_chance, rng.random(), || {
+        if rng.random::<f32>() > 0.5 {
+            *value = !*value
+        }
+    });
+}
+
 pub trait RandomEvolution {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32);
 }
@@ -103,6 +116,12 @@ impl RandomEvolution for PlantCellAbilities {
             change_chance,
             change_entropy,
             0., 1.
+        );
+        randomize_bool_value_change_chance(
+            &mut self.seed,
+            rng,
+            change_chance,
+            change_entropy
         );
         self.populate_cost();
     }
