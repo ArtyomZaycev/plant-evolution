@@ -78,6 +78,7 @@ impl RandomEvolution for CellEvolutionData {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) {
         self.weights
             .evolve_random(rng, change_chance, change_entropy);
+        self.suicide_weights.evolve_random(rng, change_chance, change_entropy);
     }
 }
 
@@ -124,21 +125,28 @@ impl RandomEvolution for PlantCellAbilities {
 
 impl RandomEvolution for CellEvolutionWeights {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) {
+        self.grow_weights
+            .evolve_random(rng, change_chance, change_entropy);
+    }
+}
+
+impl RandomEvolution for PlantCellInput {
+    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) {
         randomize_value_change_chance(
-            &mut self.weights.sunlight,
+            &mut self.sunlight,
             rng,
             change_chance,
             change_entropy,
         );
-        randomize_value_change_chance(&mut self.weights.air, rng, change_chance, change_entropy);
+        randomize_value_change_chance(&mut self.air, rng, change_chance, change_entropy);
         randomize_value_change_chance(
-            &mut self.weights.minerals,
+            &mut self.minerals,
             rng,
             change_chance,
             change_entropy,
         );
-        randomize_value_change_chance(&mut self.weights.water, rng, change_chance, change_entropy);
-        for row in &mut self.weights.cells_proximity_data {
+        randomize_value_change_chance(&mut self.water, rng, change_chance, change_entropy);
+        for row in &mut self.cells_proximity_data {
             for v in row {
                 randomize_value_change_chance(v, rng, change_chance, change_entropy);
             }

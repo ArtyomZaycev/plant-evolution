@@ -8,13 +8,13 @@ type Rng = rand::rngs::ThreadRng;
 
 #[derive(Debug, Clone)]
 pub struct CellEvolutionWeights {
-    pub weights: PlantCellInput,
+    pub grow_weights: PlantCellInput,
 }
 
 impl CellEvolutionWeights {
     fn rand_generate(rng: &mut Rng) -> Self {
         Self {
-            weights: PlantCellInput {
+            grow_weights: PlantCellInput {
                 sunlight: rng.random(),
                 air: rng.random(),
                 minerals: rng.random(),
@@ -30,18 +30,18 @@ impl CellEvolutionWeights {
 }
 
 impl CellEvolutionWeights {
-    pub fn calc_cell(&self, input: &PlantCellInput) -> f32 {
-        input.sunlight * self.weights.sunlight
-            + input.air * self.weights.air
-            + input.minerals * self.weights.minerals
-            + input.water * self.weights.water
+    pub fn calc_growth(&self, input: &PlantCellInput) -> f32 {
+        input.sunlight * self.grow_weights.sunlight
+            + input.air * self.grow_weights.air
+            + input.minerals * self.grow_weights.minerals
+            + input.water * self.grow_weights.water
             + input
                 .cells_proximity_data
                 .iter()
                 .enumerate()
                 .map(|(i, input)| {
                     input.iter().enumerate().map(|(j, input)| {
-                        input * self.weights.cells_proximity_data[i][j]
+                        input * self.grow_weights.cells_proximity_data[i][j]
                     }).sum::<f32>()
                 })
                 .sum::<f32>()
@@ -51,6 +51,7 @@ impl CellEvolutionWeights {
 #[derive(Debug, Clone)]
 pub struct CellEvolutionData {
     pub weights: [[CellEvolutionWeights; NUMBER_OF_CELLS]; 3],
+    pub suicide_weights: PlantCellInput,
 }
 
 impl CellEvolutionData {
@@ -67,7 +68,31 @@ impl CellEvolutionData {
                 .collect::<Vec<[CellEvolutionWeights; NUMBER_OF_CELLS]>>()
                 .try_into()
                 .unwrap(),
+            suicide_weights: PlantCellInput {
+                sunlight: 0.,
+                air: 0.,
+                minerals: 0.,
+                water: 0.,
+                cells_proximity_data: [[0.; NUMBER_OF_CELLS]; 4],
+            },
         }
+    }
+
+    pub fn calc_suicide(&self, input: &PlantCellInput) -> f32 {
+        input.sunlight * self.suicide_weights.sunlight
+            + input.air * self.suicide_weights.air
+            + input.minerals * self.suicide_weights.minerals
+            + input.water * self.suicide_weights.water
+            + input
+                .cells_proximity_data
+                .iter()
+                .enumerate()
+                .map(|(i, input)| {
+                    input.iter().enumerate().map(|(j, input)| {
+                        input * self.suicide_weights.cells_proximity_data[i][j]
+                    }).sum::<f32>()
+                })
+                .sum::<f32>()
     }
 }
 
@@ -103,10 +128,6 @@ impl PlantEvolutionData {
                 cost: 0.,
             }
             .with_populated_cost(),
-            basic_cell.clone(),
-            basic_cell.clone(),
-            basic_cell.clone(),
-            basic_cell.clone(),
             basic_cell.clone(),
             basic_cell.clone(),
             basic_cell.clone(),

@@ -77,6 +77,7 @@ pub struct MapData {
     pub starting_plant_nutrition: PlantNutrition,
 
     pub next_cell_growth: (f32, usize, usize, usize),
+    pub next_cell_suicide: (f32, usize, usize),
 
     pub evolutions: u32,
     pub ticks: u32,
@@ -114,6 +115,13 @@ impl MapData {
                 }
                 MapCell::Soil(_) => break,
             }
+        }
+    }
+
+    #[hotpath::measure]
+    fn update_sunlight_all(&mut self) {
+        for x in 0..MAP_SIZE.0 {
+            self.update_sunlight(x, 0);
         }
     }
 
@@ -243,7 +251,7 @@ impl MapData {
             air: self.plant_nutrition.air + nutrition.air - produced,
             minerals: self.plant_nutrition.minerals + nutrition.minerals - produced,
             water: self.plant_nutrition.water + nutrition.water - produced,
-            power: self.plant_nutrition.power + produced,
+            power: self.plant_nutrition.power + produced - self.plants_pos.len() as f32 * 0.001,
         }
     }
 
@@ -259,7 +267,7 @@ impl MapData {
                     if self.plants[ni][nj].t == usize::MAX {
                         let weights = &evolution.weights[d];
                         for c in 0..NUMBER_OF_CELLS {
-                            let score = weights[c].calc_cell(&plant_cell.input);
+                            let score = weights[c].calc_growth(&plant_cell.input);
                             if score > self.next_cell_growth.0 {
                                 self.next_cell_growth = (score, nj, ni, c);
                             }
@@ -268,21 +276,83 @@ impl MapData {
                 });
         });
     }
+    
+    #[hotpath::measure]
+    fn recalc_next_cell_suicide(&mut self) {
+        self.next_cell_suicide = (-1., 0, 0);
+        self.plants_pos.iter().for_each(|&(j, i)| {
+            let plant_cell = &self.plants[i][j];
+            let evolution = &self.evolution_data.cells_evolution_data[plant_cell.t];
+            let score = evolution.calc_suicide(&plant_cell.input);
+            if score > self.next_cell_suicide.0 {
+                self.next_cell_suicide = (score, j, i);
+            }
+        });
+    }
+
+    #[hotpath::measure]
+    fn search_cells(&self, x: usize, y: usize, ex_plants: &mut [[bool; MAP_SIZE.1]; MAP_SIZE.0]) {
+        ex_plants[PLANT_CENTER.1][PLANT_CENTER.0] = true;
+        if x > 0 && !ex_plants[y][x - 1] && self.plants[y][x - 1].is_some() {
+            self.search_cells(x - 1, y, ex_plants);
+        }
+        if x + 1 < MAP_SIZE.0 && !ex_plants[y][x + 1] && self.plants[y][x + 1].is_some() {
+            self.search_cells(x + 1, y, ex_plants);
+        }
+        if y > 0 && !ex_plants[y - 1][x] && self.plants[y - 1][x].is_some() {
+            self.search_cells(x, y - 1, ex_plants);
+        }
+        if y + 1 < MAP_SIZE.1 && !ex_plants[y + 1][x] && self.plants[y + 1][x].is_some() {
+            self.search_cells(x, y + 1, ex_plants);
+        }
+    }
+
+    #[hotpath::measure]
+    pub fn remove_cell(&mut self, x: usize, y: usize) {
+        self.plants[y][x] = PlantCell::default();
+        self.plants_pos = vec![PLANT_CENTER];
+        let mut ex_plants = [[false; MAP_SIZE.0]; MAP_SIZE.1];
+        self.search_cells(x, y, &mut ex_plants);
+
+        for i in 0..MAP_SIZE.1 {
+            for j in 0..MAP_SIZE.0 {
+                if self.plants[i][j].is_some() {
+                    if !ex_plants[i][j] {
+                        self.plants[i][j] = PlantCell::default();
+                    } else {
+                        self.plants_pos.push((j, i));
+                    }
+                }
+            }
+        }
+    }
 
     #[hotpath::measure]
     fn grow_plant(&mut self) {
-        if self.next_cell_growth.0 >= 0. {
-            let (_, x, y, cell_type) = self.next_cell_growth;
-            if self.plant_nutrition.power >= self.evolution_data.cells_abilities[cell_type].cost {
-                self.plant_nutrition.power -= self.evolution_data.cells_abilities[cell_type].cost;
-                self.plants[y][x] = PlantCell {
-                    t: cell_type,
-                    input: PlantCellInput::default(),
-                };
-                self.plants_pos.push((x, y));
-                self.update_sunlight(x, y);
-                self.populate_plant_inputs();
-                self.recalc_next_cell_growth();
+        if self.next_cell_growth.0 >= 0. || self.next_cell_suicide.0 >= 0. {
+            if self.next_cell_suicide.0 > self.next_cell_growth.0 {
+                let (_, x, y) = self.next_cell_suicide;
+                if x != PLANT_CENTER.0 || y != PLANT_CENTER.1 {
+                    self.remove_cell(x, y);
+                    self.update_sunlight_all();
+                    self.populate_plant_inputs();
+                    self.recalc_next_cell_growth();
+                    self.recalc_next_cell_suicide();
+                }
+            } else {
+                let (_, x, y, cell_type) = self.next_cell_growth;
+                if self.plant_nutrition.power >= self.evolution_data.cells_abilities[cell_type].cost {
+                    self.plant_nutrition.power -= self.evolution_data.cells_abilities[cell_type].cost;
+                    self.plants[y][x] = PlantCell {
+                        t: cell_type,
+                        input: PlantCellInput::default(),
+                    };
+                    self.plants_pos.push((x, y));
+                    self.update_sunlight(x, y);
+                    self.populate_plant_inputs();
+                    self.recalc_next_cell_growth();
+                    self.recalc_next_cell_suicide();
+                }
             }
         }
     }
@@ -335,6 +405,7 @@ impl MapData {
             evolution_data,
             starting_plant_nutrition: plant_nutrition.clone(),
             next_cell_growth: (-1., 0, 0, 0),
+            next_cell_suicide: (-1., 0, 0),
             evolutions: 0,
             ticks: 0,
             plant_nutrition,
@@ -344,6 +415,7 @@ impl MapData {
         };
         s.populate_plant_inputs();
         s.recalc_next_cell_growth();
+        s.recalc_next_cell_suicide();
         s
     }
 
