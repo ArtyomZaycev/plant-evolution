@@ -133,12 +133,12 @@ impl MapData {
                                 air += (4. - distance).sqrt() / 8.;
                             }
                         }
-                        MapCell::Soil(soil_parameters) => {}
+                        MapCell::Soil(_) => {}
                     }
                 }
             },
             MapCell::Soil(_) => {
-                for &(nx, ny, distance) in dxdy {
+                for &(nx, ny, _) in dxdy {
                     match &self.map[ny][nx] {
                         MapCell::Air(_) => {}
                         MapCell::Soil(soil_parameters) => {
@@ -318,53 +318,48 @@ impl MapData {
 }
 
 impl MapData {
-    const BASIC_MAP_DATA: LazyCell<(
-        [[MapCell; MAP_SIZE.0]; MAP_SIZE.1],
-        [[PlantCell; MAP_SIZE.0]; MAP_SIZE.1],
-    )> = LazyCell::new(MapData::generate_basic_map);
+    const BASIC_MAP: LazyCell<[[MapCell; MAP_SIZE.0]; MAP_SIZE.1]> = LazyCell::new(MapData::generate_basic_map);
+    const BASIC_PLANTS: LazyCell<[[PlantCell; MAP_SIZE.0]; MAP_SIZE.1]> = LazyCell::new(MapData::generate_basic_plants);
 
-    fn generate_basic_map() -> (
-        [[MapCell; MAP_SIZE.0]; MAP_SIZE.1],
-        [[PlantCell; MAP_SIZE.0]; MAP_SIZE.1],
-    ) {
+    fn generate_basic_map() -> [[MapCell; MAP_SIZE.0]; MAP_SIZE.1] {
         let mut sunlight = 1.;
-        (
-            core::array::from_fn(|i| {
-                sunlight *= 0.99;
-                core::array::from_fn(|j| {
-                    if i <= MAP_SIZE.1 / 2 {
-                        MapCell::Air(AirParameters { sunlight })
-                    } else {
-                        const LOW_DEPTH_MINERALS: f32 = 0.05;
-                        const LOW_DEPTH_WATER: f32 = 0.2;
-                        const HIGH_DEPTH_MINERALS: f32 = 0.3;
-                        const HIGH_DEPTH_WATER: f32 = 0.01;
-                        let depth = i - MAP_SIZE.1 / 2;
-                        let depth = depth as f32 / (MAP_SIZE.1 / 2) as f32;
-                        MapCell::Soil(SoilParameters {
-                            minerals: LOW_DEPTH_MINERALS + (HIGH_DEPTH_MINERALS - LOW_DEPTH_MINERALS).abs() * depth,
-                            water: HIGH_DEPTH_WATER + (HIGH_DEPTH_WATER - LOW_DEPTH_WATER).abs() * (1. - depth),
-                        })
+        core::array::from_fn(|i| {
+            sunlight *= 0.99;
+            core::array::from_fn(|_| {
+                if i <= MAP_SIZE.1 / 2 {
+                    MapCell::Air(AirParameters { sunlight })
+                } else {
+                    const LOW_DEPTH_MINERALS: f32 = 0.05;
+                    const LOW_DEPTH_WATER: f32 = 0.2;
+                    const HIGH_DEPTH_MINERALS: f32 = 0.3;
+                    const HIGH_DEPTH_WATER: f32 = 0.01;
+                    let depth = i - MAP_SIZE.1 / 2;
+                    let depth = depth as f32 / (MAP_SIZE.1 / 2) as f32;
+                    MapCell::Soil(SoilParameters {
+                        minerals: LOW_DEPTH_MINERALS + (HIGH_DEPTH_MINERALS - LOW_DEPTH_MINERALS).abs() * depth,
+                        water: HIGH_DEPTH_WATER + (HIGH_DEPTH_WATER - LOW_DEPTH_WATER).abs() * (1. - depth),
+                    })
+                }
+            })
+        })
+    }
+
+    fn generate_basic_plants() -> [[PlantCell; MAP_SIZE.0]; MAP_SIZE.1] {
+        core::array::from_fn(|i| {
+            core::array::from_fn(|j| {
+                if i == PLANT_CENTER.1 && j == PLANT_CENTER.0 {
+                    PlantCell {
+                        t: 0,
+                        input: PlantCellInput::default(),
                     }
-                })
-            }),
-            core::array::from_fn(|i| {
-                core::array::from_fn(|j| {
-                    if i == PLANT_CENTER.1 && j == PLANT_CENTER.0 {
-                        PlantCell {
-                            t: 0,
-                            input: PlantCellInput::default(),
-                        }
-                    } else {
-                        PlantCell::default()
-                    }
-                })
-            }),
-        )
+                } else {
+                    PlantCell::default()
+                }
+            })
+        })
     }
 
     pub fn generate(evolution_data: PlantEvolutionData, plant_nutrition: PlantNutrition) -> Self {
-        let (map, plants) = Self::BASIC_MAP_DATA.clone();
         let mut s = Self {
             evolution_data,
             starting_plant_nutrition: plant_nutrition.clone(),
@@ -373,8 +368,8 @@ impl MapData {
             ticks: 0,
             plant_nutrition,
             plants_pos: vec![PLANT_CENTER],
-            map,
-            plants,
+            map: Self::BASIC_MAP.clone(),
+            plants: Self::BASIC_PLANTS.clone(),
         };
         s.populate_plant_inputs();
         s.recalc_next_cell_growth();
@@ -385,7 +380,19 @@ impl MapData {
         self.ticks = 0;
         self.plant_nutrition = self.starting_plant_nutrition.clone();
         self.plants_pos = vec![PLANT_CENTER];
-        (self.map, self.plants) = Self::BASIC_MAP_DATA.clone();
+        /*
+        unsafe {
+            let src_ptr = Self::BASIC_MAP.as_ptr();
+            let dst_ptr = self.map.as_mut_ptr();
+            std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, MAP_SIZE.0 * MAP_SIZE.1);
+        }
+        unsafe {
+            let src_ptr = Self::BASIC_PLANTS.as_ptr();
+            let dst_ptr = self.plants.as_mut_ptr();
+            std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, MAP_SIZE.0 * MAP_SIZE.1);
+        } */
+        self.map = Self::BASIC_MAP.clone();
+        self.plants = Self::BASIC_PLANTS.clone();
         self.populate_plant_inputs();
         self.recalc_next_cell_growth();
     }

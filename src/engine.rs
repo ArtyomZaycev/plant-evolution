@@ -2,7 +2,7 @@ use std::sync::{Arc, mpsc};
 
 use crate::{
     evolution::{PlantEvolutionData, sample_evolve_maps},
-    map::MapData,
+    map::*,
     random_evolution::RandomEvolution,
     slow_mutex::SlowMutex,
 };
