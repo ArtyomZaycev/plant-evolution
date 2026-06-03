@@ -130,11 +130,46 @@ impl PlantEvolutionData {
 }
 
 pub fn calculate_score(map: &MapData) -> f32 {
+    let nutrition =
+        map.plants_pos
+            .iter()
+            .fold(PlantNutrition::default(), |nutrition, &(j, i)| {
+                let cell = &map.plants[i][j];
+                PlantNutrition {
+                    sunlight: nutrition.sunlight
+                        + cell.input.sunlight
+                            * map.evolution_data.cells_abilities[cell.t].sunlight_consumption,
+                    air: nutrition.air
+                        + cell.input.air
+                            * map.evolution_data.cells_abilities[cell.t].air_consumption,
+                    minerals: nutrition.minerals
+                        + cell.input.minerals
+                            * map.evolution_data.cells_abilities[cell.t].minerals_consumption,
+                    water: nutrition.water
+                        + cell.input.water
+                            * map.evolution_data.cells_abilities[cell.t].water_consumption,
+                    power: 0.,
+                }
+            });
+            
+    let score = [
+        nutrition.sunlight,
+        nutrition.air,
+        nutrition.minerals,
+        nutrition.water,
+    ]
+    .into_iter()
+    .reduce(f32::min)
+    .unwrap();
+
+    score
+    
+/*
     let mut score = 0.;
     for &(j, i) in &map.plants_pos {
         score += map.evolution_data.cells_abilities[map.plants[i][j].t].cost;
     }
-    score - map.evolution_data.cells_abilities[0].cost
+    score - map.evolution_data.cells_abilities[0].cost */
 }
 
 fn sample_maps(maps: &mut Vec<MapData>, samples: usize) {
