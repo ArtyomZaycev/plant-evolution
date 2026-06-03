@@ -12,11 +12,14 @@ pub type GrowthDir = (usize, usize, usize);
 pub static DXDY_2D: OnceLock<[[Vec<DxDy2d>; MAP_SIZE.0]; MAP_SIZE.1]> = OnceLock::new();
 pub static PROXIMITY_DXDY: OnceLock<[[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.1]> =
     OnceLock::new();
+pub static PROXIMITY_DXDY_REV: OnceLock<[[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.1]> =
+    OnceLock::new();
 pub static GROWTH_DIRECTION: OnceLock<[[Vec<GrowthDir>; MAP_SIZE.0]; MAP_SIZE.1]> = OnceLock::new();
 
 pub fn populate_consts() {
     DXDY_2D.set(generate_dxdy()).unwrap();
     PROXIMITY_DXDY.set(generate_proximity_dxdy()).unwrap();
+    PROXIMITY_DXDY_REV.set(generate_proximity_dxdy_rev()).unwrap();
     GROWTH_DIRECTION.set(generate_growth_direction()).unwrap();
 }
 
@@ -124,6 +127,25 @@ fn generate_proximity_dxdy() -> [[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.1] {
             dxdy.into_iter().map(|v| v.1).collect()
         })
     })
+}
+
+fn generate_proximity_dxdy_rev() -> [[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.1] {
+    let mut arr = core::array::from_fn(|_| {
+        core::array::from_fn(|_| {
+            vec![]
+        })
+    });
+
+    let proximity = PROXIMITY_DXDY.get().unwrap();
+    proximity.iter().enumerate().for_each(|(i, row)| {
+        row.iter().enumerate().for_each(|(j, proximity)| {
+            proximity.iter().for_each(|&(x, y, distance, angle)| {
+                arr[x][y].push((j, i, distance, angle));
+            });
+        });
+    });
+
+    arr
 }
 
 fn generate_growth_direction() -> [[Vec<GrowthDir>; MAP_SIZE.0]; MAP_SIZE.1] {

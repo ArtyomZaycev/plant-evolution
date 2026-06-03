@@ -152,6 +152,25 @@ impl MapData {
             });
         proximity_data
     }
+    
+    fn update_cells_proximity_data_cell(
+        &mut self,
+        x: usize,
+        y: usize,
+    ) {
+        let ct = self.plants[y][x].t;
+        PROXIMITY_DXDY_REV.get().unwrap()[y][x]
+            .iter()
+            .for_each(|&(j, i, distance, angle)| {
+                let cell = &mut self.plants[i][j];
+                if cell.t != usize::MAX && cell.input.cells_proximity_data[ct].distance < distance {
+                    cell.input.cells_proximity_data[ct] = PlantCellProximityData {
+                        distance,
+                        direction: angle,
+                    }
+                }
+            });
+    }
 }
 
 impl MapData {
@@ -169,6 +188,23 @@ impl MapData {
                 cells_proximity_data: self.calc_cells_proximity_data(j, i),
             };
         }
+    }
+
+    fn populate_plant_inputs_cell(&mut self, x: usize, y: usize) {
+        for &(j, i) in &self.plants_pos {
+            let (air, minerals, water) = self.calc_nutrition(j, i);
+            self.plants[i][j].input = PlantCellInput {
+                sunlight: match &self.map[i][j] {
+                    MapCell::Air(air_parameters) => air_parameters.sunlight,
+                    MapCell::Soil(_) => 0.,
+                },
+                air,
+                minerals,
+                water,
+                cells_proximity_data: self.plants[i][j].input.cells_proximity_data,
+            };
+        }
+        self.update_cells_proximity_data_cell(x, y);
     }
 
     fn calculate_plant_nutritions(&self) -> PlantNutrition {
@@ -246,7 +282,7 @@ impl MapData {
                 };
                 self.plants_pos.push((x, y));
                 self.update_sunlight(x, y);
-                self.populate_plant_inputs();
+                self.populate_plant_inputs_cell(x, y);
                 self.recalc_next_cell_growth();
             }
         }

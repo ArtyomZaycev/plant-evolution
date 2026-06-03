@@ -89,63 +89,61 @@ impl eframe::App for PlantEvolutionApp {
             });
         });
 
-        if true {
-            egui::Panel::right("control_menu").show_inside(ui, |ui| {
-                ui.set_min_width(200.);
-                ui.horizontal(|ui| {
-                    ui.label(format!("Evolutions: {}", self.get_map().evolutions));
-                    ui.label(format!("Step: {}", self.get_map().ticks));
-                    ui.label(format!("Score: {}", calculate_score(&self.get_map())));
-                });
-
-                ui.horizontal(|ui| {
-                    if ui.toggle_value(&mut self.run, "Run").changed() {
-                        if self.run {
-                            self.command_sender.send(EngineCommand::RunTick).unwrap();
-                        } else {
-                            self.command_sender
-                                .send(EngineCommand::StopRunTick)
-                                .unwrap();
-                        }
-                    };
-                    if ui.button("Tick!").clicked() {
-                        self.command_sender.send(EngineCommand::Tick).unwrap();
-                    }
-                    if ui.button("Restart").clicked() {
-                        self.command_sender.send(EngineCommand::Restart).unwrap();
-                    }
-                });
-
-                ui.label("Nutritions:");
-                ui.label(format!(
-                    "Sunlight: {}",
-                    self.get_map().plant_nutrition.sunlight
-                ));
-                ui.label(format!("Air: {}", self.get_map().plant_nutrition.air));
-                ui.label(format!(
-                    "Minerals: {}",
-                    self.get_map().plant_nutrition.minerals
-                ));
-                ui.label(format!("Water: {}", self.get_map().plant_nutrition.water));
-                ui.label(format!("Power: {}", self.get_map().plant_nutrition.power));
-
-                self.get_map()
-                    .evolution_data
-                    .cells_abilities
-                    .iter()
-                    .enumerate()
-                    .for_each(|(i, cell)| {
-                        ui.collapsing(format!("Cell {}", i), |ui| {
-                            ui.label(format!("Sunlight: {}", cell.sunlight_consumption));
-                            ui.label(format!("Air: {}", cell.air_consumption));
-                            ui.label(format!("Minerals: {}", cell.minerals_consumption));
-                            ui.label(format!("Water: {}", cell.water_consumption));
-                            ui.label(format!("Power: {}", cell.power_production_speed));
-                            ui.label(format!("Cost: {}", cell.cost));
-                        });
-                    });
+        egui::Panel::right("control_menu").show_inside(ui, |ui| {
+            ui.set_min_width(200.);
+            ui.horizontal(|ui| {
+                ui.label(format!("Evolutions: {}", self.get_map().evolutions));
+                ui.label(format!("Step: {}", self.get_map().ticks));
             });
-        }
+            ui.label(format!("Score: {}", calculate_score(&self.get_map())));
+
+            ui.horizontal(|ui| {
+                if ui.toggle_value(&mut self.run, "Run").changed() {
+                    if self.run {
+                        self.command_sender.send(EngineCommand::RunTick).unwrap();
+                    } else {
+                        self.command_sender
+                            .send(EngineCommand::StopRunTick)
+                            .unwrap();
+                    }
+                };
+                if ui.button("Tick!").clicked() {
+                    self.command_sender.send(EngineCommand::Tick).unwrap();
+                }
+                if ui.button("Restart").clicked() {
+                    self.command_sender.send(EngineCommand::Restart).unwrap();
+                }
+            });
+
+            ui.label("Nutritions:");
+            ui.label(format!(
+                "Sunlight: {}",
+                self.get_map().plant_nutrition.sunlight
+            ));
+            ui.label(format!("Air: {}", self.get_map().plant_nutrition.air));
+            ui.label(format!(
+                "Minerals: {}",
+                self.get_map().plant_nutrition.minerals
+            ));
+            ui.label(format!("Water: {}", self.get_map().plant_nutrition.water));
+            ui.label(format!("Power: {}", self.get_map().plant_nutrition.power));
+
+            self.get_map()
+                .evolution_data
+                .cells_abilities
+                .iter()
+                .enumerate()
+                .for_each(|(i, cell)| {
+                    ui.collapsing(format!("Cell {}", i), |ui| {
+                        ui.label(format!("Sunlight: {}", cell.sunlight_consumption));
+                        ui.label(format!("Air: {}", cell.air_consumption));
+                        ui.label(format!("Minerals: {}", cell.minerals_consumption));
+                        ui.label(format!("Water: {}", cell.water_consumption));
+                        ui.label(format!("Power: {}", cell.power_production_speed));
+                        ui.label(format!("Cost: {}", cell.cost));
+                    });
+                });
+        });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
             egui::Panel::bottom("cell_info").show_inside(ui, |ui| match self.highlited_cell {
