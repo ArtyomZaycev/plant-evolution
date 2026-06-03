@@ -145,8 +145,8 @@ pub fn calculate_score(map: &MapData) -> f32 {
                     power: 0.,
                 }
             });
-            
-    let score = [
+
+    [
         nutrition.sunlight,
         nutrition.air,
         nutrition.minerals,
@@ -154,18 +154,10 @@ pub fn calculate_score(map: &MapData) -> f32 {
     ]
     .into_iter()
     .reduce(f32::min)
-    .unwrap();
-
-    score
-    
-/*
-    let mut score = 0.;
-    for &(j, i) in &map.plants_pos {
-        score += map.evolution_data.cells_abilities[map.plants[i][j].t].cost;
-    }
-    score - map.evolution_data.cells_abilities[0].cost */
+    .unwrap()
 }
 
+#[hotpath::measure]
 fn sample_maps(maps: &mut Vec<MapData>, samples: usize) {
     maps.sort_by(|a, b| {
         calculate_score(a)
@@ -195,6 +187,7 @@ fn sample_maps(maps: &mut Vec<MapData>, samples: usize) {
         });
 }
 
+#[hotpath::measure]
 pub fn sample_evolve_maps<F: FnMut(&mut MapData)>(
     maps: &mut Vec<MapData>,
     samples: usize,

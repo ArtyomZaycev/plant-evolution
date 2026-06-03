@@ -11,6 +11,7 @@ use plant_evolution_lib::{
     ui::PlantEvolutionApp,
 };
 
+#[hotpath::main]
 fn main() {
     populate_consts();
 

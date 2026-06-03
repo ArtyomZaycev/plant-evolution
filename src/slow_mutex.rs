@@ -35,6 +35,7 @@ where
         }
     }
 
+    #[hotpath::measure]
     pub fn slow_read(&self) -> Option<T> {
         if get_timestamp() - self.last_read.load(Ordering::Relaxed) >= self.read_update_interval {
             Some(self.force_read())
@@ -43,6 +44,7 @@ where
         }
     }
 
+    #[hotpath::measure]
     pub fn slow_read_versioned(&self, old_version: u128) -> Option<(T, u128)> {
         let version = self.last_write.load(Ordering::Relaxed);
         if old_version != version
@@ -54,12 +56,14 @@ where
         }
     }
 
+    #[hotpath::measure]
     pub fn force_read(&self) -> T {
         let data = self.data.lock().unwrap();
         self.last_read.store(get_timestamp(), Ordering::Relaxed);
         data.clone()
     }
 
+    #[hotpath::measure]
     pub fn slow_write(&self, data: &T) -> bool {
         if get_timestamp() - self.last_write.load(Ordering::Relaxed) >= self.write_update_interval {
             self.force_write(data.clone());
@@ -69,6 +73,7 @@ where
         }
     }
 
+    #[hotpath::measure]
     pub fn force_write(&self, data: T) {
         self.data.set(data).unwrap();
         self.last_write.store(get_timestamp(), Ordering::Relaxed);

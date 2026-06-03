@@ -88,6 +88,7 @@ pub struct MapData {
 }
 
 impl MapData {
+    #[hotpath::measure]
     fn update_sunlight(&mut self, x: usize, y: usize) {
         let mut sunlight = if y == 0 {
             1.
@@ -116,6 +117,7 @@ impl MapData {
         }
     }
 
+    #[hotpath::measure]
     fn calc_nutrition(&self, x: usize, y: usize) -> (f32, f32, f32) {
         let dxdy = &DXDY_2D.get().unwrap()[y][x];
 
@@ -160,6 +162,7 @@ impl MapData {
         )
     }
 
+    #[hotpath::measure]
     fn calc_cells_proximity_data(
         &self,
         x: usize,
@@ -183,6 +186,7 @@ impl MapData {
 }
 
 impl MapData {
+    #[hotpath::measure]
     fn populate_plant_inputs(&mut self) {
         for &(j, i) in &self.plants_pos {
             let (air, minerals, water) = self.calc_nutrition(j, i);
@@ -199,6 +203,7 @@ impl MapData {
         }
     }
 
+    #[hotpath::measure]
     fn calculate_plant_nutritions(&self) -> PlantNutrition {
         let nutrition =
             self.plants_pos
@@ -242,6 +247,7 @@ impl MapData {
         }
     }
 
+    #[hotpath::measure]
     fn recalc_next_cell_growth(&mut self) {
         self.next_cell_growth = (-1., 0, 0, 0);
         self.plants_pos.iter().for_each(|&(j, i)| {
@@ -263,6 +269,7 @@ impl MapData {
         });
     }
 
+    #[hotpath::measure]
     fn grow_plant(&mut self) {
         if self.next_cell_growth.0 >= 0. {
             let (_, x, y, cell_type) = self.next_cell_growth;
@@ -340,6 +347,7 @@ impl MapData {
         s
     }
 
+    #[hotpath::measure]
     pub fn restart(&mut self) {
         self.ticks = 0;
         self.plant_nutrition = self.starting_plant_nutrition.clone();
@@ -361,6 +369,7 @@ impl MapData {
         self.recalc_next_cell_growth();
     }
 
+    #[hotpath::measure]
     pub fn tick(&mut self) {
         self.plant_nutrition = self.calculate_plant_nutritions();
         self.grow_plant();
