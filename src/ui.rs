@@ -238,7 +238,7 @@ impl eframe::App for PlantEvolutionApp {
                                 + Vec2 {
                                     x: j as f32 * self.cell_size + 0.5 * self.cell_size,
                                     y: i as f32 * self.cell_size + 0.5 * self.cell_size,
-                                }, self.cell_size * 0.4, Color32::YELLOW);
+                                }, self.cell_size * 0.4, Color32::RED);
                         }
                     }
                 }

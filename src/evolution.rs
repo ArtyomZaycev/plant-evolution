@@ -187,7 +187,7 @@ pub fn calculate_score(map: &MapData) -> f32 {
         }
     }
 
-    seeds_score + [
+    seeds_score / 8. + [
         nutrition.sunlight,
         nutrition.air,
         nutrition.minerals,

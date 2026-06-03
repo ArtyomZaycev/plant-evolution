@@ -252,7 +252,7 @@ impl MapData {
             air: self.plant_nutrition.air + nutrition.air - produced,
             minerals: self.plant_nutrition.minerals + nutrition.minerals - produced,
             water: self.plant_nutrition.water + nutrition.water - produced,
-            power: self.plant_nutrition.power + produced - self.plants_pos.len() as f32 * 0.001,
+            power: self.plant_nutrition.power + produced - self.plants_pos.len() as f32 * 0.002,
         }
     }
 
@@ -295,7 +295,7 @@ impl MapData {
 
     #[hotpath::measure]
     fn search_cells(&self, x: usize, y: usize, ex_plants: &mut [[bool; MAP_SIZE.1]; MAP_SIZE.0]) {
-        ex_plants[PLANT_CENTER.1][PLANT_CENTER.0] = true;
+        ex_plants[y][x] = true;
         if x > 0 && !ex_plants[y][x - 1] && self.plants[y][x - 1].is_some() {
             self.search_cells(x - 1, y, ex_plants);
         }
@@ -315,7 +315,7 @@ impl MapData {
         self.plants[y][x] = PlantCell::default();
         self.plants_pos = vec![PLANT_CENTER];
         let mut ex_plants = [[false; MAP_SIZE.0]; MAP_SIZE.1];
-        self.search_cells(x, y, &mut ex_plants);
+        self.search_cells(PLANT_CENTER.0, PLANT_CENTER.1, &mut ex_plants);
 
         for i in 0..MAP_SIZE.1 {
             for j in 0..MAP_SIZE.0 {

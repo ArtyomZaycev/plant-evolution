@@ -3,7 +3,7 @@ use std::sync::OnceLock;
 pub const NUMBER_OF_CELLS: usize = 8;
 
 // (X, Y)
-pub const MAP_SIZE: (usize, usize) = (128, 128);
+pub const MAP_SIZE: (usize, usize) = (81, 81);
 pub const PLANT_CENTER: (usize, usize) = (MAP_SIZE.0 / 2, MAP_SIZE.1 / 2 + 2);
 
 pub type DxDy2d = (usize, usize, f32);
