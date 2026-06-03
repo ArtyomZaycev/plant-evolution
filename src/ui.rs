@@ -19,7 +19,6 @@ pub struct PlantEvolutionApp {
     run_evolution: bool,
 
     highlited_cell: Option<(usize, usize)>,
-    highlited_proximity_cell: Option<(bool, usize, usize)>,
 }
 
 impl PlantEvolutionApp {
@@ -38,7 +37,6 @@ impl PlantEvolutionApp {
             run: false,
             run_evolution: false,
             highlited_cell: None,
-            highlited_proximity_cell: None,
         }
     }
 
@@ -165,17 +163,6 @@ impl eframe::App for PlantEvolutionApp {
                     };
                     ui.label(format!("{}", plant_info));
                     ui.label(format!("{:?}", self.get_map().plants[y][x]));
-
-                    if let Some((reversed, proximity_x, proximity_y)) = self.highlited_proximity_cell {
-                        let proximity = &if reversed {PROXIMITY_DXDY_REV.get().unwrap()} else {PROXIMITY_DXDY.get().unwrap()}[proximity_y][proximity_x];
-                        if let Some(&(_, _, distance, angle)) = proximity.iter().find(|&&(px, py, _, _)| px == x && py == y) {
-                            ui.label(format!("distance = {}, angle = {}", distance, angle));
-                        } else {
-                            ui.label("");
-                        }
-                    } else {
-                        ui.label("");
-                    }
                 }
                 None => {
                     ui.label("Nothing selected");
@@ -211,18 +198,6 @@ impl eframe::App for PlantEvolutionApp {
                         }
                     }
                 });
-                if let Some(highlited_cell) = self.highlited_cell {
-                    ui.ctx().input(|input| {
-                        if input.key_pressed(egui::Key::X) || input.key_pressed(egui::Key::Z) {
-                            let new_highlited_proximity_cell = (input.key_pressed(egui::Key::Z), highlited_cell.0, highlited_cell.1);
-                            if self.highlited_proximity_cell.is_some_and(|c| c == new_highlited_proximity_cell) {
-                                self.highlited_proximity_cell = None;
-                            } else {
-                                self.highlited_proximity_cell = Some(new_highlited_proximity_cell);
-                            }
-                        }
-                    });
-                }
 
                 for i in 0..MAP_SIZE.1 {
                     for j in 0..MAP_SIZE.0 {
@@ -254,24 +229,6 @@ impl eframe::App for PlantEvolutionApp {
                         };
                         painter.rect_filled(rect, 0., color);
                     }
-                }
-
-                if let Some((reversed, proximity_x, proximity_y)) = self.highlited_proximity_cell {
-                    let proximity = &if reversed {PROXIMITY_DXDY_REV.get().unwrap()} else {PROXIMITY_DXDY.get().unwrap()}[proximity_y][proximity_x];
-                    for &(x, y, _, _) in proximity {
-                        let center = response.rect.min
-                            + Vec2 {
-                                x: x as f32 * self.cell_size + self.cell_size / 2.,
-                                y: y as f32 * self.cell_size + self.cell_size / 2.,
-                            };
-                        painter.circle_filled(center, self.cell_size / 3., Color32::PURPLE);
-                    }
-                    let center = response.rect.min
-                        + Vec2 {
-                            x: proximity_x as f32 * self.cell_size + self.cell_size / 2.,
-                            y: proximity_y as f32 * self.cell_size + self.cell_size / 2.,
-                        };
-                    painter.circle_filled(center, self.cell_size / 3., Color32::MAGENTA);
                 }
 
                 pointer_pos.inspect(|pos| {

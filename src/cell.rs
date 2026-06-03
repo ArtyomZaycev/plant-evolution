@@ -59,5 +59,5 @@ pub struct PlantCellInput {
     pub air: f32,
     pub minerals: f32,
     pub water: f32,
-    pub cells_proximity_data: [PlantCellProximityData; NUMBER_OF_CELLS],
+    pub cells_proximity_data: [[f32; NUMBER_OF_CELLS]; 4],
 }

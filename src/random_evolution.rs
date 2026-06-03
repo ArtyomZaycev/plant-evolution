@@ -138,9 +138,11 @@ impl RandomEvolution for CellEvolutionWeights {
             change_entropy,
         );
         randomize_value_change_chance(&mut self.weights.water, rng, change_chance, change_entropy);
-        self.weights
-            .cells_proximity_data
-            .evolve_random(rng, change_chance, change_entropy);
+        for row in &mut self.weights.cells_proximity_data {
+            for v in row {
+                randomize_value_change_chance(v, rng, change_chance, change_entropy);
+            }
+        }
     }
 }
 

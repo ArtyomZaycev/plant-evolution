@@ -19,14 +19,11 @@ impl CellEvolutionWeights {
                 air: rng.random(),
                 minerals: rng.random(),
                 water: rng.random(),
-                cells_proximity_data: (0..NUMBER_OF_CELLS)
-                    .map(|_| PlantCellProximityData {
-                        distance: rng.random(),
-                        direction: rng.random(),
+                cells_proximity_data: core::array::from_fn(|_| {
+                    core::array::from_fn(|_| {
+                        rng.random()
                     })
-                    .collect::<Vec<PlantCellProximityData>>()
-                    .try_into()
-                    .unwrap(),
+                }),
             },
         }
     }
@@ -43,12 +40,9 @@ impl CellEvolutionWeights {
                 .iter()
                 .enumerate()
                 .map(|(i, input)| {
-                    if input.is_some() {
-                        input.direction * self.weights.cells_proximity_data[i].direction
-                        + input.distance * self.weights.cells_proximity_data[i].distance
-                    } else {
-                        0.
-                    }
+                    input.iter().enumerate().map(|(j, input)| {
+                        input * self.weights.cells_proximity_data[i][j]
+                    }).sum::<f32>()
                 })
                 .sum::<f32>()
     }

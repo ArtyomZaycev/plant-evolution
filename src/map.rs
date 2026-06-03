@@ -165,39 +165,21 @@ impl MapData {
         &self,
         x: usize,
         y: usize,
-    ) -> [PlantCellProximityData; NUMBER_OF_CELLS] {
-        let mut proximity_data = [PlantCellProximityData::default(); NUMBER_OF_CELLS];
-        PROXIMITY_DXDY.get().unwrap()[y][x]
-            .iter()
-            .for_each(|&(j, i, distance, angle)| {
-                let cell = &self.plants[i][j];
-                if cell.is_some() && proximity_data[cell.t].is_none() {
-                    proximity_data[cell.t] = PlantCellProximityData {
-                        distance,
-                        direction: angle,
-                    }
-                }
-            });
+    ) -> [[f32; NUMBER_OF_CELLS]; 4] {
+        let mut proximity_data = [[0.; NUMBER_OF_CELLS]; 4];
+        if x > 0 && self.plants[y][x - 1].is_some() {
+            proximity_data[0][self.plants[y][x - 1].t] = 1.;
+        }
+        if x + 1 < MAP_SIZE.0 && self.plants[y][x + 1].is_some() {
+            proximity_data[1][self.plants[y][x + 1].t] = 1.;
+        }
+        if y > 0 && self.plants[y - 1][x].is_some() {
+            proximity_data[2][self.plants[y - 1][x].t] = 1.;
+        }
+        if y + 1 < MAP_SIZE.1 && self.plants[y + 1][x].is_some() {
+            proximity_data[3][self.plants[y + 1][x].t] = 1.;
+        }
         proximity_data
-    }
-    
-    fn update_cells_proximity_data_cell(
-        &mut self,
-        x: usize,
-        y: usize,
-    ) {
-        let ct = self.plants[y][x].t;
-        PROXIMITY_DXDY_REV.get().unwrap()[y][x]
-            .iter()
-            .for_each(|&(j, i, distance, angle)| {
-                let cell = &mut self.plants[i][j];
-                if cell.is_some() && cell.input.cells_proximity_data[ct].distance < distance {
-                    cell.input.cells_proximity_data[ct] = PlantCellProximityData {
-                        distance,
-                        direction: angle,
-                    }
-                }
-            });
     }
 }
 
@@ -216,23 +198,6 @@ impl MapData {
                 cells_proximity_data: self.calc_cells_proximity_data(j, i),
             };
         }
-    }
-
-    fn populate_plant_inputs_cell(&mut self, x: usize, y: usize) {
-        for &(j, i) in &self.plants_pos {
-            let (air, minerals, water) = self.calc_nutrition(j, i);
-            self.plants[i][j].input = PlantCellInput {
-                sunlight: match &self.map[i][j] {
-                    MapCell::Air(air_parameters) => air_parameters.sunlight,
-                    MapCell::Soil(_) => 0.,
-                },
-                air,
-                minerals,
-                water,
-                cells_proximity_data: self.plants[i][j].input.cells_proximity_data,
-            };
-        }
-        self.update_cells_proximity_data_cell(x, y);
     }
 
     fn calculate_plant_nutritions(&self) -> PlantNutrition {
@@ -310,7 +275,7 @@ impl MapData {
                 };
                 self.plants_pos.push((x, y));
                 self.update_sunlight(x, y);
-                self.populate_plant_inputs_cell(x, y);
+                self.populate_plant_inputs();
                 self.recalc_next_cell_growth();
             }
         }
