@@ -18,8 +18,8 @@ impl Default for EvolutionParameters {
     fn default() -> Self {
         Self {
             samples: 10,
-            change_chance: 0.6,
-            change_entropy: 0.05,
+            change_chance: 0.1,
+            change_entropy: 0.1,
         }
     }
 }

@@ -141,6 +141,8 @@ impl eframe::App for PlantEvolutionApp {
                         ui.label(format!("Cost: {}", cell.cost));
                     });
                 });
+            ui.label(format!("Next growth: {:?}", self.get_map().next_cell_growth));
+            ui.label(format!("Next suicide: {:?}", self.get_map().next_cell_suicide));
         });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {

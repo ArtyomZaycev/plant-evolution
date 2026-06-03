@@ -257,7 +257,7 @@ impl MapData {
 
     #[hotpath::measure]
     fn recalc_next_cell_growth(&mut self) {
-        self.next_cell_growth = (-1., 0, 0, 0);
+        self.next_cell_growth = (f32::NEG_INFINITY, 0, 0, 0);
         self.plants_pos.iter().for_each(|&(j, i)| {
             let plant_cell = &self.plants[i][j];
             let evolution = &self.evolution_data.cells_evolution_data[plant_cell.t];
@@ -279,7 +279,7 @@ impl MapData {
     
     #[hotpath::measure]
     fn recalc_next_cell_suicide(&mut self) {
-        self.next_cell_suicide = (-1., 0, 0);
+        self.next_cell_suicide = (f32::NEG_INFINITY, 0, 0);
         self.plants_pos.iter().for_each(|&(j, i)| {
             let plant_cell = &self.plants[i][j];
             let evolution = &self.evolution_data.cells_evolution_data[plant_cell.t];
@@ -404,8 +404,8 @@ impl MapData {
         let mut s = Self {
             evolution_data,
             starting_plant_nutrition: plant_nutrition.clone(),
-            next_cell_growth: (-1., 0, 0, 0),
-            next_cell_suicide: (-1., 0, 0),
+            next_cell_growth: (f32::NEG_INFINITY, 0, 0, 0),
+            next_cell_suicide: (f32::NEG_INFINITY, 0, 0),
             evolutions: 0,
             ticks: 0,
             plant_nutrition,

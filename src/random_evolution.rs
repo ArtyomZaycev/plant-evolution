@@ -12,9 +12,9 @@ fn apply_change_chance<F: FnOnce()>(change_chance: f32, random: f32, f: F) {
     }
 }
 
-fn randomize_value(value: &mut f32, random: f32, entropy: f32, min: f32, max: f32) {
+fn randomize_value(value: &mut f32, random: f32, entropy: f32) {
     // if entropy = 1, value can be changed from MIN to MAX
-    *value = (*value + (random - 0.5) * 2. * entropy).clamp(min, max);
+    *value = *value + (random - 0.5) * entropy;
 }
 
 fn randomize_value_change_chance(
@@ -22,21 +22,10 @@ fn randomize_value_change_chance(
     rng: &mut Rng,
     change_chance: f32,
     change_entropy: f32,
-) {
-    apply_change_chance(change_chance, rng.random(), || {
-        randomize_value(value, rng.random(), change_entropy, 0., 1.)
-    });
-}
-
-fn randomize_value_change_chance_clamp(
-    value: &mut f32,
-    rng: &mut Rng,
-    change_chance: f32,
-    change_entropy: f32,
     min: f32, max:f32,
 ) {
     apply_change_chance(change_chance, rng.random(), || {
-        randomize_value(value, rng.random(), change_entropy, -1., 1.);
+        randomize_value(value, rng.random(), change_entropy);
         *value = value.clamp(min, max);
     });
 }
@@ -48,9 +37,7 @@ pub trait RandomEvolution {
 impl<T: RandomEvolution> RandomEvolution for Vec<T> {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) {
         self.iter_mut().for_each(|v| {
-            apply_change_chance(change_chance, rng.random(), || {
-                v.evolve_random(rng, change_chance, change_entropy)
-            });
+            v.evolve_random(rng, change_chance, change_entropy);
         });
     }
 }
@@ -58,9 +45,7 @@ impl<T: RandomEvolution> RandomEvolution for Vec<T> {
 impl<T: RandomEvolution, const N: usize> RandomEvolution for [T; N] {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) {
         self.iter_mut().for_each(|v| {
-            apply_change_chance(change_chance, rng.random(), || {
-                v.evolve_random(rng, change_chance, change_entropy)
-            });
+            v.evolve_random(rng, change_chance, change_entropy);
         });
     }
 }
@@ -84,35 +69,35 @@ impl RandomEvolution for CellEvolutionData {
 
 impl RandomEvolution for PlantCellAbilities {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) {
-        randomize_value_change_chance_clamp(
+        randomize_value_change_chance(
             &mut self.sunlight_consumption,
             rng,
             change_chance,
             change_entropy,
             0., 1.
         );
-        randomize_value_change_chance_clamp(
+        randomize_value_change_chance(
             &mut self.air_consumption,
             rng,
             change_chance,
             change_entropy,
             0., 1.
         );
-        randomize_value_change_chance_clamp(
+        randomize_value_change_chance(
             &mut self.minerals_consumption,
             rng,
             change_chance,
             change_entropy,
             0., 1.
         );
-        randomize_value_change_chance_clamp(
+        randomize_value_change_chance(
             &mut self.water_consumption,
             rng,
             change_chance,
             change_entropy,
             0., 1.
         );
-        randomize_value_change_chance_clamp(
+        randomize_value_change_chance(
             &mut self.power_production_speed,
             rng,
             change_chance,
@@ -137,18 +122,23 @@ impl RandomEvolution for PlantCellInput {
             rng,
             change_chance,
             change_entropy,
+            -1., 1.
         );
-        randomize_value_change_chance(&mut self.air, rng, change_chance, change_entropy);
+        randomize_value_change_chance(&mut self.air, rng, change_chance, change_entropy,
+            -1., 1.);
         randomize_value_change_chance(
             &mut self.minerals,
             rng,
             change_chance,
             change_entropy,
+            -1., 1.
         );
-        randomize_value_change_chance(&mut self.water, rng, change_chance, change_entropy);
+        randomize_value_change_chance(&mut self.water, rng, change_chance, change_entropy,
+            -1., 1.);
         for row in &mut self.cells_proximity_data {
             for v in row {
-                randomize_value_change_chance(v, rng, change_chance, change_entropy);
+                randomize_value_change_chance(v, rng, change_chance, change_entropy,
+            -1., 1.);
             }
         }
     }
