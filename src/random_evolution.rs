@@ -146,12 +146,6 @@ impl RandomEvolution for CellEvolutionWeights {
     }
 }
 
-impl RandomEvolution for PlantCellProximityData {
-    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) {
-        randomize_value_change_chance(&mut self.direction, rng, change_chance, change_entropy);
-        randomize_value_change_chance(&mut self.distance, rng, change_chance, change_entropy);
-    }
-}
 
 pub fn run_evolution_random(
     sender: Option<mpsc::Sender<RunningEvolutionData>>,
