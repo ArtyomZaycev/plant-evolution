@@ -106,7 +106,7 @@ impl MapData {
                 MapCell::Air(air_parameters) => {
                     air_parameters.sunlight = sunlight;
                     if self.plants[i][x].is_some() {
-                        sunlight *= 0.5;
+                        sunlight *= 0.4;
                     } else {
                         sunlight *= 0.99;
                     }
@@ -128,9 +128,9 @@ impl MapData {
                     match &self.map[ny][nx] {
                         MapCell::Air(_) => {
                             if self.plants[ny][nx].is_none() {
-                                air += (4. - distance).sqrt()
+                                air += distance
                             } else {
-                                air += (4. - distance).sqrt() / 8.;
+                                air += distance / 8.;
                             }
                         }
                         MapCell::Soil(_) => {}
@@ -138,16 +138,15 @@ impl MapData {
                 }
             },
             MapCell::Soil(_) => {
-                for &(nx, ny, _) in dxdy {
+                for &(nx, ny, distance) in dxdy {
                     match &self.map[ny][nx] {
                         MapCell::Air(_) => {}
                         MapCell::Soil(soil_parameters) => {
                             if self.plants[ny][nx].is_none() {
-                                minerals += soil_parameters.minerals;
-                                water += soil_parameters.water;
+                                minerals += soil_parameters.minerals * distance;
+                                water += soil_parameters.water * distance;
                             } else {
-                                minerals += soil_parameters.minerals / 8.;
-                                water += soil_parameters.water / 8.;
+                                
                             }
                         }
                     }

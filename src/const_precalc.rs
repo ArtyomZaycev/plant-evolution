@@ -22,12 +22,12 @@ fn generate_dxdy() -> [[Vec<DxDy2d>; MAP_SIZE.0]; MAP_SIZE.1] {
             let mut dxdy = Vec::new();
             (-2..=2).for_each(|dx: i32| {
                 (-2..=2).for_each(|dy: i32| {
-                    let distance = dx.abs() + dy.abs();
-                    if distance > 0 && distance < 4 {
+                    let distance = dx * dx + dy * dy;
+                    if distance > 0 && distance <= 4 {
                         let new_x = (j as i32 + dx).clamp(0, MAP_SIZE.0 as i32 - 1) as usize;
                         let new_y = (i as i32 + dy).clamp(0, MAP_SIZE.1 as i32 - 1) as usize;
 
-                        dxdy.push((new_x, new_y, distance as f32));
+                        dxdy.push((new_x, new_y, (4. - distance as f32).sqrt()));
                     }
                 })
             });

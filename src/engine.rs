@@ -18,8 +18,8 @@ impl Default for EvolutionParameters {
     fn default() -> Self {
         Self {
             samples: 10,
-            change_chance: 0.9,
-            change_entropy: 0.1,
+            change_chance: 0.6,
+            change_entropy: 0.05,
         }
     }
 }
@@ -142,7 +142,6 @@ pub fn run_engine(
                     .for_each(|_| {
                         maps.iter_mut().for_each(|map| map.tick());
                     });
-                slow_maps.slow_write(&maps);
                 if maps[0].ticks >= run_evolution_parameters.ticks_per_evolution {
                     slow_maps.force_write(maps.clone());
                     sample_evolve_maps(&mut maps, evolution_parameters.samples, |map| {
