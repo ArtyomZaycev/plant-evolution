@@ -104,7 +104,7 @@ impl PlantEvolutionData {
                 air_consumption: 1.,
                 minerals_consumption: 1.,
                 water_consumption: 1.,
-                power_production_speed: 1.,
+                power_production_speed: 0.2,
                 cost: 0.,
             }
             .with_populated_cost(),
@@ -133,7 +133,7 @@ pub fn calculate_score(map: &MapData) -> f32 {
     for &(j, i) in &map.plants_pos {
         score += map.evolution_data.cells_abilities[map.plants[i][j].t].cost;
     }
-    score
+    score - map.evolution_data.cells_abilities[0].cost
 }
 
 fn sample_maps(maps: &mut Vec<MapData>, samples: usize) {
@@ -158,7 +158,7 @@ fn sample_maps(maps: &mut Vec<MapData>, samples: usize) {
             maps.iter_mut()
                 .skip(samples * i)
                 .take(samples)
-                .for_each(|map| {
+                .for_each(|map: &mut MapData| {
                     map.evolution_data = evolution_data.clone();
                     map.restart();
                 });

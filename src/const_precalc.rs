@@ -46,12 +46,11 @@ fn distance(x1: f32, y1: f32, x2: f32, y2: f32) -> f32 {
 
 // ln(22)
 const MAX_DIFFERENTIATED_DISTANCE: f32 = 3.091042;
-// Becomes 0.1 around d=16
 fn normalize_distance(d: f32) -> f32 {
-    if d > 17. {
-        0.1
+    if d > 30. {
+        0.
     } else {
-        (1. - d.ln() / MAX_DIFFERENTIATED_DISTANCE).max(0.1)
+        (1. - d.ln() / MAX_DIFFERENTIATED_DISTANCE).max(0.)
     }
 }
 
@@ -60,15 +59,15 @@ fn normalize_angle(a: f32) -> f32 {
 }
 
 fn generate_proximity_dxdy() -> [[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.1] {
-    let cx = PLANT_CENTER.0 as f32;
-    let cy = PLANT_CENTER.1 as f32;
+    let cx = PLANT_CENTER.0 as f32 + 0.5;
+    let cy = PLANT_CENTER.1 as f32 + 0.5;
 
     core::array::from_fn(|y| {
         core::array::from_fn(|x| {
             let mut dxdy = Vec::new();
 
-            let px = x as f32;
-            let py = y as f32;
+            let px = x as f32 + 0.5;
+            let py = y as f32 + 0.5;
 
             let ac: f32 = distance(px, py, cx, cy);
             // Only cells within `ac` distance can satisfy `ab <= ac`,
@@ -82,8 +81,8 @@ fn generate_proximity_dxdy() -> [[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.1] {
             for i in y_start..=y_end {
                 for j in x_start..=x_end {
                     if i != y || j != x {
-                        let xf = j as f32;
-                        let yf = i as f32;
+                        let xf = j as f32 + 0.5;
+                        let yf = i as f32 + 0.5;
 
                         let ab = distance(px, py, xf, yf);
                         let bc = distance(xf, yf, cx, cy);
@@ -109,10 +108,13 @@ fn generate_proximity_dxdy() -> [[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.1] {
                                 }
                             };
 
-                            dxdy.push((
-                                (dist, angle),
-                                (j, i, normalize_distance(dist), normalize_angle(line_angle)),
-                            ));
+                            let distance = normalize_distance(dist);
+                            if distance > 0. {
+                                dxdy.push((
+                                    (dist, angle),
+                                    (j, i, distance, normalize_angle(line_angle)),
+                                ));
+                            }
                         }
                     }
                 }

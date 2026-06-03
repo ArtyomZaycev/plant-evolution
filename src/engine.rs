@@ -32,7 +32,7 @@ pub struct RunEvolutionParameters {
 impl Default for RunEvolutionParameters {
     fn default() -> Self {
         Self {
-            ticks_per_evolution: 500,
+            ticks_per_evolution: 1000,
         }
     }
 }
@@ -58,7 +58,7 @@ enum EngineState {
     RunEvolution,
 }
 
-const ENGINE_RUN_EVOLUTION_TICKS_PER_SLOW_WRITE: u32 = 10;
+const ENGINE_RUN_EVOLUTION_TICKS_PER_SLOW_WRITE: u32 = 25;
 
 pub fn run_engine(
     receiver: mpsc::Receiver<EngineCommand>,
@@ -79,6 +79,7 @@ pub fn run_engine(
                 EngineCommand::Restart => {
                     maps.iter_mut().for_each(|map| {
                         map.evolution_data = PlantEvolutionData::generate();
+                        map.evolutions = 0;
                         map.restart();
                     });
                     slow_maps.force_write(maps.clone());
@@ -136,14 +137,14 @@ pub fn run_engine(
                 (0..(ENGINE_RUN_EVOLUTION_TICKS_PER_SLOW_WRITE.min(
                     run_evolution_parameters
                         .ticks_per_evolution
-                        .saturating_sub(maps[0].time),
+                        .saturating_sub(maps[0].ticks),
                 )))
                     .for_each(|_| {
                         maps.iter_mut().for_each(|map| map.tick());
                         slow_maps.slow_write(&maps);
                     });
                 slow_maps.slow_write(&maps);
-                if maps[0].time >= run_evolution_parameters.ticks_per_evolution {
+                if maps[0].ticks >= run_evolution_parameters.ticks_per_evolution {
                     sample_evolve_maps(&mut maps, evolution_parameters.samples, |map| {
                         map.evolve_random(
                             &mut rng,

@@ -8,14 +8,14 @@ extern crate plant_evolution_lib;
 // cargo flamegraph --bench evolution
 
 fn evolution_benchmark() {
-    let number_of_plants: usize = 100;
+    let number_of_plants: usize = 200;
     let mut maps = (0..number_of_plants)
         .map(|_| {
             let (a, b) = get_basic_map_data();
             MapData::generate(a, b)
         })
         .collect::<Vec<_>>();
-    run_evolution_random(None, &mut maps, 100, 500, 0.6, 0.05);
+    run_evolution_random(None, &mut maps, 200, 500, 0.8, 0.1);
     black_box(maps);
 }
 

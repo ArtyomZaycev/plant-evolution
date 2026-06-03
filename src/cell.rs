@@ -18,7 +18,7 @@ impl PlantCellAbilities {
             + self.air_consumption
             + self.minerals_consumption
             + self.water_consumption
-            + self.power_production_speed * 4.)
+            + self.power_production_speed.sqrt() * 4.)
             .powi(3);
     }
 
@@ -38,7 +38,7 @@ pub struct PlantCellProximityData {
 impl Default for PlantCellProximityData {
     fn default() -> Self {
         Self {
-            distance: 2.,
+            distance: 0.,
             direction: 0.5,
         }
     }
