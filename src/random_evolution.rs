@@ -12,9 +12,9 @@ fn apply_change_chance<F: FnOnce()>(change_chance: f32, random: f32, f: F) {
     }
 }
 
-fn randomize_value(value: &mut f32, random: f32, entropy: f32) {
+fn randomize_value(value: &mut f32, random: f32, entropy: f32, min: f32, max: f32) {
     // if entropy = 1, value can be changed from MIN to MAX
-    *value = (*value + (random - 0.5) * 2. * entropy).clamp(0., 1.);
+    *value = (*value + (random - 0.5) * 2. * entropy).clamp(min, max);
 }
 
 fn randomize_value_change_chance(
@@ -24,7 +24,20 @@ fn randomize_value_change_chance(
     change_entropy: f32,
 ) {
     apply_change_chance(change_chance, rng.random(), || {
-        randomize_value(value, rng.random(), change_entropy)
+        randomize_value(value, rng.random(), change_entropy, 0., 1.)
+    });
+}
+
+fn randomize_value_change_chance_clamp(
+    value: &mut f32,
+    rng: &mut Rng,
+    change_chance: f32,
+    change_entropy: f32,
+    min: f32, max:f32,
+) {
+    apply_change_chance(change_chance, rng.random(), || {
+        randomize_value(value, rng.random(), change_entropy, -1., 1.);
+        *value = value.clamp(min, max);
     });
 }
 
@@ -70,35 +83,40 @@ impl RandomEvolution for CellEvolutionData {
 
 impl RandomEvolution for PlantCellAbilities {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) {
-        randomize_value_change_chance(
+        randomize_value_change_chance_clamp(
             &mut self.sunlight_consumption,
             rng,
             change_chance,
             change_entropy,
+            0., 1.
         );
-        randomize_value_change_chance(
+        randomize_value_change_chance_clamp(
             &mut self.air_consumption,
             rng,
             change_chance,
             change_entropy,
+            0., 1.
         );
-        randomize_value_change_chance(
+        randomize_value_change_chance_clamp(
             &mut self.minerals_consumption,
             rng,
             change_chance,
             change_entropy,
+            0., 1.
         );
-        randomize_value_change_chance(
+        randomize_value_change_chance_clamp(
             &mut self.water_consumption,
             rng,
             change_chance,
             change_entropy,
+            0., 1.
         );
-        randomize_value_change_chance(
+        randomize_value_change_chance_clamp(
             &mut self.power_production_speed,
             rng,
             change_chance,
             change_entropy,
+            0., 1.
         );
         self.populate_cost();
     }
