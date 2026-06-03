@@ -19,7 +19,7 @@ pub struct PlantEvolutionApp {
     run_evolution: bool,
 
     highlited_cell: Option<(usize, usize)>,
-    highlited_proximity_cell: Option<(usize, usize)>,
+    highlited_proximity_cell: Option<(bool, usize, usize)>,
 }
 
 impl PlantEvolutionApp {
@@ -151,7 +151,7 @@ impl eframe::App for PlantEvolutionApp {
                     let cell_info = format!("cell_info {:?};", &self.get_map().map[y][x]);
                     ui.label(format!("({}, {}) => {}", x, y, cell_info));
 
-                    let plant_info = if self.get_map().plants[y][x].t != usize::MAX {
+                    let plant_info = if self.get_map().plants[y][x].is_some() {
                         format!(
                             "plant {}, sunlight: {}, air: {}, minerals: {}, water: {}",
                             self.get_map().plants[y][x].t,
@@ -166,8 +166,8 @@ impl eframe::App for PlantEvolutionApp {
                     ui.label(format!("{}", plant_info));
                     ui.label(format!("{:?}", self.get_map().plants[y][x]));
 
-                    if let Some((proximity_x, proximity_y)) = self.highlited_proximity_cell {
-                        let proximity = &PROXIMITY_DXDY.get().unwrap()[proximity_y][proximity_x];
+                    if let Some((reversed, proximity_x, proximity_y)) = self.highlited_proximity_cell {
+                        let proximity = &if reversed {PROXIMITY_DXDY_REV.get().unwrap()} else {PROXIMITY_DXDY.get().unwrap()}[proximity_y][proximity_x];
                         if let Some(&(_, _, distance, angle)) = proximity.iter().find(|&&(px, py, _, _)| px == x && py == y) {
                             ui.label(format!("distance = {}, angle = {}", distance, angle));
                         } else {
@@ -213,15 +213,12 @@ impl eframe::App for PlantEvolutionApp {
                 });
                 if let Some(highlited_cell) = self.highlited_cell {
                     ui.ctx().input(|input| {
-                        if input.key_pressed(egui::Key::X) {
-                            if self.highlited_proximity_cell.is_some_and(
-                                |highlited_proximity_cell| {
-                                    highlited_proximity_cell == highlited_cell
-                                },
-                            ) {
+                        if input.key_pressed(egui::Key::X) || input.key_pressed(egui::Key::Z) {
+                            let new_highlited_proximity_cell = (input.key_pressed(egui::Key::Z), highlited_cell.0, highlited_cell.1);
+                            if self.highlited_proximity_cell.is_some_and(|c| c == new_highlited_proximity_cell) {
                                 self.highlited_proximity_cell = None;
                             } else {
-                                self.highlited_proximity_cell = Some(highlited_cell);
+                                self.highlited_proximity_cell = Some(new_highlited_proximity_cell);
                             }
                         }
                     });
@@ -241,7 +238,7 @@ impl eframe::App for PlantEvolutionApp {
                             },
                         );
 
-                        let color = if self.get_map().plants[i][j].t != usize::MAX {
+                        let color = if self.get_map().plants[i][j].is_some() {
                             Color32::GREEN
                         } else {
                             match self.get_map().map[i][j] {
@@ -259,8 +256,8 @@ impl eframe::App for PlantEvolutionApp {
                     }
                 }
 
-                if let Some((proximity_x, proximity_y)) = self.highlited_proximity_cell {
-                    let proximity = &PROXIMITY_DXDY.get().unwrap()[proximity_y][proximity_x];
+                if let Some((reversed, proximity_x, proximity_y)) = self.highlited_proximity_cell {
+                    let proximity = &if reversed {PROXIMITY_DXDY_REV.get().unwrap()} else {PROXIMITY_DXDY.get().unwrap()}[proximity_y][proximity_x];
                     for &(x, y, _, _) in proximity {
                         let center = response.rect.min
                             + Vec2 {

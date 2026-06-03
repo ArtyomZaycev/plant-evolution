@@ -35,10 +35,19 @@ pub struct PlantCellProximityData {
     pub direction: f32,
 }
 
+impl PlantCellProximityData {
+    pub fn is_none(&self) -> bool {
+        self.distance.is_nan()
+    }
+    pub fn is_some(&self) -> bool {
+        !self.is_none()
+    }
+}
+
 impl Default for PlantCellProximityData {
     fn default() -> Self {
         Self {
-            distance: 0.,
+            distance: f32::NAN,
             direction: 0.5,
         }
     }

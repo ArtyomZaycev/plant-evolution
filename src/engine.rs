@@ -58,7 +58,7 @@ enum EngineState {
     RunEvolution,
 }
 
-const ENGINE_RUN_EVOLUTION_TICKS_PER_SLOW_WRITE: u32 = 25;
+const ENGINE_RUN_EVOLUTION_TICKS_PER_SLOW_WRITE: u32 = 100;
 
 pub fn run_engine(
     receiver: mpsc::Receiver<EngineCommand>,
@@ -141,10 +141,10 @@ pub fn run_engine(
                 )))
                     .for_each(|_| {
                         maps.iter_mut().for_each(|map| map.tick());
-                        slow_maps.slow_write(&maps);
                     });
                 slow_maps.slow_write(&maps);
                 if maps[0].ticks >= run_evolution_parameters.ticks_per_evolution {
+                    slow_maps.force_write(maps.clone());
                     sample_evolve_maps(&mut maps, evolution_parameters.samples, |map| {
                         map.evolve_random(
                             &mut rng,

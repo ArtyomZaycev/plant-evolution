@@ -42,13 +42,14 @@ impl CellEvolutionWeights {
                 .cells_proximity_data
                 .iter()
                 .enumerate()
-                .map(|(i, input)| input.direction * self.weights.cells_proximity_data[i].direction)
-                .sum::<f32>()
-            + input
-                .cells_proximity_data
-                .iter()
-                .enumerate()
-                .map(|(i, input)| input.distance * self.weights.cells_proximity_data[i].distance)
+                .map(|(i, input)| {
+                    if input.is_some() {
+                        input.direction * self.weights.cells_proximity_data[i].direction
+                        + input.distance * self.weights.cells_proximity_data[i].distance
+                    } else {
+                        0.
+                    }
+                })
                 .sum::<f32>()
     }
 }

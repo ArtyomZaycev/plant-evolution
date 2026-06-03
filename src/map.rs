@@ -8,6 +8,15 @@ pub struct PlantCell {
     pub input: PlantCellInput,
 }
 
+impl PlantCell {
+    pub fn is_none(&self) -> bool {
+        self.t == usize::MAX
+    }
+    pub fn is_some(&self) -> bool {
+        !self.is_none()
+    }
+}
+
 impl Default for PlantCell {
     fn default() -> Self {
         Self {
@@ -90,10 +99,17 @@ impl MapData {
         };
 
         for i in y + 1..MAP_SIZE.1 {
+            if sunlight < 0.001 {
+                break;
+            }
             match &mut self.map[i][x] {
                 MapCell::Air(air_parameters) => {
                     air_parameters.sunlight = sunlight;
-                    sunlight *= 0.99;
+                    if self.plants[i][x].is_some() {
+                        sunlight *= 0.5;
+                    } else {
+                        sunlight *= 0.99;
+                    }
                 }
                 MapCell::Soil(_) => break,
             }
@@ -106,25 +122,37 @@ impl MapData {
         let mut air = 0.;
         let mut minerals = 0.;
         let mut water = 0.;
-        for &(nx, ny, distance) in dxdy {
-            match &self.map[ny][nx] {
-                MapCell::Air(_) => {
-                    if self.plants[ny][nx].t == usize::MAX {
-                        air += (4. - distance).sqrt()
-                    } else {
-                        air += (4. - distance).sqrt() / 3.;
+        match &self.map[y][x] {
+            MapCell::Air(_) => {
+                for &(nx, ny, distance) in dxdy {
+                    match &self.map[ny][nx] {
+                        MapCell::Air(_) => {
+                            if self.plants[ny][nx].is_none() {
+                                air += (4. - distance).sqrt()
+                            } else {
+                                air += (4. - distance).sqrt() / 8.;
+                            }
+                        }
+                        MapCell::Soil(soil_parameters) => {}
                     }
                 }
-                MapCell::Soil(soil_parameters) => {
-                    if self.plants[ny][nx].t == usize::MAX {
-                        minerals += soil_parameters.minerals;
-                        water += soil_parameters.water;
-                    } else {
-                        minerals += soil_parameters.minerals / 6.;
-                        water += soil_parameters.water / 6.;
+            },
+            MapCell::Soil(_) => {
+                for &(nx, ny, distance) in dxdy {
+                    match &self.map[ny][nx] {
+                        MapCell::Air(_) => {}
+                        MapCell::Soil(soil_parameters) => {
+                            if self.plants[ny][nx].is_none() {
+                                minerals += soil_parameters.minerals;
+                                water += soil_parameters.water;
+                            } else {
+                                minerals += soil_parameters.minerals / 8.;
+                                water += soil_parameters.water / 8.;
+                            }
+                        }
                     }
                 }
-            }
+            },
         }
         (
             air / dxdy.len() as f32,
@@ -143,7 +171,7 @@ impl MapData {
             .iter()
             .for_each(|&(j, i, distance, angle)| {
                 let cell = &self.plants[i][j];
-                if cell.t != usize::MAX && proximity_data[cell.t].distance == 0. {
+                if cell.is_some() && proximity_data[cell.t].is_none() {
                     proximity_data[cell.t] = PlantCellProximityData {
                         distance,
                         direction: angle,
@@ -163,7 +191,7 @@ impl MapData {
             .iter()
             .for_each(|&(j, i, distance, angle)| {
                 let cell = &mut self.plants[i][j];
-                if cell.t != usize::MAX && cell.input.cells_proximity_data[ct].distance < distance {
+                if cell.is_some() && cell.input.cells_proximity_data[ct].distance < distance {
                     cell.input.cells_proximity_data[ct] = PlantCellProximityData {
                         distance,
                         direction: angle,
@@ -373,11 +401,11 @@ pub fn get_basic_map_data() -> (PlantEvolutionData, PlantNutrition) {
     let evolution_data = PlantEvolutionData::generate();
 
     let plant_nutrition = PlantNutrition {
-        sunlight: 5.,
-        air: 2.,
+        sunlight: 20.,
+        air: 20.,
         minerals: 1.,
         water: 1.,
-        power: 10.,
+        power: 20.,
     };
 
     (evolution_data, plant_nutrition)

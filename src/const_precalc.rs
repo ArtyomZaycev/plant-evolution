@@ -140,7 +140,7 @@ fn generate_proximity_dxdy_rev() -> [[Vec<DxDyProximity>; MAP_SIZE.0]; MAP_SIZE.
     proximity.iter().enumerate().for_each(|(i, row)| {
         row.iter().enumerate().for_each(|(j, proximity)| {
             proximity.iter().for_each(|&(x, y, distance, angle)| {
-                arr[x][y].push((j, i, distance, angle));
+                arr[y][x].push((j, i, distance, angle));
             });
         });
     });
