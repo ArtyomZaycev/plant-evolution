@@ -172,7 +172,7 @@ pub fn calculate_score(map: &MapData) -> f32 {
                 minerals: nutrition.minerals
                     + cell.input.minerals * cell_abilities.minerals_consumption,
                 water: nutrition.water + cell.input.water * cell_abilities.water_consumption,
-                power: 0.,
+                power: nutrition.power + cell_abilities.power_production_speed,
             }
         });
 
@@ -195,6 +195,7 @@ pub fn calculate_score(map: &MapData) -> f32 {
             nutrition.air,
             nutrition.minerals,
             nutrition.water,
+            nutrition.power,
         ]
         .into_iter()
         .reduce(f32::min)

@@ -1,6 +1,6 @@
 use std::sync::{Arc, mpsc};
 
-use egui::{Button, Color32, Frame, Pos2, Rect, Sense, Vec2};
+use egui::{Button, Color32, Frame, Pos2, Rect, Sense, TextEdit, Vec2};
 
 use crate::{const_precalc::*, engine::EngineCommand, evolution::*, map::*, slow_mutex::SlowMutex};
 
@@ -8,6 +8,7 @@ pub struct PlantEvolutionApp {
     min_cell_size: f32,
     cell_size: f32,
 
+    selected_map_index_str: String,
     selected_map_index: usize,
     maps: Vec<MapData>,
 
@@ -27,8 +28,9 @@ impl PlantEvolutionApp {
         slow_maps: Arc<SlowMutex<Vec<MapData>>>,
     ) -> Self {
         Self {
-            min_cell_size: 1.,
+            min_cell_size: 2.,
             cell_size: 6.,
+            selected_map_index_str: "1".to_owned(),
             selected_map_index: 0,
             maps_version: 0,
             command_sender: sender,
@@ -54,7 +56,53 @@ impl eframe::App for PlantEvolutionApp {
             self.maps = maps;
         }
 
-        egui::Panel::left("evolution_menu").show_inside(ui, |ui| {
+        egui::Panel::left("plants_list").show_inside(ui, |ui| {
+            ui.horizontal(|ui| {
+                let response = ui.add(TextEdit::singleline(&mut self.selected_map_index_str).desired_width(64.));
+                let idx = self.selected_map_index_str.parse::<usize>();
+                if ui
+                    .add_enabled(
+                        idx.as_ref().is_ok_and(|&idx| idx <= self.maps.len()),
+                        egui::Button::new("Select"),
+                    ).clicked()
+                {
+                    self.selected_map_index = idx.unwrap() - 1;
+                    self.selected_map_index_str = (self.selected_map_index + 1).to_string();
+                }
+                if response.lost_focus() {
+                    self.selected_map_index_str = (self.selected_map_index + 1).to_string();
+                };
+            });
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                ui.set_min_width(80.);
+                self.maps.iter().enumerate().for_each(|(i, _)| {
+                    if ui
+                        .selectable_value(
+                            &mut self.selected_map_index,
+                            i,
+                            format!("Plant {}", i + 1),
+                        )
+                        .clicked()
+                    {
+                        if self.selected_map_index == i {
+                            self.selected_map_index = i;
+                            self.selected_map_index_str = (self.selected_map_index + 1).to_string();
+                        }
+                    }
+                });
+            });
+        });
+
+        egui::Panel::right("control_menu").show_inside(ui, |ui| {
+            ui.set_min_width(200.);
+            ui.horizontal(|ui| {
+                ui.label(format!("Evolutions: {}", self.get_map().evolutions));
+                ui.label(format!("Step: {}", self.get_map().ticks));
+            });
+            ui.label(format!("Score: {}", calculate_score(&self.get_map())));
+
+            ui.separator();
+            
             ui.horizontal(|ui| {
                 if ui.add_enabled(true, Button::new("Evolve!")).clicked() {
                     self.command_sender.send(EngineCommand::Evolve).unwrap();
@@ -75,28 +123,12 @@ impl eframe::App for PlantEvolutionApp {
                     }
                 }
             });
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                ui.set_min_width(80.);
-                self.maps.iter().enumerate().for_each(|(i, _)| {
-                    let mut selected = i == self.selected_map_index;
-                    ui.toggle_value(&mut selected, format!("Plant {}", i + 1));
-                    if selected {
-                        self.selected_map_index = i;
-                    }
-                });
-            });
-        });
-
-        egui::Panel::right("control_menu").show_inside(ui, |ui| {
-            ui.set_min_width(200.);
-            ui.horizontal(|ui| {
-                ui.label(format!("Evolutions: {}", self.get_map().evolutions));
-                ui.label(format!("Step: {}", self.get_map().ticks));
-            });
-            ui.label(format!("Score: {}", calculate_score(&self.get_map())));
 
             ui.horizontal(|ui| {
-                if ui.toggle_value(&mut self.run, "Run").changed() {
+                if ui.button("Tick!").clicked() {
+                    self.command_sender.send(EngineCommand::Tick).unwrap();
+                }
+                if ui.toggle_value(&mut self.run, "Grow").changed() {
                     if self.run {
                         self.command_sender.send(EngineCommand::RunTick).unwrap();
                     } else {
@@ -105,13 +137,13 @@ impl eframe::App for PlantEvolutionApp {
                             .unwrap();
                     }
                 };
-                if ui.button("Tick!").clicked() {
-                    self.command_sender.send(EngineCommand::Tick).unwrap();
-                }
-                if ui.button("Restart").clicked() {
-                    self.command_sender.send(EngineCommand::Restart).unwrap();
-                }
             });
+
+            if ui.button("Restart").clicked() {
+                self.command_sender.send(EngineCommand::Restart).unwrap();
+            }
+            
+            ui.separator();
 
             ui.label("Nutritions:");
             ui.label(format!(
@@ -142,6 +174,9 @@ impl eframe::App for PlantEvolutionApp {
                         ui.label(format!("Cost: {}", cell.cost));
                     });
                 });
+
+            ui.separator();
+
             ui.label(format!(
                 "Next growth: {:?}",
                 self.get_map().next_cell_growth
@@ -153,34 +188,32 @@ impl eframe::App for PlantEvolutionApp {
         });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
-            egui::Panel::bottom("cell_info").show_inside(ui, |ui| match self.highlited_cell {
-                Some((x, y)) => {
-                    let cell_info = format!("cell_info {:?};", &self.get_map().map[y][x]);
-                    ui.label(format!("({}, {}) => {}", x, y, cell_info));
+            egui::Panel::bottom("cell_info")
+                .min_size(100.)
+                .show_inside(ui, |ui| match self.highlited_cell {
+                    Some((x, y)) => {
+                        let cell_info = format!("cell_info {:?};", &self.get_map().map[y][x]);
+                        ui.label(format!("({}, {}) => {}", x, y, cell_info));
 
-                    let plant_info = if self.get_map().plants[y][x].is_some() {
-                        format!(
-                            "plant {}, sunlight: {}, air: {}, minerals: {}, water: {}",
-                            self.get_map().plants[y][x].t,
-                            self.get_map().plants[y][x].input.sunlight,
-                            self.get_map().plants[y][x].input.air,
-                            self.get_map().plants[y][x].input.minerals,
-                            self.get_map().plants[y][x].input.water
-                        )
-                    } else {
-                        "".to_owned()
-                    };
-                    ui.label(format!("{}", plant_info));
-                    ui.label(format!("{:?}", self.get_map().plants[y][x]));
-                }
-                None => {
-                    ui.label("Nothing selected");
-                }
-            });
-
-            ui.horizontal(|ui| {
-                ui.label("Growth:");
-            });
+                        let plant_info = if self.get_map().plants[y][x].is_some() {
+                            format!(
+                                "plant {}, sunlight: {}, air: {}, minerals: {}, water: {}",
+                                self.get_map().plants[y][x].t,
+                                self.get_map().plants[y][x].input.sunlight,
+                                self.get_map().plants[y][x].input.air,
+                                self.get_map().plants[y][x].input.minerals,
+                                self.get_map().plants[y][x].input.water
+                            )
+                        } else {
+                            "".to_owned()
+                        };
+                        ui.label(format!("{}", plant_info));
+                        ui.label(format!("{:?}", self.get_map().plants[y][x]));
+                    }
+                    None => {
+                        ui.label("Nothing selected");
+                    }
+                });
 
             Frame::canvas(ui.style()).show(ui, |ui| {
                 let (response, painter) =
@@ -190,9 +223,14 @@ impl eframe::App for PlantEvolutionApp {
                         .min(response.rect.height() / MAP_SIZE.1 as f32)
                 });
 
+                let canvas_start = (response.rect.center() - Pos2 {
+                    x: self.cell_size * MAP_SIZE.0 as f32 / 2.,
+                    y: self.cell_size * MAP_SIZE.1 as f32 / 2.,
+                }).to_pos2();
+
                 let pointer_pos: Option<Pos2> = ui.ctx().input(|i| i.pointer.latest_pos());
                 self.highlited_cell = pointer_pos.and_then(|pos| {
-                    let pos = pos - response.rect.min;
+                    let pos = pos - canvas_start;
                     if pos.x < 0. || pos.y < 0. {
                         None
                     } else {
@@ -210,7 +248,7 @@ impl eframe::App for PlantEvolutionApp {
                 for i in 0..MAP_SIZE.1 {
                     for j in 0..MAP_SIZE.0 {
                         let rect = Rect::from_min_size(
-                            response.rect.min
+                            canvas_start
                                 + Vec2 {
                                     x: j as f32 * self.cell_size,
                                     y: i as f32 * self.cell_size,
@@ -243,7 +281,7 @@ impl eframe::App for PlantEvolutionApp {
                                 .seed
                         {
                             painter.circle_filled(
-                                response.rect.min
+                                canvas_start
                                     + Vec2 {
                                         x: j as f32 * self.cell_size + 0.5 * self.cell_size,
                                         y: i as f32 * self.cell_size + 0.5 * self.cell_size,
