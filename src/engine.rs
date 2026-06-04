@@ -133,12 +133,14 @@ impl Default for EvolutionParameters {
 #[derive(Debug, Clone, Copy)]
 pub struct RunEvolutionParameters {
     ticks_per_evolution: u32,
+    ticks_per_slow_write: u32,
 }
 
 impl Default for RunEvolutionParameters {
     fn default() -> Self {
         Self {
             ticks_per_evolution: 500,
+            ticks_per_slow_write: 2000,
         }
     }
 }
@@ -167,8 +169,6 @@ enum EngineState {
     RunTick,
     RunEvolution,
 }
-
-const ENGINE_RUN_EVOLUTION_TICKS_PER_SLOW_WRITE: u32 = 100;
 
 pub fn run_engine(
     receiver: mpsc::Receiver<EngineCommand>,
@@ -306,7 +306,7 @@ pub fn run_engine(
                 slow_maps.slow_write(&maps);
             }
             EngineState::RunEvolution => {
-                (0..(ENGINE_RUN_EVOLUTION_TICKS_PER_SLOW_WRITE.min(
+                (0..(run_evolution_parameters.ticks_per_slow_write.min(
                     run_evolution_parameters
                         .ticks_per_evolution
                         .saturating_sub(maps[0].ticks),
