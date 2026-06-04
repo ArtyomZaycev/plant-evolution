@@ -1,6 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use crate::const_precalc::*;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlantCellAbilities {
     pub sunlight_consumption: f32,
     pub air_consumption: f32,

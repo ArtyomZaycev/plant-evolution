@@ -1,12 +1,13 @@
 use std::sync::mpsc;
 
 use rand::RngExt;
+use serde::{Deserialize, Serialize};
 
 use crate::{cell::*, const_precalc::*, map::*};
 
 type Rng = rand::rngs::ThreadRng;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CellEvolutionWeights {
     pub sunlight: f32,
     pub air: f32,
@@ -54,7 +55,7 @@ impl CellEvolutionWeights {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CellEvolutionData {
     pub weights: [[CellEvolutionWeights; NUMBER_OF_CELLS]; 3],
     pub suicide_weights: CellEvolutionWeights,
@@ -106,7 +107,7 @@ impl CellEvolutionData {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlantEvolutionData {
     pub cells_evolution_data: [CellEvolutionData; NUMBER_OF_CELLS],
     pub cells_abilities: [PlantCellAbilities; NUMBER_OF_CELLS],
