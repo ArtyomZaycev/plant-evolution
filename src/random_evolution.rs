@@ -129,13 +129,6 @@ impl RandomEvolution for PlantCellAbilities {
 
 impl RandomEvolution for CellEvolutionWeights {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) {
-        self.grow_weights
-            .evolve_random(rng, change_chance, change_entropy);
-    }
-}
-
-impl RandomEvolution for PlantCellInput {
-    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) {
         randomize_value_change_chance(
             &mut self.sunlight,
             rng,
@@ -160,6 +153,20 @@ impl RandomEvolution for PlantCellInput {
             -1., 1.);
             }
         }
+        randomize_value_change_chance(
+            &mut self.height,
+            rng,
+            change_chance,
+            change_entropy,
+            -1., 1.
+        );
+        randomize_value_change_chance(
+            &mut self.xdist,
+            rng,
+            change_chance,
+            change_entropy,
+            -1., 1.
+        );
     }
 }
 

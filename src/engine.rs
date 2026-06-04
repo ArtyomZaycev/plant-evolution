@@ -1,4 +1,4 @@
-use std::sync::{Arc, mpsc};
+use std::{sync::{Arc, mpsc}, time::Duration};
 
 use crate::{
     evolution::{PlantEvolutionData, sample_evolve_maps},
@@ -6,6 +6,25 @@ use crate::{
     random_evolution::RandomEvolution,
     slow_mutex::SlowMutex,
 };
+
+#[derive(Debug, Clone, Copy)]
+pub enum SavingPeriod {
+    EveryDuration(Duration),
+    EveryEvolution(usize),
+}
+
+#[derive(Debug, Clone)]
+pub struct SavingParameters {
+    enabled: bool,
+    period: SavingPeriod,
+    prefix: String,
+}
+
+impl Default for SavingParameters {
+    fn default() -> Self {
+        Self { enabled: Default::default(), period: Default::default(), prefix: Default::default() }
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct EvolutionParameters {
@@ -18,7 +37,7 @@ impl Default for EvolutionParameters {
     fn default() -> Self {
         Self {
             samples: 10,
-            change_chance: 0.2,
+            change_chance: 0.1,
             change_entropy: 0.8,
         }
     }
@@ -32,7 +51,7 @@ pub struct RunEvolutionParameters {
 impl Default for RunEvolutionParameters {
     fn default() -> Self {
         Self {
-            ticks_per_evolution: 1000,
+            ticks_per_evolution: 500,
         }
     }
 }

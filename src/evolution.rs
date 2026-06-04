@@ -8,50 +8,58 @@ type Rng = rand::rngs::ThreadRng;
 
 #[derive(Debug, Clone)]
 pub struct CellEvolutionWeights {
-    pub grow_weights: PlantCellInput,
+    pub sunlight: f32,
+    pub air: f32,
+    pub minerals: f32,
+    pub water: f32,
+    pub cells_proximity_data: [[f32; NUMBER_OF_CELLS]; 4],
+    pub height: f32,
+    pub xdist: f32,
 }
 
 impl CellEvolutionWeights {
     fn rand_generate(rng: &mut Rng) -> Self {
         Self {
-            grow_weights: PlantCellInput {
-                sunlight: rng.random(),
-                air: rng.random(),
-                minerals: rng.random(),
-                water: rng.random(),
-                cells_proximity_data: core::array::from_fn(|_| {
-                    core::array::from_fn(|_| {
-                        rng.random()
-                    })
-                }),
-            },
+            sunlight: rng.random(),
+            air: rng.random(),
+            minerals: rng.random(),
+            water: rng.random(),
+            cells_proximity_data: core::array::from_fn(|_| {
+                core::array::from_fn(|_| {
+                    rng.random()
+                })
+            }),
+            height: (rng.random::<f32>() - 0.5) * 2.,
+            xdist: rng.random(),
         }
     }
 }
 
 impl CellEvolutionWeights {
-    pub fn calc_growth(&self, input: &PlantCellInput) -> f32 {
-        input.sunlight * self.grow_weights.sunlight
-            + input.air * self.grow_weights.air
-            + input.minerals * self.grow_weights.minerals
-            + input.water * self.grow_weights.water
+    pub fn calc_growth(&self, input: &PlantCellInput, height: f32, xdist: f32) -> f32 {
+        input.sunlight * self.sunlight
+            + input.air * self.air
+            + input.minerals * self.minerals
+            + input.water * self.water
             + input
                 .cells_proximity_data
                 .iter()
                 .enumerate()
                 .map(|(i, input)| {
                     input.iter().enumerate().map(|(j, input)| {
-                        input * self.grow_weights.cells_proximity_data[i][j]
+                        input * self.cells_proximity_data[i][j]
                     }).sum::<f32>()
                 })
                 .sum::<f32>()
+            + height * self.height
+            + xdist * self.xdist
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct CellEvolutionData {
     pub weights: [[CellEvolutionWeights; NUMBER_OF_CELLS]; 3],
-    pub suicide_weights: PlantCellInput,
+    pub suicide_weights: CellEvolutionWeights,
 }
 
 impl CellEvolutionData {
@@ -68,12 +76,14 @@ impl CellEvolutionData {
                 .collect::<Vec<[CellEvolutionWeights; NUMBER_OF_CELLS]>>()
                 .try_into()
                 .unwrap(),
-            suicide_weights: PlantCellInput {
+            suicide_weights: CellEvolutionWeights {
                 sunlight: 0.,
                 air: 0.,
                 minerals: 0.,
                 water: 0.,
                 cells_proximity_data: [[0.; NUMBER_OF_CELLS]; 4],
+                height: 0.,
+                xdist: 0.,
             },
         }
     }
@@ -170,24 +180,20 @@ pub fn calculate_score(map: &MapData) -> f32 {
                 }
             });
 
-    let mut seeds_score = 0.;
+    let mut seeds_score: f32 = 0.;
     for &(x, y) in &seeds {
-        let mut min_distance = f32::INFINITY;
+        let mut cnt = 0;
         for &(x2, y2) in &seeds {
-            if x == x2 && y == y2 {
-                continue;
+            if x != x2 || y != y2 {
+                if (x as f32 - x2 as f32).powi(2) + (y as f32 - y2 as f32).powi(2) < 25. {
+                    cnt+=1;
+                }
             }
-            min_distance = min_distance.min((x as f32 - x2 as f32).powi(2) + (y as f32 - y2 as f32).powi(2));
         }
-        min_distance = min_distance.sqrt();
-        if min_distance >= 5. {
-            seeds_score += 2.;
-        } else {
-            seeds_score += 1.
-        }
+        seeds_score += 2. / (cnt + 1) as f32;
     }
 
-    seeds_score / 8. + [
+    (seeds_score * 25.).sqrt() + ([
         nutrition.sunlight,
         nutrition.air,
         nutrition.minerals,
@@ -195,7 +201,7 @@ pub fn calculate_score(map: &MapData) -> f32 {
     ]
     .into_iter()
     .reduce(f32::min)
-    .unwrap() * 4.
+    .unwrap() * 100.).sqrt()
 }
 
 #[hotpath::measure]
