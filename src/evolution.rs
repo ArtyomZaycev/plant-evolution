@@ -24,11 +24,7 @@ impl CellEvolutionWeights {
             air: rng.random(),
             minerals: rng.random(),
             water: rng.random(),
-            cells_proximity_data: core::array::from_fn(|_| {
-                core::array::from_fn(|_| {
-                    rng.random()
-                })
-            }),
+            cells_proximity_data: core::array::from_fn(|_| core::array::from_fn(|_| rng.random())),
             height: (rng.random::<f32>() - 0.5) * 2.,
             xdist: rng.random(),
         }
@@ -46,9 +42,11 @@ impl CellEvolutionWeights {
                 .iter()
                 .enumerate()
                 .map(|(i, input)| {
-                    input.iter().enumerate().map(|(j, input)| {
-                        input * self.cells_proximity_data[i][j]
-                    }).sum::<f32>()
+                    input
+                        .iter()
+                        .enumerate()
+                        .map(|(j, input)| input * self.cells_proximity_data[i][j])
+                        .sum::<f32>()
                 })
                 .sum::<f32>()
             + height * self.height
@@ -98,9 +96,11 @@ impl CellEvolutionData {
                 .iter()
                 .enumerate()
                 .map(|(i, input)| {
-                    input.iter().enumerate().map(|(j, input)| {
-                        input * self.suicide_weights.cells_proximity_data[i][j]
-                    }).sum::<f32>()
+                    input
+                        .iter()
+                        .enumerate()
+                        .map(|(j, input)| input * self.suicide_weights.cells_proximity_data[i][j])
+                        .sum::<f32>()
                 })
                 .sum::<f32>()
     }
@@ -138,7 +138,8 @@ impl PlantEvolutionData {
             power_production_speed: 0.4,
             seed: false,
             cost: 0.,
-        }.with_populated_cost();
+        }
+        .with_populated_cost();
 
         Self {
             cells_evolution_data: (0..NUMBER_OF_CELLS)
@@ -154,31 +155,25 @@ impl PlantEvolutionData {
 pub fn calculate_score(map: &MapData) -> f32 {
     let mut seeds = vec![];
 
-    let nutrition =
-        map.plants_pos
-            .iter()
-            .fold(PlantNutrition::default(), |nutrition, &(j, i)| {
-                let cell = &map.plants[i][j];
-                let cell_abilities = &map.evolution_data.cells_abilities[cell.t];
-                if cell_abilities.seed && matches!(map.map[i][j], MapCell::Air(_)) {
-                    seeds.push((j, i));
-                }
-                PlantNutrition {
-                    sunlight: nutrition.sunlight
-                        + cell.input.sunlight
-                            * cell_abilities.sunlight_consumption,
-                    air: nutrition.air
-                        + cell.input.air
-                            * cell_abilities.air_consumption,
-                    minerals: nutrition.minerals
-                        + cell.input.minerals
-                            * cell_abilities.minerals_consumption,
-                    water: nutrition.water
-                        + cell.input.water
-                            * cell_abilities.water_consumption,
-                    power: 0.,
-                }
-            });
+    let nutrition = map
+        .plants_pos
+        .iter()
+        .fold(PlantNutrition::default(), |nutrition, &(j, i)| {
+            let cell = &map.plants[i][j];
+            let cell_abilities = &map.evolution_data.cells_abilities[cell.t];
+            if cell_abilities.seed && matches!(map.map[i][j], MapCell::Air(_)) {
+                seeds.push((j, i));
+            }
+            PlantNutrition {
+                sunlight: nutrition.sunlight
+                    + cell.input.sunlight * cell_abilities.sunlight_consumption,
+                air: nutrition.air + cell.input.air * cell_abilities.air_consumption,
+                minerals: nutrition.minerals
+                    + cell.input.minerals * cell_abilities.minerals_consumption,
+                water: nutrition.water + cell.input.water * cell_abilities.water_consumption,
+                power: 0.,
+            }
+        });
 
     let mut seeds_score: f32 = 0.;
     for &(x, y) in &seeds {
@@ -186,22 +181,25 @@ pub fn calculate_score(map: &MapData) -> f32 {
         for &(x2, y2) in &seeds {
             if x != x2 || y != y2 {
                 if (x as f32 - x2 as f32).powi(2) + (y as f32 - y2 as f32).powi(2) < 25. {
-                    cnt+=1;
+                    cnt += 1;
                 }
             }
         }
         seeds_score += 2. / (cnt + 1) as f32;
     }
 
-    (seeds_score * 25.).sqrt() + ([
-        nutrition.sunlight,
-        nutrition.air,
-        nutrition.minerals,
-        nutrition.water,
-    ]
-    .into_iter()
-    .reduce(f32::min)
-    .unwrap() * 100.).sqrt()
+    (seeds_score * 25.).sqrt()
+        + ([
+            nutrition.sunlight,
+            nutrition.air,
+            nutrition.minerals,
+            nutrition.water,
+        ]
+        .into_iter()
+        .reduce(f32::min)
+        .unwrap()
+            * 100.)
+            .sqrt()
 }
 
 #[hotpath::measure]

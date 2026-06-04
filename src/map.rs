@@ -146,7 +146,7 @@ impl MapData {
                         MapCell::Soil(_) => {}
                     }
                 }
-            },
+            }
             MapCell::Soil(_) => {
                 for &(nx, ny, distance) in dxdy {
                     match &self.map[ny][nx] {
@@ -156,12 +156,11 @@ impl MapData {
                                 minerals += soil_parameters.minerals * distance;
                                 water += soil_parameters.water * distance;
                             } else {
-                                
                             }
                         }
                     }
                 }
-            },
+            }
         }
         (
             air / dxdy.len() as f32,
@@ -171,13 +170,9 @@ impl MapData {
     }
 
     #[hotpath::measure]
-    fn calc_cells_proximity_data(
-        &self,
-        x: usize,
-        y: usize,
-    ) -> [[f32; NUMBER_OF_CELLS]; 4] {
+    fn calc_cells_proximity_data(&self, x: usize, y: usize) -> [[f32; NUMBER_OF_CELLS]; 4] {
         let mut proximity_data = [[0.; NUMBER_OF_CELLS]; 4];
-        let xidx = if x >= PLANT_CENTER.0 {0} else {1};
+        let xidx = if x >= PLANT_CENTER.0 { 0 } else { 1 };
         if x > 0 && self.plants[y][x - 1].is_some() {
             proximity_data[xidx][self.plants[y][x - 1].t] = 1.;
         }
@@ -268,7 +263,11 @@ impl MapData {
                     if self.plants[ni][nj].t == usize::MAX {
                         let weights = &evolution.weights[d];
                         for c in 0..NUMBER_OF_CELLS {
-                            let score = weights[c].calc_growth(&plant_cell.input, (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1., (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.));
+                            let score = weights[c].calc_growth(
+                                &plant_cell.input,
+                                (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
+                                (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
+                            );
                             if score > self.next_cell_growth.0 {
                                 self.next_cell_growth = (score, nj, ni, c);
                             }
@@ -277,7 +276,7 @@ impl MapData {
                 });
         });
     }
-    
+
     #[hotpath::measure]
     fn recalc_next_cell_suicide(&mut self) {
         self.next_cell_suicide = (f32::NEG_INFINITY, 0, 0);
@@ -344,8 +343,10 @@ impl MapData {
                 }
             } else {
                 let (_, x, y, cell_type) = self.next_cell_growth;
-                if self.plant_nutrition.power >= self.evolution_data.cells_abilities[cell_type].cost {
-                    self.plant_nutrition.power -= self.evolution_data.cells_abilities[cell_type].cost;
+                if self.plant_nutrition.power >= self.evolution_data.cells_abilities[cell_type].cost
+                {
+                    self.plant_nutrition.power -=
+                        self.evolution_data.cells_abilities[cell_type].cost;
                     self.plants[y][x] = PlantCell {
                         t: cell_type,
                         input: PlantCellInput::default(),
@@ -362,8 +363,10 @@ impl MapData {
 }
 
 impl MapData {
-    const BASIC_MAP: LazyCell<[[MapCell; MAP_SIZE.0]; MAP_SIZE.1]> = LazyCell::new(MapData::generate_basic_map);
-    const BASIC_PLANTS: LazyCell<[[PlantCell; MAP_SIZE.0]; MAP_SIZE.1]> = LazyCell::new(MapData::generate_basic_plants);
+    const BASIC_MAP: LazyCell<[[MapCell; MAP_SIZE.0]; MAP_SIZE.1]> =
+        LazyCell::new(MapData::generate_basic_map);
+    const BASIC_PLANTS: LazyCell<[[PlantCell; MAP_SIZE.0]; MAP_SIZE.1]> =
+        LazyCell::new(MapData::generate_basic_plants);
 
     fn generate_basic_map() -> [[MapCell; MAP_SIZE.0]; MAP_SIZE.1] {
         let mut sunlight = 1.;
@@ -380,8 +383,10 @@ impl MapData {
                     let depth = i - MAP_SIZE.1 / 2;
                     let depth = depth as f32 / (MAP_SIZE.1 / 2) as f32;
                     MapCell::Soil(SoilParameters {
-                        minerals: LOW_DEPTH_MINERALS + (HIGH_DEPTH_MINERALS - LOW_DEPTH_MINERALS).abs() * depth,
-                        water: HIGH_DEPTH_WATER + (HIGH_DEPTH_WATER - LOW_DEPTH_WATER).abs() * (1. - depth),
+                        minerals: LOW_DEPTH_MINERALS
+                            + (HIGH_DEPTH_MINERALS - LOW_DEPTH_MINERALS).abs() * depth,
+                        water: HIGH_DEPTH_WATER
+                            + (HIGH_DEPTH_WATER - LOW_DEPTH_WATER).abs() * (1. - depth),
                     })
                 }
             })

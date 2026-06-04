@@ -142,8 +142,14 @@ impl eframe::App for PlantEvolutionApp {
                         ui.label(format!("Cost: {}", cell.cost));
                     });
                 });
-            ui.label(format!("Next growth: {:?}", self.get_map().next_cell_growth));
-            ui.label(format!("Next suicide: {:?}", self.get_map().next_cell_suicide));
+            ui.label(format!(
+                "Next growth: {:?}",
+                self.get_map().next_cell_growth
+            ));
+            ui.label(format!(
+                "Next suicide: {:?}",
+                self.get_map().next_cell_suicide
+            ));
         });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
@@ -180,9 +186,8 @@ impl eframe::App for PlantEvolutionApp {
                 let (response, painter) =
                     ui.allocate_painter(ui.available_size_before_wrap(), Sense::empty());
                 self.cell_size = self.min_cell_size.max({
-                    (response.rect.width() / MAP_SIZE.0 as f32).min(
-                        response.rect.height() / MAP_SIZE.1 as f32
-                    )
+                    (response.rect.width() / MAP_SIZE.0 as f32)
+                        .min(response.rect.height() / MAP_SIZE.1 as f32)
                 });
 
                 let pointer_pos: Option<Pos2> = ui.ctx().input(|i| i.pointer.latest_pos());
@@ -232,13 +237,20 @@ impl eframe::App for PlantEvolutionApp {
                         };
                         painter.rect_filled(rect, 0., color);
 
-                        if self.get_map().plants[i][j].is_some() && self.get_map().evolution_data.cells_abilities[self.get_map().plants[i][j].t].seed {
-                            
-                            painter.circle_filled(response.rect.min
-                                + Vec2 {
-                                    x: j as f32 * self.cell_size + 0.5 * self.cell_size,
-                                    y: i as f32 * self.cell_size + 0.5 * self.cell_size,
-                                }, self.cell_size * 0.4, Color32::RED);
+                        if self.get_map().plants[i][j].is_some()
+                            && self.get_map().evolution_data.cells_abilities
+                                [self.get_map().plants[i][j].t]
+                                .seed
+                        {
+                            painter.circle_filled(
+                                response.rect.min
+                                    + Vec2 {
+                                        x: j as f32 * self.cell_size + 0.5 * self.cell_size,
+                                        y: i as f32 * self.cell_size + 0.5 * self.cell_size,
+                                    },
+                                self.cell_size * 0.4,
+                                Color32::RED,
+                            );
                         }
                     }
                 }

@@ -1,4 +1,7 @@
-use std::{sync::{Arc, mpsc}, time::Duration};
+use std::{
+    sync::{Arc, mpsc},
+    time::Duration,
+};
 
 use crate::{
     evolution::{PlantEvolutionData, sample_evolve_maps},
@@ -22,7 +25,11 @@ pub struct SavingParameters {
 
 impl Default for SavingParameters {
     fn default() -> Self {
-        Self { enabled: Default::default(), period: Default::default(), prefix: Default::default() }
+        Self {
+            enabled: Default::default(),
+            period: Default::default(),
+            prefix: Default::default(),
+        }
     }
 }
 

@@ -20,8 +20,9 @@ impl PlantCellAbilities {
             + self.minerals_consumption
             + self.water_consumption
             + self.power_production_speed.sqrt() * 4.)
-            .powi(3) / 10.
-            + if self.seed {50.} else {0.};
+            .powi(3)
+            / 10.
+            + if self.seed { 50. } else { 0. };
     }
 
     pub fn with_populated_cost(self) -> Self {
