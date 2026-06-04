@@ -46,7 +46,7 @@ impl CellEvolutionWeights {
                     input
                         .iter()
                         .enumerate()
-                        .map(|(j, input)| input * self.cells_proximity_data[i][j])
+                        .map(|(j, input)| if *input {1.} else {0.} * self.cells_proximity_data[i][j])
                         .sum::<f32>()
                 })
                 .sum::<f32>()
@@ -100,7 +100,7 @@ impl CellEvolutionData {
                     input
                         .iter()
                         .enumerate()
-                        .map(|(j, input)| input * self.suicide_weights.cells_proximity_data[i][j])
+                        .map(|(j, input)| if *input {1.} else {0.} * self.suicide_weights.cells_proximity_data[i][j])
                         .sum::<f32>()
                 })
                 .sum::<f32>()

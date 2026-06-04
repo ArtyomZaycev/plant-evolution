@@ -170,20 +170,20 @@ impl MapData {
     }
 
     #[hotpath::measure]
-    fn calc_cells_proximity_data(&self, x: usize, y: usize) -> [[f32; NUMBER_OF_CELLS]; 4] {
-        let mut proximity_data = [[0.; NUMBER_OF_CELLS]; 4];
+    fn calc_cells_proximity_data(&self, x: usize, y: usize) -> [[bool; NUMBER_OF_CELLS]; 4] {
+        let mut proximity_data = [[false; NUMBER_OF_CELLS]; 4];
         let xidx = if x >= PLANT_CENTER.0 { 0 } else { 1 };
         if x > 0 && self.plants[y][x - 1].is_some() {
-            proximity_data[xidx][self.plants[y][x - 1].t] = 1.;
+            proximity_data[xidx][self.plants[y][x - 1].t] = true;
         }
         if x + 1 < MAP_SIZE.0 && self.plants[y][x + 1].is_some() {
-            proximity_data[1 - xidx][self.plants[y][x + 1].t] = 1.;
+            proximity_data[1 - xidx][self.plants[y][x + 1].t] = true;
         }
         if y > 0 && self.plants[y - 1][x].is_some() {
-            proximity_data[2][self.plants[y - 1][x].t] = 1.;
+            proximity_data[2][self.plants[y - 1][x].t] = true;
         }
         if y + 1 < MAP_SIZE.1 && self.plants[y + 1][x].is_some() {
-            proximity_data[3][self.plants[y + 1][x].t] = 1.;
+            proximity_data[3][self.plants[y + 1][x].t] = true;
         }
         proximity_data
     }
