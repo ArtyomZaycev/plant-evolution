@@ -9,12 +9,7 @@ use std::{
 use rand::RngExt;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    evolution::{PlantEvolutionData, calculate_score, sample_evolve_maps},
-    map::*,
-    random_evolution::RandomEvolution,
-    slow_mutex::SlowMutex,
-};
+use crate::{evolution::*, map::*, random_evolution::RandomEvolution, slow_mutex::SlowMutex};
 
 #[derive(Debug, Clone, Copy)]
 pub enum SavingPeriod {
@@ -116,6 +111,7 @@ fn save_maps(parameters: &SavingParameters, simulation_id: &str, maps: &Vec<MapD
 #[derive(Debug, Clone, Copy)]
 pub struct EvolutionParameters {
     pub samples: usize,
+    pub parent_evolution: bool,
     pub change_chance: f32,
     pub change_entropy: f32,
 }
@@ -123,7 +119,8 @@ pub struct EvolutionParameters {
 impl Default for EvolutionParameters {
     fn default() -> Self {
         Self {
-            samples: 5,
+            samples: 10,
+            parent_evolution: true,
             change_chance: 0.05,
             change_entropy: 0.8,
         }
@@ -240,13 +237,23 @@ pub fn run_engine(
                     parameters.evolution_parameters = new_evolution_parameters;
                 }
                 EngineCommand::Evolve => {
-                    sample_evolve_maps(&mut maps, parameters.evolution_parameters.samples, |map| {
-                        map.evolve_random(
+                    if parameters.evolution_parameters.parent_evolution {
+                        parents_random_evolve(
                             &mut rng,
+                            &mut maps,
+                            parameters.evolution_parameters.samples,
                             parameters.evolution_parameters.change_chance,
                             parameters.evolution_parameters.change_entropy,
-                        )
-                    });
+                        );
+                    } else {
+                        random_evolve(
+                            &mut rng,
+                            &mut maps,
+                            parameters.evolution_parameters.samples,
+                            parameters.evolution_parameters.change_chance,
+                            parameters.evolution_parameters.change_entropy,
+                        );
+                    }
                     slow_maps.force_write(maps.clone());
                 }
                 EngineCommand::UpdateRunEvolutionParameters(new_run_evolution_parameters) => {
@@ -325,13 +332,23 @@ pub fn run_engine(
                     });
                 if maps[0].ticks >= parameters.run_evolution_parameters.ticks_per_evolution {
                     slow_maps.force_write(maps.clone());
-                    sample_evolve_maps(&mut maps, parameters.evolution_parameters.samples, |map| {
-                        map.evolve_random(
+                    if parameters.evolution_parameters.parent_evolution {
+                        parents_random_evolve(
                             &mut rng,
+                            &mut maps,
+                            parameters.evolution_parameters.samples,
                             parameters.evolution_parameters.change_chance,
                             parameters.evolution_parameters.change_entropy,
-                        )
-                    });
+                        );
+                    } else {
+                        random_evolve(
+                            &mut rng,
+                            &mut maps,
+                            parameters.evolution_parameters.samples,
+                            parameters.evolution_parameters.change_chance,
+                            parameters.evolution_parameters.change_entropy,
+                        );
+                    }
                 }
             }
         }

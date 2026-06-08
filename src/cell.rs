@@ -34,10 +34,9 @@ impl PlantCellAbilities {
             / 80.;
     }
 
-    pub fn with_populated_cost(self) -> Self {
-        let mut s = self;
-        s.populate_cost();
-        s
+    pub fn with_populated_cost(mut self) -> Self {
+        self.populate_cost();
+        self
     }
 }
 

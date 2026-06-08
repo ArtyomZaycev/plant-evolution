@@ -6,6 +6,7 @@ mod const_precalc;
 pub mod engine;
 pub mod evolution;
 pub mod map;
+pub mod parents_evolution;
 pub mod random_evolution;
 pub mod slow_mutex;
 pub mod ui;

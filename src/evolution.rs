@@ -1,8 +1,12 @@
 use std::sync::mpsc;
 
+use rand::RngExt;
 use serde::{Deserialize, Serialize};
 
-use crate::{cell::*, const_precalc::*, map::*, weights_tree::*};
+use crate::{
+    cell::*, const_precalc::*, map::*, parents_evolution::parent_combine,
+    random_evolution::RandomEvolution, weights_tree::*,
+};
 
 type Rng = rand::rngs::ThreadRng;
 
@@ -144,50 +148,6 @@ pub fn calculate_score(map: &MapData) -> f32 {
             .sqrt()
 }
 
-#[hotpath::measure]
-fn sample_maps(maps: &mut Vec<MapData>, samples: usize) {
-    maps.sort_by(|a, b| {
-        calculate_score(a)
-            .partial_cmp(&calculate_score(b))
-            .unwrap()
-            .reverse()
-    });
-
-    let sample_size = maps.len() / samples;
-    let best_evolution_data = maps
-        .iter()
-        .take(sample_size)
-        .map(|map| map.evolution_data.clone())
-        .collect::<Vec<_>>();
-
-    best_evolution_data
-        .iter()
-        .enumerate()
-        .for_each(|(i, evolution_data)| {
-            maps.iter_mut()
-                .skip(samples * i)
-                .take(samples)
-                .for_each(|map: &mut MapData| {
-                    map.evolution_data = evolution_data.clone();
-                    map.restart();
-                });
-        });
-}
-
-#[hotpath::measure]
-pub fn sample_evolve_maps<F: FnMut(&mut MapData)>(
-    maps: &mut Vec<MapData>,
-    samples: usize,
-    mut evolve: F,
-) {
-    sample_maps(maps, samples);
-    for (i, map) in maps.iter_mut().enumerate() {
-        if i % samples != 0 {
-            evolve(map)
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct RunningEvolutionData {
     pub evolution_total: usize,
@@ -222,4 +182,73 @@ pub fn run_evolution<F: FnMut(&mut Vec<MapData>)>(
         });
         evolve(maps);
     });
+}
+
+#[hotpath::measure]
+fn sample_best_maps_evolution(maps: &mut Vec<MapData>, samples: usize) -> Vec<PlantEvolutionData> {
+    maps.sort_by(|a, b| {
+        calculate_score(a)
+            .partial_cmp(&calculate_score(b))
+            .unwrap()
+            .reverse()
+    });
+
+    maps.iter()
+        .take(samples)
+        .map(|map| map.evolution_data.clone())
+        .collect::<Vec<_>>()
+}
+
+#[hotpath::measure]
+pub fn random_evolve(
+    rng: &mut Rng,
+    maps: &mut Vec<MapData>,
+    samples: usize,
+    change_chance: f32,
+    change_entropy: f32,
+) {
+    let best_evolution_data = sample_best_maps_evolution(maps, samples);
+    best_evolution_data
+        .iter()
+        .enumerate()
+        .for_each(|(i, data)| {
+            maps[i].evolution_data = data.clone();
+        });
+    maps.iter_mut()
+        .skip(samples)
+        .enumerate()
+        .for_each(|(i, map)| {
+            map.evolution_data = best_evolution_data[i % samples].clone();
+            map.evolve_random(rng, change_chance, change_entropy);
+        });
+    maps.iter_mut().for_each(|map| map.restart());
+}
+
+#[hotpath::measure]
+pub fn parents_random_evolve(
+    rng: &mut Rng,
+    maps: &mut Vec<MapData>,
+    samples: usize,
+    change_chance: f32,
+    change_entropy: f32,
+) {
+    let best_evolution_data = sample_best_maps_evolution(maps, samples);
+    let children_evolution_data = parent_combine(rng, &best_evolution_data, maps.len() - samples);
+
+    best_evolution_data
+        .iter()
+        .enumerate()
+        .for_each(|(i, data)| {
+            maps[i].evolution_data = data.clone();
+        });
+    children_evolution_data
+        .iter()
+        .enumerate()
+        .for_each(|(i, data)| {
+            maps[i + samples].evolution_data = data.clone();
+            if rng.random_bool(0.75) {
+                maps[i + samples].evolve_random(rng, change_chance, change_entropy);
+            }
+        });
+    maps.iter_mut().for_each(|map| map.restart());
 }
