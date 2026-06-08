@@ -38,8 +38,9 @@ pub struct PlantEvolutionApp {
     run: bool,
     run_evolution: bool,
 
-    highlited_cell: Option<(usize, usize)>,
-    highlited_decision_tree: Option<(usize, usize)>,
+    hovered_cell: Option<(usize, usize)>,
+    highlighted_cell: Option<(usize, usize)>,
+    selected_decision_tree: Option<(usize, usize)>,
 }
 
 impl PlantEvolutionApp {
@@ -59,8 +60,9 @@ impl PlantEvolutionApp {
             engine_parameters: EngineParameters::default(),
             run: false,
             run_evolution: false,
-            highlited_cell: None,
-            highlited_decision_tree: None,
+            hovered_cell: None,
+            highlighted_cell: None,
+            selected_decision_tree: None,
         }
     }
 
@@ -78,28 +80,49 @@ impl eframe::App for PlantEvolutionApp {
             self.maps = maps;
         }
 
-        if let Some((map_idx, cell_idx)) = self.highlited_decision_tree {
+        if let Some((map_idx, cell_idx)) = self.selected_decision_tree {
             let evolution_data = &self.maps[map_idx].evolution_data.cells_evolution_data[cell_idx];
-            egui::Window::new("decision_tree").show(ui.ctx(), |ui| {
-                ui.label(format!("Suicide: {}", evolution_data.suicide_weights.get_formula()));
+            egui::Window::new(format!(
+                "Plant {}, cell {} decision tree",
+                map_idx + 1,
+                cell_idx + 1
+            ))
+            .collapsible(false)
+            .resizable(false)
+            .show(ui.ctx(), |ui| {
+                ui.label(format!(
+                    "Suicide: {:.2}",
+                    evolution_data.suicide_weights.get_formula()
+                ));
                 ui.collapsing("Up", |ui| {
-                    evolution_data.weights[0].iter().enumerate().for_each(|(i, w)| {
-                        ui.label(format!("{}: {}", i + 1, w.get_formula()));
-                    });
+                    evolution_data.weights[0]
+                        .iter()
+                        .enumerate()
+                        .for_each(|(i, w)| {
+                            ui.label(format!("{}: {}", i + 1, w.get_formula()));
+                        });
                 });
                 ui.collapsing("Sideways", |ui| {
-                    evolution_data.weights[1].iter().enumerate().for_each(|(i, w)| {
-                        ui.label(format!("{}: {}", i + 1, w.get_formula()));
-                    });
+                    evolution_data.weights[1]
+                        .iter()
+                        .enumerate()
+                        .for_each(|(i, w)| {
+                            ui.label(format!("{}: {}", i + 1, w.get_formula()));
+                        });
                 });
                 ui.collapsing("Down", |ui| {
-                    evolution_data.weights[2].iter().enumerate().for_each(|(i, w)| {
-                        ui.label(format!("{}: {}", i + 1, w.get_formula()));
-                    });
+                    evolution_data.weights[2]
+                        .iter()
+                        .enumerate()
+                        .for_each(|(i, w)| {
+                            ui.label(format!("{}: {}", i + 1, w.get_formula()));
+                        });
                 });
-                if ui.button("Close").clicked() {
-                    self.highlited_decision_tree = None;
-                }
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                    if ui.button("Close").clicked() {
+                        self.selected_decision_tree = None;
+                    }
+                });
             });
         }
 
@@ -150,7 +173,7 @@ impl eframe::App for PlantEvolutionApp {
                 ui.label(format!("Evolutions: {}", self.get_map().evolutions));
                 ui.label(format!("Step: {}", self.get_map().ticks));
             });
-            ui.label(format!("Score: {}", calculate_score(&self.get_map())));
+            ui.label(format!("Score: {:.2}", calculate_score(&self.get_map())));
 
             ui.separator();
 
@@ -198,16 +221,22 @@ impl eframe::App for PlantEvolutionApp {
 
             ui.label("Nutritions:");
             ui.label(format!(
-                "Sunlight: {}",
+                "Sunlight: {:.2}",
                 self.get_map().plant_nutrition.sunlight
             ));
-            ui.label(format!("Air: {}", self.get_map().plant_nutrition.air));
+            ui.label(format!("Air: {:.2}", self.get_map().plant_nutrition.air));
             ui.label(format!(
                 "Minerals: {}",
                 self.get_map().plant_nutrition.minerals
             ));
-            ui.label(format!("Water: {}", self.get_map().plant_nutrition.water));
-            ui.label(format!("Power: {}", self.get_map().plant_nutrition.energy));
+            ui.label(format!(
+                "Water: {:.2}",
+                self.get_map().plant_nutrition.water
+            ));
+            ui.label(format!(
+                "Power: {:.2}",
+                self.get_map().plant_nutrition.energy
+            ));
 
             let mut new_desision_tree = None;
             self.get_map()
@@ -217,48 +246,87 @@ impl eframe::App for PlantEvolutionApp {
                 .enumerate()
                 .for_each(|(i, cell)| {
                     ui.horizontal_top(|ui| {
-                        ui.collapsing(format!("Cell {}", i), |ui| {
-                            ui.label(format!("Sunlight: {}", cell.sunlight_consumption));
-                            ui.label(format!("Air: {}", cell.air_consumption));
-                            ui.label(format!("Minerals: {}", cell.minerals_consumption));
-                            ui.label(format!("Water: {}", cell.water_consumption));
-                            ui.label(format!("Power: {}", cell.energy_production_speed));
+                        ui.collapsing(format!("Cell {}", i + 1), |ui| {
+                            if ui
+                                .add_enabled(
+                                    self.selected_decision_tree
+                                        != Some((self.selected_map_index, i)),
+                                    Button::new("Decision tree"),
+                                )
+                                .clicked()
+                            {
+                                new_desision_tree = Some((self.selected_map_index, i));
+                            }
+                            ui.label(format!("Sunlight: {:.2}", cell.sunlight_consumption));
+                            ui.label(format!("Air: {:.2}", cell.air_consumption));
+                            ui.label(format!("Minerals: {:.2}", cell.minerals_consumption));
+                            ui.label(format!("Water: {:.2}", cell.water_consumption));
+                            ui.label(format!("Power: {:.2}", cell.energy_production_speed));
                             ui.label(format!("Seed: {}", cell.seed));
-                            ui.label(format!("Cost: {}", cell.cost));
+                            ui.label(format!("Grow cost: {:.2}", cell.grow_cost));
+                            ui.label(format!("Passive cost: {:.2}", cell.passive_cost));
                         });
-                        if ui.button("View decision tree").clicked() {
-                            new_desision_tree = Some((self.selected_map_index, i));
-                        };
                     });
                 });
             if new_desision_tree.is_some() {
-                self.highlited_decision_tree = new_desision_tree;
+                self.selected_decision_tree = new_desision_tree;
             }
 
             ui.separator();
 
-            ui.label(format!(
-                "Next growth: {:?}",
-                self.get_map().next_cell_growth
-            ));
-            ui.label(format!(
-                "Next suicide: {:?}",
-                self.get_map().next_cell_suicide
-            ));
+            self.highlighted_cell = None;
+            if ui
+                .label(format!(
+                    "Next growth {:.2}: cell {} at {:?}",
+                    self.get_map().next_cell_growth.0,
+                    self.get_map().next_cell_growth.3,
+                    (
+                        self.get_map().next_cell_growth.1,
+                        self.get_map().next_cell_growth.2
+                    )
+                ))
+                .hovered()
+            {
+                self.highlighted_cell = Some((
+                    self.get_map().next_cell_growth.1,
+                    self.get_map().next_cell_growth.2,
+                ));
+            }
+            if ui
+                .label(format!(
+                    "Next suicide {:.2} at {:?}",
+                    self.get_map().next_cell_suicide.0,
+                    (
+                        self.get_map().next_cell_suicide.1,
+                        self.get_map().next_cell_suicide.2
+                    )
+                ))
+                .hovered()
+            {
+                if self.get_map().plants[self.get_map().next_cell_suicide.2]
+                    [self.get_map().next_cell_suicide.1]
+                    .is_some()
+                {
+                    self.highlighted_cell = Some((
+                        self.get_map().next_cell_suicide.1,
+                        self.get_map().next_cell_suicide.2,
+                    ));
+                }
+            }
         });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
             egui::Panel::bottom("cell_info")
                 .min_size(100.)
-                .show_inside(ui, |ui| match self.highlited_cell {
+                .show_inside(ui, |ui| match self.hovered_cell.or(self.highlighted_cell) {
                     Some((x, y)) => {
                         let cell_info = format!("cell_info {:?};", &self.get_map().map[y][x]);
                         ui.label(format!("({}, {}) => {}", x, y, cell_info));
 
                         let plant_info = if self.get_map().plants[y][x].is_some() {
                             format!(
-                                "plant {}, sunlight: {}, air: {}, minerals: {}, water: {}",
-                                self.get_map().plants[y][x].t,
+                                "plant {}, sunlight: {:.2}, air: {:.2}, minerals: {:.2}, water: {:.2}",
+                                self.get_map().plants[y][x].t + 1,
                                 self.get_map().plants[y][x].input.sunlight,
                                 self.get_map().plants[y][x].input.air,
                                 self.get_map().plants[y][x].input.minerals,
@@ -291,7 +359,7 @@ impl eframe::App for PlantEvolutionApp {
                 .to_pos2();
 
                 let pointer_pos: Option<Pos2> = ui.ctx().input(|i| i.pointer.latest_pos());
-                self.highlited_cell = pointer_pos.and_then(|pos| {
+                self.hovered_cell = pointer_pos.and_then(|pos| {
                     let pos = pos - canvas_start;
                     if pos.x < 0. || pos.y < 0. {
                         None
@@ -330,7 +398,7 @@ impl eframe::App for PlantEvolutionApp {
                             }
                         };
 
-                        let color = if self.highlited_cell == Some((j, i)) {
+                        let color = if self.hovered_cell.or(self.highlighted_cell) == Some((j, i)) {
                             Color32::BROWN
                         } else {
                             color

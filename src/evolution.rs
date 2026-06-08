@@ -15,7 +15,7 @@ pub struct CellEvolutionData {
 impl WeightsTree {
     fn rand_generate(rng: &mut Rng) -> Self {
         Self {
-            nodes: vec![TreeNode::Input(InputNode::generate(rng))]
+            nodes: vec![TreeNode::Input(InputNode::generate(rng))],
         }
     }
 }
@@ -64,7 +64,8 @@ impl PlantEvolutionData {
             water_consumption: 0.1,
             energy_production_speed: 0.1,
             seed: false,
-            cost: 0.,
+            grow_cost: 0.,
+            passive_cost: 0.,
         }
         .with_populated_cost();
 
@@ -76,7 +77,8 @@ impl PlantEvolutionData {
             water_consumption: 1.,
             energy_production_speed: 0.4,
             seed: false,
-            cost: 0.,
+            grow_cost: 0.,
+            passive_cost: 0.,
         }
         .with_populated_cost();
 

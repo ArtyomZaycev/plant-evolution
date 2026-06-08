@@ -157,25 +157,26 @@ impl WeightsTree {
                 cnt + 1
             }
         });
-        self.nodes.iter_mut().enumerate().for_each(|(i, node)| {
-            match node {
+        self.nodes
+            .iter_mut()
+            .enumerate()
+            .for_each(|(i, node)| match node {
                 TreeNode::Operation(op_node) => match op_node {
                     OpNode::Unary(_, idx1) => {
                         *idx1 = new_idx[*idx1];
-                    },
+                    }
                     OpNode::Binary(_, idx1, idx2) => {
                         *idx1 = new_idx[*idx1];
                         *idx2 = new_idx[*idx2];
-                    },
+                    }
                 },
                 _ => {}
-            }
-        });
+            });
     }
 
     fn get_subformula(&self, idx: usize) -> String {
         match &self.nodes[idx] {
-            TreeNode::Value(value) => value.to_string(),
+            TreeNode::Value(value) => format!("{:.2}", value),
             TreeNode::Input(input_node) => match input_node {
                 InputNode::Sunlight => "sunlight".to_owned(),
                 InputNode::Air => "air".to_owned(),
@@ -193,13 +194,27 @@ impl WeightsTree {
                     UnaryOp::Inv => format!("{}^-1", self.get_subformula(*idx1)),
                     UnaryOp::Minus => format!("-{}", self.get_subformula(*idx1)),
                 },
-                OpNode::Binary(binary_op, idx1, idx2) => {
-                    match binary_op {
-                        BinaryOp::Add => format!("({} + {})", self.get_subformula(*idx1), self.get_subformula(*idx2)),
-                        BinaryOp::Sub => format!("({} - {})", self.get_subformula(*idx1), self.get_subformula(*idx2)),
-                        BinaryOp::Mul => format!("({} * {})", self.get_subformula(*idx1), self.get_subformula(*idx2)),
-                        BinaryOp::Div => format!("({} / {})", self.get_subformula(*idx1), self.get_subformula(*idx2)),
-                    }
+                OpNode::Binary(binary_op, idx1, idx2) => match binary_op {
+                    BinaryOp::Add => format!(
+                        "({} + {})",
+                        self.get_subformula(*idx1),
+                        self.get_subformula(*idx2)
+                    ),
+                    BinaryOp::Sub => format!(
+                        "({} - {})",
+                        self.get_subformula(*idx1),
+                        self.get_subformula(*idx2)
+                    ),
+                    BinaryOp::Mul => format!(
+                        "({} * {})",
+                        self.get_subformula(*idx1),
+                        self.get_subformula(*idx2)
+                    ),
+                    BinaryOp::Div => format!(
+                        "({} / {})",
+                        self.get_subformula(*idx1),
+                        self.get_subformula(*idx2)
+                    ),
                 },
             },
         }

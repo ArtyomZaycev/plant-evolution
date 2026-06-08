@@ -209,26 +209,22 @@ impl MapData {
 
     #[hotpath::measure]
     fn calculate_plant_nutritions(&self) -> PlantNutrition {
+        let mut passive_cost = 0.;
         let nutrition =
             self.plants_pos
                 .iter()
                 .fold(PlantNutrition::default(), |nutrition, &(j, i)| {
                     let cell = &self.plants[i][j];
+                    let abilities = &self.evolution_data.cells_abilities[cell.t];
+                    passive_cost += abilities.passive_cost;
                     PlantNutrition {
                         sunlight: nutrition.sunlight
-                            + cell.input.sunlight
-                                * self.evolution_data.cells_abilities[cell.t].sunlight_consumption,
-                        air: nutrition.air
-                            + cell.input.air
-                                * self.evolution_data.cells_abilities[cell.t].air_consumption,
+                            + cell.input.sunlight * abilities.sunlight_consumption,
+                        air: nutrition.air + cell.input.air * abilities.air_consumption,
                         minerals: nutrition.minerals
-                            + cell.input.minerals
-                                * self.evolution_data.cells_abilities[cell.t].minerals_consumption,
-                        water: nutrition.water
-                            + cell.input.water
-                                * self.evolution_data.cells_abilities[cell.t].water_consumption,
-                        energy: nutrition.energy
-                            + self.evolution_data.cells_abilities[cell.t].energy_production_speed,
+                            + cell.input.minerals * abilities.minerals_consumption,
+                        water: nutrition.water + cell.input.water * abilities.water_consumption,
+                        energy: nutrition.energy + abilities.energy_production_speed,
                     }
                 });
 
@@ -247,7 +243,7 @@ impl MapData {
             air: self.plant_nutrition.air + nutrition.air - produced,
             minerals: self.plant_nutrition.minerals + nutrition.minerals - produced,
             water: self.plant_nutrition.water + nutrition.water - produced,
-            energy: self.plant_nutrition.energy + produced - self.plants_pos.len() as f32 * 0.002,
+            energy: self.plant_nutrition.energy + produced - passive_cost,
         }
     }
 
@@ -278,7 +274,6 @@ impl MapData {
                     }
                 });
         });
-
     }
 
     #[hotpath::measure]
@@ -351,10 +346,11 @@ impl MapData {
                 }
             } else {
                 let (_, x, y, cell_type) = self.next_cell_growth;
-                if self.plant_nutrition.energy >= self.evolution_data.cells_abilities[cell_type].cost
+                if self.plant_nutrition.energy
+                    >= self.evolution_data.cells_abilities[cell_type].grow_cost
                 {
                     self.plant_nutrition.energy -=
-                        self.evolution_data.cells_abilities[cell_type].cost;
+                        self.evolution_data.cells_abilities[cell_type].grow_cost;
                     self.plants[y][x] = PlantCell {
                         t: cell_type,
                         input: PlantCellInput::default(),

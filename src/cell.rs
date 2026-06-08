@@ -11,12 +11,13 @@ pub struct PlantCellAbilities {
     pub energy_production_speed: f32,
     pub seed: bool,
 
-    pub cost: f32,
+    pub grow_cost: f32,
+    pub passive_cost: f32,
 }
 
 impl PlantCellAbilities {
     pub fn populate_cost(&mut self) {
-        self.cost = (1.
+        self.grow_cost = (1.
             + self.sunlight_consumption
             + self.air_consumption
             + self.minerals_consumption
@@ -24,6 +25,13 @@ impl PlantCellAbilities {
             + self.energy_production_speed.sqrt() * 4.)
             .powi(2)
             + if self.seed { 50. } else { 0. };
+
+        self.passive_cost = (self.sunlight_consumption
+            + self.air_consumption
+            + self.minerals_consumption
+            + self.water_consumption
+            + self.energy_production_speed)
+            / 80.;
     }
 
     pub fn with_populated_cost(self) -> Self {
