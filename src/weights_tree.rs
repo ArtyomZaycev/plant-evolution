@@ -147,7 +147,9 @@ impl WeightsTree {
     pub fn compact(&mut self) {
         let mut f = vec![false; self.nodes.len()];
         self.traverse_inner(&mut f, 0);
+        let mut new_idx = vec![0; self.nodes.len()];
         f.iter().enumerate().fold(0, |cnt, (i, v)| {
+            new_idx[i] = i - cnt;
             if *v {
                 cnt
             } else {
@@ -155,6 +157,56 @@ impl WeightsTree {
                 cnt + 1
             }
         });
+        self.nodes.iter_mut().enumerate().for_each(|(i, node)| {
+            match node {
+                TreeNode::Operation(op_node) => match op_node {
+                    OpNode::Unary(_, idx1) => {
+                        *idx1 = new_idx[*idx1];
+                    },
+                    OpNode::Binary(_, idx1, idx2) => {
+                        *idx1 = new_idx[*idx1];
+                        *idx2 = new_idx[*idx2];
+                    },
+                },
+                _ => {}
+            }
+        });
+    }
+
+    fn get_subformula(&self, idx: usize) -> String {
+        match &self.nodes[idx] {
+            TreeNode::Value(value) => value.to_string(),
+            TreeNode::Input(input_node) => match input_node {
+                InputNode::Sunlight => "sunlight".to_owned(),
+                InputNode::Air => "air".to_owned(),
+                InputNode::Minerals => "minerals".to_owned(),
+                InputNode::Water => "water".to_owned(),
+                InputNode::Proximity { dir, ctype } => format!("proximity[{dir}][{ctype}]"),
+                InputNode::Height => "height".to_owned(),
+                InputNode::XDist => "xdist".to_owned(),
+            },
+            TreeNode::Operation(op_node) => match op_node {
+                OpNode::Unary(unary_op, idx1) => match unary_op {
+                    UnaryOp::Sqr => format!("{}^2", self.get_subformula(*idx1)),
+                    UnaryOp::Sqrt => format!("sqrt({})", self.get_subformula(*idx1)),
+                    UnaryOp::Ln => format!("ln({})", self.get_subformula(*idx1)),
+                    UnaryOp::Inv => format!("{}^-1", self.get_subformula(*idx1)),
+                    UnaryOp::Minus => format!("-{}", self.get_subformula(*idx1)),
+                },
+                OpNode::Binary(binary_op, idx1, idx2) => {
+                    match binary_op {
+                        BinaryOp::Add => format!("({} + {})", self.get_subformula(*idx1), self.get_subformula(*idx2)),
+                        BinaryOp::Sub => format!("({} - {})", self.get_subformula(*idx1), self.get_subformula(*idx2)),
+                        BinaryOp::Mul => format!("({} * {})", self.get_subformula(*idx1), self.get_subformula(*idx2)),
+                        BinaryOp::Div => format!("({} / {})", self.get_subformula(*idx1), self.get_subformula(*idx2)),
+                    }
+                },
+            },
+        }
+    }
+
+    pub fn get_formula(&self) -> String {
+        self.get_subformula(0)
     }
 }
 

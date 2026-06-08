@@ -39,6 +39,7 @@ pub struct PlantEvolutionApp {
     run_evolution: bool,
 
     highlited_cell: Option<(usize, usize)>,
+    highlited_decision_tree: Option<(usize, usize)>,
 }
 
 impl PlantEvolutionApp {
@@ -59,6 +60,7 @@ impl PlantEvolutionApp {
             run: false,
             run_evolution: false,
             highlited_cell: None,
+            highlited_decision_tree: None,
         }
     }
 
@@ -74,6 +76,31 @@ impl eframe::App for PlantEvolutionApp {
         if let Some((maps, version)) = self.slow_maps.slow_read_versioned(self.maps_version) {
             self.maps_version = version;
             self.maps = maps;
+        }
+
+        if let Some((map_idx, cell_idx)) = self.highlited_decision_tree {
+            let evolution_data = &self.maps[map_idx].evolution_data.cells_evolution_data[cell_idx];
+            egui::Window::new("decision_tree").show(ui.ctx(), |ui| {
+                ui.label(format!("Suicide: {}", evolution_data.suicide_weights.get_formula()));
+                ui.collapsing("Up", |ui| {
+                    evolution_data.weights[0].iter().enumerate().for_each(|(i, w)| {
+                        ui.label(format!("{}: {}", i + 1, w.get_formula()));
+                    });
+                });
+                ui.collapsing("Sideways", |ui| {
+                    evolution_data.weights[1].iter().enumerate().for_each(|(i, w)| {
+                        ui.label(format!("{}: {}", i + 1, w.get_formula()));
+                    });
+                });
+                ui.collapsing("Down", |ui| {
+                    evolution_data.weights[2].iter().enumerate().for_each(|(i, w)| {
+                        ui.label(format!("{}: {}", i + 1, w.get_formula()));
+                    });
+                });
+                if ui.button("Close").clicked() {
+                    self.highlited_decision_tree = None;
+                }
+            });
         }
 
         egui::Panel::top("settings").show_inside(ui, |ui| {});
@@ -182,22 +209,31 @@ impl eframe::App for PlantEvolutionApp {
             ui.label(format!("Water: {}", self.get_map().plant_nutrition.water));
             ui.label(format!("Power: {}", self.get_map().plant_nutrition.power));
 
+            let mut new_desision_tree = None;
             self.get_map()
                 .evolution_data
                 .cells_abilities
                 .iter()
                 .enumerate()
                 .for_each(|(i, cell)| {
-                    ui.collapsing(format!("Cell {}", i), |ui| {
-                        ui.label(format!("Sunlight: {}", cell.sunlight_consumption));
-                        ui.label(format!("Air: {}", cell.air_consumption));
-                        ui.label(format!("Minerals: {}", cell.minerals_consumption));
-                        ui.label(format!("Water: {}", cell.water_consumption));
-                        ui.label(format!("Power: {}", cell.power_production_speed));
-                        ui.label(format!("Seed: {}", cell.seed));
-                        ui.label(format!("Cost: {}", cell.cost));
+                    ui.horizontal_top(|ui| {
+                        ui.collapsing(format!("Cell {}", i), |ui| {
+                            ui.label(format!("Sunlight: {}", cell.sunlight_consumption));
+                            ui.label(format!("Air: {}", cell.air_consumption));
+                            ui.label(format!("Minerals: {}", cell.minerals_consumption));
+                            ui.label(format!("Water: {}", cell.water_consumption));
+                            ui.label(format!("Power: {}", cell.power_production_speed));
+                            ui.label(format!("Seed: {}", cell.seed));
+                            ui.label(format!("Cost: {}", cell.cost));
+                        });
+                        if ui.button("View decision tree").clicked() {
+                            new_desision_tree = Some((self.selected_map_index, i));
+                        };
                     });
                 });
+            if new_desision_tree.is_some() {
+                self.highlited_decision_tree = new_desision_tree;
+            }
 
             ui.separator();
 

@@ -167,6 +167,7 @@ impl RandomEvolution for WeightsTree {
                     TreeNode::generate(rng, self.nodes.len(), allow_add);
                 self.nodes[idx] = new_node;
                 self.nodes.append(&mut new_leaves);
+                self.compact();
             }
         });
     }
