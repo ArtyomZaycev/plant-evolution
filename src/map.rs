@@ -384,7 +384,7 @@ impl MapData {
                 if i <= MAP_SIZE.1 / 2 {
                     MapCell::Air(AirParameters { sunlight })
                 } else {
-                    const LOW_DEPTH_MINERALS: f32 = 0.05;
+                    const LOW_DEPTH_MINERALS: f32 = 0.1;
                     const LOW_DEPTH_WATER: f32 = 0.2;
                     const HIGH_DEPTH_MINERALS: f32 = 0.3;
                     const HIGH_DEPTH_WATER: f32 = 0.01;
