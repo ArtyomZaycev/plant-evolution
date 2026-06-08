@@ -1,8 +1,17 @@
-use std::{sync::{Arc, mpsc}, time::Duration};
+use std::{
+    sync::{Arc, mpsc},
+    time::Duration,
+};
 
 use egui::{Button, Color32, Frame, Pos2, Rect, Sense, TextEdit, Vec2};
 
-use crate::{const_precalc::*, engine::{EngineCommand, EngineParameters}, evolution::*, map::*, slow_mutex::SlowMutex};
+use crate::{
+    const_precalc::*,
+    engine::{EngineCommand, EngineParameters},
+    evolution::*,
+    map::*,
+    slow_mutex::SlowMutex,
+};
 
 pub struct SavingEngineParametersInput {
     pub enabled: bool,
@@ -11,7 +20,6 @@ pub struct SavingEngineParametersInput {
     pub period_value: String,
     pub selection_type: usize,
     pub selection_value: String,
-
 }
 
 pub struct PlantEvolutionApp {
@@ -68,19 +76,19 @@ impl eframe::App for PlantEvolutionApp {
             self.maps = maps;
         }
 
-        egui::Panel::top("settings").show_inside(ui, |ui| {
-            
-        });
+        egui::Panel::top("settings").show_inside(ui, |ui| {});
 
         egui::Panel::left("plants_list").show_inside(ui, |ui| {
             ui.horizontal(|ui| {
-                let response = ui.add(TextEdit::singleline(&mut self.selected_map_index_str).desired_width(64.));
+                let response = ui
+                    .add(TextEdit::singleline(&mut self.selected_map_index_str).desired_width(64.));
                 let idx = self.selected_map_index_str.parse::<usize>();
                 if ui
                     .add_enabled(
                         idx.as_ref().is_ok_and(|&idx| idx <= self.maps.len()),
                         egui::Button::new("Select"),
-                    ).clicked()
+                    )
+                    .clicked()
                 {
                     self.selected_map_index = idx.unwrap() - 1;
                     self.selected_map_index_str = (self.selected_map_index + 1).to_string();
@@ -118,7 +126,7 @@ impl eframe::App for PlantEvolutionApp {
             ui.label(format!("Score: {}", calculate_score(&self.get_map())));
 
             ui.separator();
-            
+
             ui.horizontal(|ui| {
                 if ui.add_enabled(true, Button::new("Evolve!")).clicked() {
                     self.command_sender.send(EngineCommand::Evolve).unwrap();
@@ -158,7 +166,7 @@ impl eframe::App for PlantEvolutionApp {
             if ui.button("Restart").clicked() {
                 self.command_sender.send(EngineCommand::Restart).unwrap();
             }
-            
+
             ui.separator();
 
             ui.label("Nutritions:");
@@ -239,10 +247,12 @@ impl eframe::App for PlantEvolutionApp {
                         .min(response.rect.height() / MAP_SIZE.1 as f32)
                 });
 
-                let canvas_start = (response.rect.center() - Pos2 {
-                    x: self.cell_size * MAP_SIZE.0 as f32 / 2.,
-                    y: self.cell_size * MAP_SIZE.1 as f32 / 2.,
-                }).to_pos2();
+                let canvas_start = (response.rect.center()
+                    - Pos2 {
+                        x: self.cell_size * MAP_SIZE.0 as f32 / 2.,
+                        y: self.cell_size * MAP_SIZE.1 as f32 / 2.,
+                    })
+                .to_pos2();
 
                 let pointer_pos: Option<Pos2> = ui.ctx().input(|i| i.pointer.latest_pos());
                 self.highlited_cell = pointer_pos.and_then(|pos| {

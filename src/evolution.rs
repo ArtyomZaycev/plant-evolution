@@ -1,64 +1,23 @@
 use std::sync::mpsc;
 
-use rand::RngExt;
 use serde::{Deserialize, Serialize};
 
-use crate::{cell::*, const_precalc::*, map::*};
+use crate::{cell::*, const_precalc::*, map::*, weights_tree::*};
 
 type Rng = rand::rngs::ThreadRng;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CellEvolutionWeights {
-    pub sunlight: f32,
-    pub air: f32,
-    pub minerals: f32,
-    pub water: f32,
-    pub cells_proximity_data: [[f32; NUMBER_OF_CELLS]; 4],
-    pub height: f32,
-    pub xdist: f32,
+pub struct CellEvolutionData {
+    pub weights: [[WeightsTree; NUMBER_OF_CELLS]; 3],
+    pub suicide_weights: WeightsTree,
 }
 
-impl CellEvolutionWeights {
+impl WeightsTree {
     fn rand_generate(rng: &mut Rng) -> Self {
         Self {
-            sunlight: rng.random(),
-            air: rng.random(),
-            minerals: rng.random(),
-            water: rng.random(),
-            cells_proximity_data: core::array::from_fn(|_| core::array::from_fn(|_| rng.random())),
-            height: (rng.random::<f32>() - 0.5) * 2.,
-            xdist: rng.random(),
+            nodes: vec![TreeNode::Input(InputNode::generate(rng))]
         }
     }
-}
-
-impl CellEvolutionWeights {
-    pub fn calc_growth(&self, input: &PlantCellInput, height: f32, xdist: f32) -> f32 {
-        input.sunlight * self.sunlight
-            + input.air * self.air
-            + input.minerals * self.minerals
-            + input.water * self.water
-            + input
-                .cells_proximity_data
-                .iter()
-                .enumerate()
-                .map(|(i, input)| {
-                    input
-                        .iter()
-                        .enumerate()
-                        .map(|(j, input)| if *input {1.} else {0.} * self.cells_proximity_data[i][j])
-                        .sum::<f32>()
-                })
-                .sum::<f32>()
-            + height * self.height
-            + xdist * self.xdist
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CellEvolutionData {
-    pub weights: [[CellEvolutionWeights; NUMBER_OF_CELLS]; 3],
-    pub suicide_weights: CellEvolutionWeights,
 }
 
 impl CellEvolutionData {
@@ -67,43 +26,22 @@ impl CellEvolutionData {
             weights: (0..3)
                 .map(|_| {
                     (0..NUMBER_OF_CELLS)
-                        .map(|_| CellEvolutionWeights::rand_generate(rng))
-                        .collect::<Vec<CellEvolutionWeights>>()
+                        .map(|_| WeightsTree::rand_generate(rng))
+                        .collect::<Vec<WeightsTree>>()
                         .try_into()
                         .unwrap()
                 })
-                .collect::<Vec<[CellEvolutionWeights; NUMBER_OF_CELLS]>>()
+                .collect::<Vec<[WeightsTree; NUMBER_OF_CELLS]>>()
                 .try_into()
                 .unwrap(),
-            suicide_weights: CellEvolutionWeights {
-                sunlight: 0.,
-                air: 0.,
-                minerals: 0.,
-                water: 0.,
-                cells_proximity_data: [[0.; NUMBER_OF_CELLS]; 4],
-                height: 0.,
-                xdist: 0.,
+            suicide_weights: WeightsTree {
+                nodes: vec![TreeNode::Value(0.)],
             },
         }
     }
 
-    pub fn calc_suicide(&self, input: &PlantCellInput) -> f32 {
-        input.sunlight * self.suicide_weights.sunlight
-            + input.air * self.suicide_weights.air
-            + input.minerals * self.suicide_weights.minerals
-            + input.water * self.suicide_weights.water
-            + input
-                .cells_proximity_data
-                .iter()
-                .enumerate()
-                .map(|(i, input)| {
-                    input
-                        .iter()
-                        .enumerate()
-                        .map(|(j, input)| if *input {1.} else {0.} * self.suicide_weights.cells_proximity_data[i][j])
-                        .sum::<f32>()
-                })
-                .sum::<f32>()
+    pub fn calc_suicide(&self, input: &PlantCellInput, height: f32, xdist: f32) -> f32 {
+        self.suicide_weights.calculate(input, height, xdist)
     }
 }
 

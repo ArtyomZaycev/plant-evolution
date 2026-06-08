@@ -263,7 +263,7 @@ impl MapData {
                     if self.plants[ni][nj].t == usize::MAX {
                         let weights = &evolution.weights[d];
                         for c in 0..NUMBER_OF_CELLS {
-                            let score = weights[c].calc_growth(
+                            let score = weights[c].calculate(
                                 &plant_cell.input,
                                 (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
                                 (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
@@ -284,7 +284,11 @@ impl MapData {
             if j != PLANT_CENTER.0 || i != PLANT_CENTER.1 {
                 let plant_cell = &self.plants[i][j];
                 let evolution = &self.evolution_data.cells_evolution_data[plant_cell.t];
-                let score = evolution.calc_suicide(&plant_cell.input);
+                let score = evolution.calc_suicide(
+                    &plant_cell.input,
+                    (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
+                    (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
+                );
                 if score > self.next_cell_suicide.0 {
                     self.next_cell_suicide = (score, j, i);
                 }

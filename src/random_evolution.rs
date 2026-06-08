@@ -2,7 +2,7 @@ use std::sync::mpsc;
 
 use rand::RngExt;
 
-use crate::{cell::*, evolution::*, map::*};
+use crate::{cell::*, const_precalc::NUMBER_OF_CELLS, evolution::*, map::*, weights_tree::*};
 
 pub type Rng = rand::rngs::ThreadRng;
 
@@ -129,40 +129,46 @@ impl RandomEvolution for PlantCellAbilities {
     }
 }
 
-impl RandomEvolution for CellEvolutionWeights {
+impl RandomEvolution for WeightsTree {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) {
-        randomize_value_change_chance(
-            &mut self.sunlight,
-            rng,
-            change_chance,
-            change_entropy,
-            -1.,
-            1.,
-        );
-        randomize_value_change_chance(&mut self.air, rng, change_chance, change_entropy, -1., 1.);
-        randomize_value_change_chance(
-            &mut self.minerals,
-            rng,
-            change_chance,
-            change_entropy,
-            -1.,
-            1.,
-        );
-        randomize_value_change_chance(&mut self.water, rng, change_chance, change_entropy, -1., 1.);
-        for row in &mut self.cells_proximity_data {
-            for v in row {
-                randomize_value_change_chance(v, rng, change_chance, change_entropy, -1., 1.);
+        apply_change_chance(change_chance, rng.random(), || {
+            let idx = rng.random_range(0..self.nodes.len());
+            let allow_add = self.nodes.len() < 40;
+            /*
+               0 - tweak
+                   Value - adjust Value
+                   Input - change Input,
+                   Operation - change within the same number of operands
+               1 - replace
+                   Replace Node for other random one
+            */
+            let transform_type = rng.random_range(0..=1);
+            if transform_type == 0 {
+                match &mut self.nodes[idx] {
+                    TreeNode::Value(value) => {
+                        apply_change_chance(change_chance, rng.random(), || {
+                            randomize_value(value, rng.random(), change_entropy);
+                        });
+                    }
+                    TreeNode::Input(input_node) => {
+                        *input_node = InputNode::generate(rng);
+                    }
+                    TreeNode::Operation(op_node) => match op_node {
+                        OpNode::Unary(unary_op, _) => {
+                            *unary_op = UnaryOp::generate(rng);
+                        }
+                        OpNode::Binary(binary_op, _, _) => {
+                            *binary_op = BinaryOp::generate(rng);
+                        }
+                    },
+                }
+            } else {
+                let (new_node, mut new_leaves) =
+                    TreeNode::generate(rng, self.nodes.len(), allow_add);
+                self.nodes[idx] = new_node;
+                self.nodes.append(&mut new_leaves);
             }
-        }
-        randomize_value_change_chance(
-            &mut self.height,
-            rng,
-            change_chance,
-            change_entropy,
-            -1.,
-            1.,
-        );
-        randomize_value_change_chance(&mut self.xdist, rng, change_chance, change_entropy, -1., 1.);
+        });
     }
 }
 

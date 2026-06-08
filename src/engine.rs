@@ -311,11 +311,15 @@ pub fn run_engine(
                 slow_maps.slow_write(&maps);
             }
             EngineState::RunEvolution => {
-                (0..(parameters.run_evolution_parameters.ticks_per_slow_write.min(
-                    parameters.run_evolution_parameters
-                        .ticks_per_evolution
-                        .saturating_sub(maps[0].ticks),
-                )))
+                (0..(parameters
+                    .run_evolution_parameters
+                    .ticks_per_slow_write
+                    .min(
+                        parameters
+                            .run_evolution_parameters
+                            .ticks_per_evolution
+                            .saturating_sub(maps[0].ticks),
+                    )))
                     .for_each(|_| {
                         maps.iter_mut().for_each(|map| map.tick());
                     });

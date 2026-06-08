@@ -9,5 +9,6 @@ pub mod map;
 pub mod random_evolution;
 pub mod slow_mutex;
 pub mod ui;
+pub mod weights_tree;
 
 pub use const_precalc::populate_consts;
