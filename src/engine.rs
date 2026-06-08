@@ -34,9 +34,9 @@ pub enum SaveSelection {
 
 #[derive(Debug, Clone)]
 pub struct SavingParameters {
-    enabled: bool,
-    period: SavingPeriod,
-    selection: SaveSelection,
+    pub enabled: bool,
+    pub period: SavingPeriod,
+    pub selection: SaveSelection,
 }
 
 impl Default for SavingParameters {
@@ -115,15 +115,15 @@ fn save_maps(parameters: &SavingParameters, simulation_id: &str, maps: &Vec<MapD
 
 #[derive(Debug, Clone, Copy)]
 pub struct EvolutionParameters {
-    samples: usize,
-    change_chance: f32,
-    change_entropy: f32,
+    pub samples: usize,
+    pub change_chance: f32,
+    pub change_entropy: f32,
 }
 
 impl Default for EvolutionParameters {
     fn default() -> Self {
         Self {
-            samples: 10,
+            samples: 20,
             change_chance: 0.1,
             change_entropy: 0.8,
         }
@@ -132,8 +132,8 @@ impl Default for EvolutionParameters {
 
 #[derive(Debug, Clone, Copy)]
 pub struct RunEvolutionParameters {
-    ticks_per_evolution: u32,
-    ticks_per_slow_write: u32,
+    pub ticks_per_evolution: u32,
+    pub ticks_per_slow_write: u32,
 }
 
 impl Default for RunEvolutionParameters {
@@ -170,6 +170,13 @@ enum EngineState {
     RunEvolution,
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct EngineParameters {
+    saving_parameters: SavingParameters,
+    evolution_parameters: EvolutionParameters,
+    run_evolution_parameters: RunEvolutionParameters,
+}
+
 pub fn run_engine(
     receiver: mpsc::Receiver<EngineCommand>,
     slow_maps: Arc<SlowMutex<Vec<MapData>>>,
@@ -180,9 +187,7 @@ pub fn run_engine(
 
     let mut maps = slow_maps.force_read();
 
-    let mut saving_parameters = SavingParameters::default();
-    let mut evolution_parameters = EvolutionParameters::default();
-    let mut run_evolution_parameters = RunEvolutionParameters::default();
+    let mut parameters = EngineParameters::default();
 
     let mut save = false;
     let mut last_save: u128 = 0;
@@ -224,28 +229,28 @@ pub fn run_engine(
 
                 EngineCommand::UpdateSavingParameters(new_saving_parameters) => {
                     if !new_saving_parameters.enabled
-                        || discriminant(&saving_parameters.period)
+                        || discriminant(&parameters.saving_parameters.period)
                             != discriminant(&new_saving_parameters.period)
                     {
                         last_save = 0;
                     }
-                    saving_parameters = new_saving_parameters;
+                    parameters.saving_parameters = new_saving_parameters;
                 }
                 EngineCommand::UpdateEvolutionParameters(new_evolution_parameters) => {
-                    evolution_parameters = new_evolution_parameters;
+                    parameters.evolution_parameters = new_evolution_parameters;
                 }
                 EngineCommand::Evolve => {
-                    sample_evolve_maps(&mut maps, evolution_parameters.samples, |map| {
+                    sample_evolve_maps(&mut maps, parameters.evolution_parameters.samples, |map| {
                         map.evolve_random(
                             &mut rng,
-                            evolution_parameters.change_chance,
-                            evolution_parameters.change_entropy,
+                            parameters.evolution_parameters.change_chance,
+                            parameters.evolution_parameters.change_entropy,
                         )
                     });
                     slow_maps.force_write(maps.clone());
                 }
                 EngineCommand::UpdateRunEvolutionParameters(new_run_evolution_parameters) => {
-                    run_evolution_parameters = new_run_evolution_parameters;
+                    parameters.run_evolution_parameters = new_run_evolution_parameters;
                 }
                 EngineCommand::RunEvolution => {
                     state = EngineState::RunEvolution;
@@ -257,8 +262,8 @@ pub fn run_engine(
             }
         }
 
-        if save || saving_parameters.enabled {
-            match saving_parameters.period {
+        if save || parameters.saving_parameters.enabled {
+            match parameters.saving_parameters.period {
                 SavingPeriod::EveryDuration(duration) => {
                     let time = std::time::SystemTime::now();
                     if save
@@ -269,7 +274,7 @@ pub fn run_engine(
                             .unwrap()
                             > duration
                     {
-                        save_maps(&saving_parameters, &simulation_id, &maps);
+                        save_maps(&parameters.saving_parameters, &simulation_id, &maps);
                         last_save = time
                             .duration_since(SystemTime::UNIX_EPOCH)
                             .unwrap()
@@ -279,14 +284,14 @@ pub fn run_engine(
                 SavingPeriod::EveryTick(period) => {
                     if save || state != EngineState::RunEvolution {
                         if save || maps[0].ticks.saturating_sub(last_save as u32) > period {
-                            save_maps(&saving_parameters, &simulation_id, &maps);
+                            save_maps(&parameters.saving_parameters, &simulation_id, &maps);
                             last_save = maps[0].ticks as u128;
                         }
                     }
                 }
                 SavingPeriod::EveryEvolution(period) => {
                     if save || maps[0].evolutions.saturating_sub(last_save as u32) > period {
-                        save_maps(&saving_parameters, &simulation_id, &maps);
+                        save_maps(&parameters.saving_parameters, &simulation_id, &maps);
                         last_save = maps[0].evolutions as u128;
                     }
                 }
@@ -306,21 +311,21 @@ pub fn run_engine(
                 slow_maps.slow_write(&maps);
             }
             EngineState::RunEvolution => {
-                (0..(run_evolution_parameters.ticks_per_slow_write.min(
-                    run_evolution_parameters
+                (0..(parameters.run_evolution_parameters.ticks_per_slow_write.min(
+                    parameters.run_evolution_parameters
                         .ticks_per_evolution
                         .saturating_sub(maps[0].ticks),
                 )))
                     .for_each(|_| {
                         maps.iter_mut().for_each(|map| map.tick());
                     });
-                if maps[0].ticks >= run_evolution_parameters.ticks_per_evolution {
+                if maps[0].ticks >= parameters.run_evolution_parameters.ticks_per_evolution {
                     slow_maps.force_write(maps.clone());
-                    sample_evolve_maps(&mut maps, evolution_parameters.samples, |map| {
+                    sample_evolve_maps(&mut maps, parameters.evolution_parameters.samples, |map| {
                         map.evolve_random(
                             &mut rng,
-                            evolution_parameters.change_chance,
-                            evolution_parameters.change_entropy,
+                            parameters.evolution_parameters.change_chance,
+                            parameters.evolution_parameters.change_entropy,
                         )
                     });
                 }

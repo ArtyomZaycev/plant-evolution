@@ -1,8 +1,18 @@
-use std::sync::{Arc, mpsc};
+use std::{sync::{Arc, mpsc}, time::Duration};
 
 use egui::{Button, Color32, Frame, Pos2, Rect, Sense, TextEdit, Vec2};
 
-use crate::{const_precalc::*, engine::EngineCommand, evolution::*, map::*, slow_mutex::SlowMutex};
+use crate::{const_precalc::*, engine::{EngineCommand, EngineParameters}, evolution::*, map::*, slow_mutex::SlowMutex};
+
+pub struct SavingEngineParametersInput {
+    pub enabled: bool,
+    pub period_type: usize,
+    pub period_duration: Duration,
+    pub period_value: String,
+    pub selection_type: usize,
+    pub selection_value: String,
+
+}
 
 pub struct PlantEvolutionApp {
     min_cell_size: f32,
@@ -16,6 +26,7 @@ pub struct PlantEvolutionApp {
     command_sender: mpsc::Sender<EngineCommand>,
     slow_maps: Arc<SlowMutex<Vec<MapData>>>,
 
+    engine_parameters: EngineParameters,
     run: bool,
     run_evolution: bool,
 
@@ -36,6 +47,7 @@ impl PlantEvolutionApp {
             command_sender: sender,
             maps: slow_maps.force_read(),
             slow_maps,
+            engine_parameters: EngineParameters::default(),
             run: false,
             run_evolution: false,
             highlited_cell: None,
@@ -55,6 +67,10 @@ impl eframe::App for PlantEvolutionApp {
             self.maps_version = version;
             self.maps = maps;
         }
+
+        egui::Panel::top("settings").show_inside(ui, |ui| {
+            
+        });
 
         egui::Panel::left("plants_list").show_inside(ui, |ui| {
             ui.horizontal(|ui| {
