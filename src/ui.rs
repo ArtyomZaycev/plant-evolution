@@ -207,7 +207,7 @@ impl eframe::App for PlantEvolutionApp {
                 self.get_map().plant_nutrition.minerals
             ));
             ui.label(format!("Water: {}", self.get_map().plant_nutrition.water));
-            ui.label(format!("Power: {}", self.get_map().plant_nutrition.power));
+            ui.label(format!("Power: {}", self.get_map().plant_nutrition.energy));
 
             let mut new_desision_tree = None;
             self.get_map()
@@ -222,7 +222,7 @@ impl eframe::App for PlantEvolutionApp {
                             ui.label(format!("Air: {}", cell.air_consumption));
                             ui.label(format!("Minerals: {}", cell.minerals_consumption));
                             ui.label(format!("Water: {}", cell.water_consumption));
-                            ui.label(format!("Power: {}", cell.power_production_speed));
+                            ui.label(format!("Power: {}", cell.energy_production_speed));
                             ui.label(format!("Seed: {}", cell.seed));
                             ui.label(format!("Cost: {}", cell.cost));
                         });

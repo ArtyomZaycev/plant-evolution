@@ -62,7 +62,7 @@ impl PlantEvolutionData {
             air_consumption: 0.1,
             minerals_consumption: 0.1,
             water_consumption: 0.1,
-            power_production_speed: 0.1,
+            energy_production_speed: 0.1,
             seed: false,
             cost: 0.,
         }
@@ -74,7 +74,7 @@ impl PlantEvolutionData {
             air_consumption: 0.,
             minerals_consumption: 1.,
             water_consumption: 1.,
-            power_production_speed: 0.4,
+            energy_production_speed: 0.4,
             seed: false,
             cost: 0.,
         }
@@ -110,7 +110,7 @@ pub fn calculate_score(map: &MapData) -> f32 {
                 minerals: nutrition.minerals
                     + cell.input.minerals * cell_abilities.minerals_consumption,
                 water: nutrition.water + cell.input.water * cell_abilities.water_consumption,
-                power: nutrition.power + cell_abilities.power_production_speed,
+                energy: nutrition.energy + cell_abilities.energy_production_speed,
             }
         });
 
@@ -133,7 +133,7 @@ pub fn calculate_score(map: &MapData) -> f32 {
             nutrition.air,
             nutrition.minerals,
             nutrition.water,
-            nutrition.power,
+            nutrition.energy,
         ]
         .into_iter()
         .reduce(f32::min)

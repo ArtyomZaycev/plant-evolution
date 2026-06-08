@@ -117,7 +117,7 @@ impl RandomEvolution for PlantCellAbilities {
             1.,
         );
         randomize_value_change_chance(
-            &mut self.power_production_speed,
+            &mut self.energy_production_speed,
             rng,
             change_chance,
             change_entropy,

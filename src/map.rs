@@ -65,7 +65,7 @@ pub struct PlantNutrition {
     pub minerals: f32,
     pub water: f32,
 
-    pub power: f32,
+    pub energy: f32,
 }
 
 // TODO: Separate for into MapData (for ui) and FullMapData (for engine)
@@ -227,8 +227,8 @@ impl MapData {
                         water: nutrition.water
                             + cell.input.water
                                 * self.evolution_data.cells_abilities[cell.t].water_consumption,
-                        power: nutrition.power
-                            + self.evolution_data.cells_abilities[cell.t].power_production_speed,
+                        energy: nutrition.energy
+                            + self.evolution_data.cells_abilities[cell.t].energy_production_speed,
                     }
                 });
 
@@ -237,7 +237,7 @@ impl MapData {
             self.plant_nutrition.air + nutrition.air,
             self.plant_nutrition.minerals + nutrition.minerals,
             self.plant_nutrition.water + nutrition.water,
-            nutrition.power,
+            nutrition.energy,
         ]
         .into_iter()
         .reduce(f32::min)
@@ -247,7 +247,7 @@ impl MapData {
             air: self.plant_nutrition.air + nutrition.air - produced,
             minerals: self.plant_nutrition.minerals + nutrition.minerals - produced,
             water: self.plant_nutrition.water + nutrition.water - produced,
-            power: self.plant_nutrition.power + produced - self.plants_pos.len() as f32 * 0.002,
+            energy: self.plant_nutrition.energy + produced - self.plants_pos.len() as f32 * 0.002,
         }
     }
 
@@ -351,9 +351,9 @@ impl MapData {
                 }
             } else {
                 let (_, x, y, cell_type) = self.next_cell_growth;
-                if self.plant_nutrition.power >= self.evolution_data.cells_abilities[cell_type].cost
+                if self.plant_nutrition.energy >= self.evolution_data.cells_abilities[cell_type].cost
                 {
-                    self.plant_nutrition.power -=
+                    self.plant_nutrition.energy -=
                         self.evolution_data.cells_abilities[cell_type].cost;
                     self.plants[y][x] = PlantCell {
                         t: cell_type,
@@ -473,7 +473,7 @@ pub fn get_basic_map_data() -> (PlantEvolutionData, PlantNutrition) {
         air: 20.,
         minerals: 1.,
         water: 1.,
-        power: 20.,
+        energy: 20.,
     };
 
     (evolution_data, plant_nutrition)
