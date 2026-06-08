@@ -1,4 +1,4 @@
-use std::{cell::LazyCell, f32};
+use std::{cell::LazyCell, collections::HashMap, f32};
 
 use crate::{cell::*, const_precalc::*, evolution::PlantEvolutionData, random_evolution::*};
 
@@ -253,6 +253,7 @@ impl MapData {
 
     #[hotpath::measure]
     fn recalc_next_cell_growth(&mut self) {
+        let mut growth_w = HashMap::new();
         self.next_cell_growth = (f32::NEG_INFINITY, 0, 0, 0);
         self.plants_pos.iter().for_each(|&(j, i)| {
             let plant_cell = &self.plants[i][j];
@@ -268,13 +269,16 @@ impl MapData {
                                 (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
                                 (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
                             );
-                            if score > self.next_cell_growth.0 {
-                                self.next_cell_growth = (score, nj, ni, c);
+                            let cw = growth_w.entry((ni, nj, c)).or_default();
+                            *cw += score;
+                            if *cw >= self.next_cell_growth.0 {
+                                self.next_cell_growth = (*cw, nj, ni, c);
                             }
                         }
                     }
                 });
         });
+
     }
 
     #[hotpath::measure]

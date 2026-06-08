@@ -22,8 +22,7 @@ impl PlantCellAbilities {
             + self.minerals_consumption
             + self.water_consumption
             + self.power_production_speed.sqrt() * 4.)
-            .powi(3)
-            / 10.
+            .powi(2)
             + if self.seed { 50. } else { 0. };
     }
 

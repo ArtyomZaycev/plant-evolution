@@ -127,7 +127,7 @@ pub fn calculate_score(map: &MapData) -> f32 {
         seeds_score += 2. / (cnt + 1) as f32;
     }
 
-    (seeds_score * 25.).sqrt()
+    (seeds_score * 10.)
         + ([
             nutrition.sunlight,
             nutrition.air,
