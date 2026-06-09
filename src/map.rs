@@ -260,7 +260,7 @@ impl MapData {
                     if self.plants[ni][nj].t == usize::MAX {
                         let weights = &evolution.weights[d];
                         for c in 0..NUMBER_OF_CELLS {
-                            let score = weights[c].calculate(
+                            let score = weights[c].0.calculate(
                                 &plant_cell.input,
                                 (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
                                 (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
@@ -476,9 +476,10 @@ pub fn get_basic_map_data() -> (PlantEvolutionData, PlantNutrition) {
 }
 
 impl RandomEvolution for MapData {
-    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) {
-        self.evolution_data
+    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
+        let changed = self.evolution_data
             .evolve_random(rng, change_chance, change_entropy);
         self.evolutions += 1;
+        changed
     }
 }

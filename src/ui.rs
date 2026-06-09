@@ -197,7 +197,8 @@ impl PlantEvolutionApp {
                     }
                 };
 
-                let color = if self.hovered_cell.or(self.highlighted_cell) == Some((map_idx, j, i)) {
+                let color = if self.hovered_cell.or(self.highlighted_cell) == Some((map_idx, j, i))
+                {
                     Color32::BROWN
                 } else {
                     color
@@ -236,14 +237,18 @@ impl PlantEvolutionApp {
     }
 
     fn draw_map_border(&self, ui: &mut egui::Ui, canvas_start: Pos2, strong: bool) {
-        let (border_width, color) = if strong {(self.cell_size / 2., Color32::PURPLE)} else {(self.cell_size / 2., Color32::BLUE)};
+        let (border_width, color) = if strong {
+            (self.cell_size / 2., Color32::PURPLE)
+        } else {
+            (self.cell_size / 2., Color32::BLUE)
+        };
         let min = (canvas_start - Pos2::new(border_width, border_width)).to_pos2();
         let max = canvas_start + self.get_ui_map_size() + Vec2::new(border_width, border_width);
         let rect = Rect::from_min_max(min, max);
         let painter = ui.painter_at(rect);
         painter.rect_stroke(rect, 0., (border_width, color), egui::StrokeKind::Inside);
     }
-    
+
     fn update_selected_maps(&mut self) {
         if self.selected_maps_index.len() == 0 {
             self.selected_maps_index = vec![0];
@@ -251,7 +256,10 @@ impl PlantEvolutionApp {
         self.selected_maps_index.sort();
         self.selected_map_index_str =
             Self::get_selected_map_index_to_str(&self.selected_maps_index);
-        if !self.highlighted_map.is_some_and(|map_idx| self.selected_maps_index.contains(&map_idx)) {
+        if !self
+            .highlighted_map
+            .is_some_and(|map_idx| self.selected_maps_index.contains(&map_idx))
+        {
             self.highlighted_map = None;
         }
     }
@@ -277,15 +285,16 @@ impl eframe::App for PlantEvolutionApp {
             .resizable(false)
             .show(ui.ctx(), |ui| {
                 ui.label(format!(
-                    "Suicide: {}",
-                    evolution_data.suicide_weights.get_formula()
+                    "Suicide (v={:.2}): {}",
+                    evolution_data.suicide_weights.1,
+                    evolution_data.suicide_weights.0.get_formula()
                 ));
                 ui.collapsing("Up", |ui| {
                     evolution_data.weights[0]
                         .iter()
                         .enumerate()
                         .for_each(|(i, w)| {
-                            ui.label(format!("{}: {}", i + 1, w.get_formula()));
+                            ui.label(format!("{} (v={:.2}): {}", i + 1, w.1, w.0.get_formula()));
                         });
                 });
                 ui.collapsing("Sideways", |ui| {
@@ -293,7 +302,7 @@ impl eframe::App for PlantEvolutionApp {
                         .iter()
                         .enumerate()
                         .for_each(|(i, w)| {
-                            ui.label(format!("{}: {}", i + 1, w.get_formula()));
+                            ui.label(format!("{} (v={:.2}): {}", i + 1, w.1, w.0.get_formula()));
                         });
                 });
                 ui.collapsing("Down", |ui| {
@@ -301,7 +310,7 @@ impl eframe::App for PlantEvolutionApp {
                         .iter()
                         .enumerate()
                         .for_each(|(i, w)| {
-                            ui.label(format!("{}: {}", i + 1, w.get_formula()));
+                            ui.label(format!("{} (v={:.2}): {}", i + 1, w.1, w.0.get_formula()));
                         });
                 });
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
@@ -387,7 +396,6 @@ impl eframe::App for PlantEvolutionApp {
         egui::Panel::right("control_menu").show_inside(ui, |ui| {
             ui.set_min_width(200.);
 
-            
             ui.horizontal(|ui| {
                 if ui.add_enabled(true, Button::new("Evolve!")).clicked() {
                     self.command_sender.send(EngineCommand::Evolve).unwrap();
@@ -429,8 +437,11 @@ impl eframe::App for PlantEvolutionApp {
             }
 
             ui.separator();
-            
-            let map_idx = self.hovered_cell.map_or(self.highlighted_map.unwrap_or(self.selected_maps_index[0]), |(map_idx, _, _)| map_idx);
+
+            let map_idx = self.hovered_cell.map_or(
+                self.highlighted_map.unwrap_or(self.selected_maps_index[0]),
+                |(map_idx, _, _)| map_idx,
+            );
 
             ui.heading(format!("Plant {}", map_idx + 1));
 
@@ -438,7 +449,10 @@ impl eframe::App for PlantEvolutionApp {
                 ui.label(format!("Evolutions: {}", self.maps[map_idx].evolutions));
                 ui.label(format!("Step: {}", self.maps[map_idx].ticks));
             });
-            ui.label(format!("Score: {:.2}", calculate_score(&self.maps[map_idx])));
+            ui.label(format!(
+                "Score: {:.2}",
+                calculate_score(&self.maps[map_idx])
+            ));
 
             ui.separator();
 
@@ -447,7 +461,10 @@ impl eframe::App for PlantEvolutionApp {
                 "Sunlight: {:.2}",
                 self.maps[map_idx].plant_nutrition.sunlight
             ));
-            ui.label(format!("Air: {:.2}", self.maps[map_idx].plant_nutrition.air));
+            ui.label(format!(
+                "Air: {:.2}",
+                self.maps[map_idx].plant_nutrition.air
+            ));
             ui.label(format!(
                 "Minerals: {}",
                 self.maps[map_idx].plant_nutrition.minerals
@@ -472,8 +489,7 @@ impl eframe::App for PlantEvolutionApp {
                         ui.collapsing(format!("Cell {}", i + 1), |ui| {
                             if ui
                                 .add_enabled(
-                                    self.selected_decision_tree
-                                        != Some((map_idx, i)),
+                                    self.selected_decision_tree != Some((map_idx, i)),
                                     Button::new("Decision tree"),
                                 )
                                 .clicked()

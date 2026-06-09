@@ -157,20 +157,18 @@ impl WeightsTree {
                 cnt + 1
             }
         });
-        self.nodes
-            .iter_mut()
-            .for_each(|node| match node {
-                TreeNode::Operation(op_node) => match op_node {
-                    OpNode::Unary(_, idx1) => {
-                        *idx1 = new_idx[*idx1];
-                    }
-                    OpNode::Binary(_, idx1, idx2) => {
-                        *idx1 = new_idx[*idx1];
-                        *idx2 = new_idx[*idx2];
-                    }
-                },
-                _ => {}
-            });
+        self.nodes.iter_mut().for_each(|node| match node {
+            TreeNode::Operation(op_node) => match op_node {
+                OpNode::Unary(_, idx1) => {
+                    *idx1 = new_idx[*idx1];
+                }
+                OpNode::Binary(_, idx1, idx2) => {
+                    *idx1 = new_idx[*idx1];
+                    *idx2 = new_idx[*idx2];
+                }
+            },
+            _ => {}
+        });
     }
 
     fn get_subformula(&self, idx: usize) -> String {

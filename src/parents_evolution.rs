@@ -32,6 +32,16 @@ impl<T: ParentCombination, const N: usize> ParentCombination for [T; N] {
     }
 }
 
+// Evolution with volatility parameter
+impl<T: ParentCombination> ParentCombination for (T, f32) {
+    fn parent_combine(&self, rng: &mut Rng, other: &Self) -> Self {
+        (
+            self.0.parent_combine(rng, &other.0),
+            (self.1 + other.1) / 2.,
+        )
+    }
+}
+
 impl ParentCombination for PlantEvolutionData {
     fn parent_combine(&self, rng: &mut Rng, other: &Self) -> Self {
         Self {

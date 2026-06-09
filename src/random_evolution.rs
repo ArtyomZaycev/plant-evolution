@@ -6,9 +6,12 @@ use crate::{cell::*, evolution::*, map::*, weights_tree::*};
 
 pub type Rng = rand::rngs::ThreadRng;
 
-fn apply_change_chance<F: FnOnce()>(change_chance: f32, random: f32, f: F) {
+fn apply_change_chance<F: FnOnce()>(change_chance: f32, random: f32, f: F) -> bool {
     if random < change_chance {
         f();
+        true
+    } else {
+        false
     }
 }
 
@@ -24,112 +27,117 @@ fn randomize_value_change_chance(
     change_entropy: f32,
     min: f32,
     max: f32,
-) {
+) -> bool {
     apply_change_chance(change_chance, rng.random(), || {
         randomize_value(value, rng.random(), change_entropy);
         *value = value.clamp(min, max);
-    });
+    })
 }
 
-fn randomize_bool_value_change_chance(
-    value: &mut bool,
-    rng: &mut Rng,
-    change_chance: f32,
-) {
+fn randomize_bool_value_change_chance(value: &mut bool, rng: &mut Rng, change_chance: f32) -> bool {
     apply_change_chance(change_chance, rng.random(), || {
         if rng.random::<f32>() > 0.5 {
             *value = !*value
         }
-    });
+    })
 }
 
 pub trait RandomEvolution {
-    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32);
+    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool;
 }
 
 impl<T: RandomEvolution> RandomEvolution for Vec<T> {
-    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) {
-        self.iter_mut().for_each(|v| {
-            v.evolve_random(rng, change_chance, change_entropy);
-        });
+    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
+        self.iter_mut().fold(false, |acc, v| {
+            acc | v.evolve_random(rng, change_chance, change_entropy)
+        })
     }
 }
 
 impl<T: RandomEvolution, const N: usize> RandomEvolution for [T; N] {
-    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) {
-        self.iter_mut().for_each(|v| {
-            v.evolve_random(rng, change_chance, change_entropy);
-        });
+    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
+        self.iter_mut().fold(false, |acc, v| {
+            acc | v.evolve_random(rng, change_chance, change_entropy)
+        })
+    }
+}
+
+// Evolution with volatility parameter
+impl<T: RandomEvolution> RandomEvolution for (T, f32) {
+    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
+        let changed = self
+            .0
+            .evolve_random(rng, change_chance * self.1, change_entropy * self.1);
+        self.1 *= if changed { 1.1 } else { 0.996 };
+        changed
     }
 }
 
 impl RandomEvolution for PlantEvolutionData {
-    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) {
+    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
         self.cells_evolution_data
-            .evolve_random(rng, change_chance, change_entropy);
-        self.cells_abilities
-            .evolve_random(rng, change_chance, change_entropy);
+            .evolve_random(rng, change_chance, change_entropy)
+            | self
+                .cells_abilities
+                .evolve_random(rng, change_chance, change_entropy)
     }
 }
 
 impl RandomEvolution for CellEvolutionData {
-    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) {
+    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
         self.weights
-            .evolve_random(rng, change_chance, change_entropy);
-        self.suicide_weights
-            .evolve_random(rng, change_chance, change_entropy);
+            .evolve_random(rng, change_chance, change_entropy)
+            | self
+                .suicide_weights
+                .evolve_random(rng, change_chance, change_entropy)
     }
 }
 
 impl RandomEvolution for PlantCellAbilities {
-    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) {
-        randomize_value_change_chance(
+    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
+        let changed = randomize_value_change_chance(
             &mut self.sunlight_consumption,
             rng,
             change_chance,
             change_entropy,
             0.,
             1.,
-        );
-        randomize_value_change_chance(
+        ) | randomize_value_change_chance(
             &mut self.air_consumption,
             rng,
             change_chance,
             change_entropy,
             0.,
             1.,
-        );
-        randomize_value_change_chance(
+        ) | randomize_value_change_chance(
             &mut self.minerals_consumption,
             rng,
             change_chance,
             change_entropy,
             0.,
             1.,
-        );
-        randomize_value_change_chance(
+        ) | randomize_value_change_chance(
             &mut self.water_consumption,
             rng,
             change_chance,
             change_entropy,
             0.,
             1.,
-        );
-        randomize_value_change_chance(
+        ) | randomize_value_change_chance(
             &mut self.energy_production_speed,
             rng,
             change_chance,
             change_entropy,
             0.,
             1.,
-        );
-        randomize_bool_value_change_chance(&mut self.seed, rng, change_chance);
+        ) | randomize_bool_value_change_chance(&mut self.seed, rng, change_chance);
         self.populate_cost();
+        changed
     }
 }
 
 impl RandomEvolution for WeightsTree {
-    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) {
+    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
         apply_change_chance(change_chance, rng.random(), || {
             let idx = rng.random_range(0..self.nodes.len());
             let allow_add = self.nodes.len() < 40;
@@ -143,28 +151,26 @@ impl RandomEvolution for WeightsTree {
                 2 - advance
                     Add operation where one of the operands is the initial node
             */
-            let transform_type = rng.random_range(if allow_add {0..=2} else {0..=1});
+            let transform_type = rng.random_range(if allow_add { 0..=2 } else { 0..=1 });
             match transform_type {
-                0 => {
-                    match &mut self.nodes[idx] {
-                        TreeNode::Value(value) => {
-                            apply_change_chance(change_chance, rng.random(), || {
-                                randomize_value(value, rng.random(), change_entropy);
-                            });
-                        }
-                        TreeNode::Input(input_node) => {
-                            *input_node = InputNode::generate(rng);
-                        }
-                        TreeNode::Operation(op_node) => match op_node {
-                            OpNode::Unary(unary_op, _) => {
-                                *unary_op = UnaryOp::generate(rng);
-                            }
-                            OpNode::Binary(binary_op, _, _) => {
-                                *binary_op = BinaryOp::generate(rng);
-                            }
-                        },
+                0 => match &mut self.nodes[idx] {
+                    TreeNode::Value(value) => {
+                        apply_change_chance(change_chance, rng.random(), || {
+                            randomize_value(value, rng.random(), change_entropy);
+                        });
                     }
-                }
+                    TreeNode::Input(input_node) => {
+                        *input_node = InputNode::generate(rng);
+                    }
+                    TreeNode::Operation(op_node) => match op_node {
+                        OpNode::Unary(unary_op, _) => {
+                            *unary_op = UnaryOp::generate(rng);
+                        }
+                        OpNode::Binary(binary_op, _, _) => {
+                            *binary_op = BinaryOp::generate(rng);
+                        }
+                    },
+                },
                 1 => {
                     let (new_node, mut new_leaves) =
                         TreeNode::generate(rng, self.nodes.len(), allow_add);
@@ -180,7 +186,7 @@ impl RandomEvolution for WeightsTree {
                             OpNode::Unary(unary_op, idx) => {
                                 new_leaves = vec![];
                                 OpNode::Unary(unary_op, idx)
-                            },
+                            }
                             OpNode::Binary(binary_op, idx1, idx2) => {
                                 if rng.random_range(0..=1) == 0 {
                                     new_leaves.remove(0);
@@ -189,7 +195,7 @@ impl RandomEvolution for WeightsTree {
                                     new_leaves.remove(1);
                                     OpNode::Binary(binary_op, idx1, idx)
                                 }
-                            },
+                            }
                         };
                         self.nodes.push(TreeNode::Operation(op_node));
                         self.nodes.append(&mut new_leaves);
@@ -200,7 +206,7 @@ impl RandomEvolution for WeightsTree {
                     panic!("Unexpected transform_type");
                 }
             }
-        });
+        })
     }
 }
 

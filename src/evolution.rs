@@ -12,8 +12,8 @@ type Rng = rand::rngs::ThreadRng;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CellEvolutionData {
-    pub weights: [[WeightsTree; NUMBER_OF_CELLS]; 3],
-    pub suicide_weights: WeightsTree,
+    pub weights: [[(WeightsTree, f32); NUMBER_OF_CELLS]; 3],
+    pub suicide_weights: (WeightsTree, f32),
 }
 
 impl WeightsTree {
@@ -27,25 +27,20 @@ impl WeightsTree {
 impl CellEvolutionData {
     fn rand_generate(rng: &mut Rng) -> Self {
         Self {
-            weights: (0..3)
-                .map(|_| {
-                    (0..NUMBER_OF_CELLS)
-                        .map(|_| WeightsTree::rand_generate(rng))
-                        .collect::<Vec<WeightsTree>>()
-                        .try_into()
-                        .unwrap()
-                })
-                .collect::<Vec<[WeightsTree; NUMBER_OF_CELLS]>>()
-                .try_into()
-                .unwrap(),
-            suicide_weights: WeightsTree {
-                nodes: vec![TreeNode::Value(0.)],
-            },
+            weights: std::array::from_fn(|_| {
+                std::array::from_fn(|_| (WeightsTree::rand_generate(rng), 1.))
+            }),
+            suicide_weights: (
+                WeightsTree {
+                    nodes: vec![TreeNode::Value(0.)],
+                },
+                1.,
+            ),
         }
     }
 
     pub fn calc_suicide(&self, input: &PlantCellInput, height: f32, xdist: f32) -> f32 {
-        self.suicide_weights.calculate(input, height, xdist)
+        self.suicide_weights.0.calculate(input, height, xdist)
     }
 }
 
