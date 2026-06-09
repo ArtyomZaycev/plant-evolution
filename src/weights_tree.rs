@@ -285,23 +285,36 @@ impl TreeNode {
                     Self::Operation(OpNode::Unary(UnaryOp::generate(rng), next_node_idx)),
                     vec![Self::generate(rng, next_node_idx, false).0],
                 ),
-                1 => (
-                    Self::Operation(OpNode::Binary(
-                        BinaryOp::generate(rng),
-                        next_node_idx,
-                        next_node_idx + 1,
-                    )),
-                    vec![
-                        Self::generate(rng, next_node_idx, false).0,
-                        Self::generate(rng, next_node_idx, false).0,
-                    ],
-                ),
+                1 => Self::generate_operation(rng, next_node_idx),
                 _ => {
                     panic!("TreeNode OpNode generate unexpected value");
                 }
             },
             _ => {
                 panic!("TreeNode generate unexpected value");
+            }
+        }
+    }
+
+    pub fn generate_operation(rng: &mut Rng, next_node_idx: usize) -> (Self, Vec<Self>) {
+        match rng.random_range(0..=1) {
+            0 => (
+                Self::Operation(OpNode::Unary(UnaryOp::generate(rng), next_node_idx)),
+                vec![Self::generate(rng, next_node_idx, false).0],
+            ),
+            1 => (
+                Self::Operation(OpNode::Binary(
+                    BinaryOp::generate(rng),
+                    next_node_idx,
+                    next_node_idx + 1,
+                )),
+                vec![
+                    Self::generate(rng, next_node_idx, false).0,
+                    Self::generate(rng, next_node_idx, false).0,
+                ],
+            ),
+            _ => {
+                panic!("TreeNode OpNode generate unexpected value");
             }
         }
     }

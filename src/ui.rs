@@ -277,7 +277,7 @@ impl eframe::App for PlantEvolutionApp {
             .resizable(false)
             .show(ui.ctx(), |ui| {
                 ui.label(format!(
-                    "Suicide: {:.2}",
+                    "Suicide: {}",
                     evolution_data.suicide_weights.get_formula()
                 ));
                 ui.collapsing("Up", |ui| {

@@ -134,39 +134,71 @@ impl RandomEvolution for WeightsTree {
             let idx = rng.random_range(0..self.nodes.len());
             let allow_add = self.nodes.len() < 40;
             /*
-               0 - tweak
-                   Value - adjust Value
-                   Input - change Input,
-                   Operation - change within the same number of operands
-               1 - replace
-                   Replace Node for other random one
+                0 - tweak
+                    Value - adjust Value
+                    Input - change Input,
+                    Operation - change within the same number of operands
+                1 - replace
+                    Replace Node for other random one
+                2 - advance
+                    Add operation where one of the operands is the initial node
             */
-            let transform_type = rng.random_range(0..=1);
-            if transform_type == 0 {
-                match &mut self.nodes[idx] {
-                    TreeNode::Value(value) => {
-                        apply_change_chance(change_chance, rng.random(), || {
-                            randomize_value(value, rng.random(), change_entropy);
-                        });
-                    }
-                    TreeNode::Input(input_node) => {
-                        *input_node = InputNode::generate(rng);
-                    }
-                    TreeNode::Operation(op_node) => match op_node {
-                        OpNode::Unary(unary_op, _) => {
-                            *unary_op = UnaryOp::generate(rng);
+            let transform_type = rng.random_range(if allow_add {0..=2} else {0..=1});
+            match transform_type {
+                0 => {
+                    match &mut self.nodes[idx] {
+                        TreeNode::Value(value) => {
+                            apply_change_chance(change_chance, rng.random(), || {
+                                randomize_value(value, rng.random(), change_entropy);
+                            });
                         }
-                        OpNode::Binary(binary_op, _, _) => {
-                            *binary_op = BinaryOp::generate(rng);
+                        TreeNode::Input(input_node) => {
+                            *input_node = InputNode::generate(rng);
                         }
-                    },
+                        TreeNode::Operation(op_node) => match op_node {
+                            OpNode::Unary(unary_op, _) => {
+                                *unary_op = UnaryOp::generate(rng);
+                            }
+                            OpNode::Binary(binary_op, _, _) => {
+                                *binary_op = BinaryOp::generate(rng);
+                            }
+                        },
+                    }
                 }
-            } else {
-                let (new_node, mut new_leaves) =
-                    TreeNode::generate(rng, self.nodes.len(), allow_add);
-                self.nodes[idx] = new_node;
-                self.nodes.append(&mut new_leaves);
-                self.compact();
+                1 => {
+                    let (new_node, mut new_leaves) =
+                        TreeNode::generate(rng, self.nodes.len(), allow_add);
+                    self.nodes[idx] = new_node;
+                    self.nodes.append(&mut new_leaves);
+                    self.compact();
+                }
+                2 => {
+                    let (new_node, mut new_leaves) =
+                        TreeNode::generate_operation(rng, self.nodes.len());
+                    if let TreeNode::Operation(op_node) = new_node {
+                        let op_node = match op_node {
+                            OpNode::Unary(unary_op, idx) => {
+                                new_leaves = vec![];
+                                OpNode::Unary(unary_op, idx)
+                            },
+                            OpNode::Binary(binary_op, idx1, idx2) => {
+                                if rng.random_range(0..=1) == 0 {
+                                    new_leaves.remove(0);
+                                    OpNode::Binary(binary_op, idx, idx2)
+                                } else {
+                                    new_leaves.remove(1);
+                                    OpNode::Binary(binary_op, idx1, idx)
+                                }
+                            },
+                        };
+                        self.nodes.push(TreeNode::Operation(op_node));
+                        self.nodes.append(&mut new_leaves);
+                        self.compact();
+                    }
+                }
+                _ => {
+                    panic!("Unexpected transform_type");
+                }
             }
         });
     }
