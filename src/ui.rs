@@ -3,7 +3,7 @@ use std::{
     time::Duration,
 };
 
-use egui::{Button, Color32, Frame, Pos2, Rect, Sense, TextEdit, Vec2};
+use egui::{Button, Color32, Frame, Pos2, Rect, Sense, TextEdit, UiBuilder, Vec2};
 
 use crate::{
     const_precalc::*,
@@ -90,15 +90,28 @@ impl PlantEvolutionApp {
                 str.push((selected_maps_index[i] + 1).to_string());
                 str.push((selected_maps_index[j] + 1).to_string());
             } else {
-                str.push(format!("{}-{}", selected_maps_index[i] + 1, selected_maps_index[j] + 1));
+                str.push(format!(
+                    "{}-{}",
+                    selected_maps_index[i] + 1,
+                    selected_maps_index[j] + 1
+                ));
             }
             i = j + 1;
         }
-        str.into_iter().intersperse(", ".to_string()).collect::<Vec<_>>().concat()
+        str.into_iter()
+            .intersperse(", ".to_string())
+            .collect::<Vec<_>>()
+            .concat()
     }
 
-    fn get_selected_map_index_from_str(selected_maps_index_str: &str, max_idx: usize) -> Option<Vec<usize>> {
-        let mut str = selected_maps_index_str.split(",").map(|s| s.trim()).filter(|s| s.len() > 0);
+    fn get_selected_map_index_from_str(
+        selected_maps_index_str: &str,
+        max_idx: usize,
+    ) -> Option<Vec<usize>> {
+        let mut str = selected_maps_index_str
+            .split(",")
+            .map(|s| s.trim())
+            .filter(|s| s.len() > 0);
         let res = str.try_fold(vec![], |mut acc, str| {
             if str.contains("-") {
                 let sp = str.split("-").map(|s| s.trim()).collect::<Vec<_>>();
@@ -132,6 +145,84 @@ impl PlantEvolutionApp {
             v.dedup();
             v
         })
+    }
+
+    fn draw_map(&mut self, ui: &mut egui::Ui, map_idx: usize, canvas_start: Pos2) {
+        let ui_map_size = Vec2::new(
+            MAP_SIZE.0 as f32 * self.cell_size,
+            MAP_SIZE.1 as f32 * self.cell_size,
+        );
+        let response = ui.allocate_response(ui.available_size(), Sense::empty());
+        let painter = ui.painter_at(Rect::from_min_size(canvas_start, ui_map_size));
+
+        let pointer_pos: Option<Pos2> = ui.ctx().input(|i| i.pointer.latest_pos());
+        self.hovered_cell = pointer_pos.and_then(|pos| {
+            let pos = pos - canvas_start;
+            if pos.x < 0. || pos.y < 0. {
+                None
+            } else {
+                let x = (pos.x / self.cell_size) as usize;
+                let y = (pos.y / self.cell_size) as usize;
+
+                if x >= MAP_SIZE.0 || y >= MAP_SIZE.1 {
+                    None
+                } else {
+                    Some((x, y))
+                }
+            }
+        });
+
+        for i in 0..MAP_SIZE.1 {
+            for j in 0..MAP_SIZE.0 {
+                let rect = Rect::from_min_size(
+                    canvas_start
+                        + Vec2 {
+                            x: j as f32 * self.cell_size,
+                            y: i as f32 * self.cell_size,
+                        },
+                    Vec2 {
+                        x: self.cell_size,
+                        y: self.cell_size,
+                    },
+                );
+
+                let color = if self.get_map().plants[i][j].is_some() {
+                    Color32::GREEN
+                } else {
+                    match self.get_map().map[i][j] {
+                        MapCell::Air(_) => Color32::LIGHT_BLUE,
+                        MapCell::Soil(_) => Color32::YELLOW,
+                    }
+                };
+
+                let color = if self.hovered_cell.or(self.highlighted_cell) == Some((j, i)) {
+                    Color32::BROWN
+                } else {
+                    color
+                };
+                painter.rect_filled(rect, 0., color);
+
+                if self.get_map().plants[i][j].is_some()
+                    && self.get_map().evolution_data.cells_abilities
+                        [self.get_map().plants[i][j].t]
+                        .seed
+                {
+                    painter.circle_filled(
+                        canvas_start
+                            + Vec2 {
+                                x: j as f32 * self.cell_size + 0.5 * self.cell_size,
+                                y: i as f32 * self.cell_size + 0.5 * self.cell_size,
+                            },
+                        self.cell_size * 0.4,
+                        Color32::RED,
+                    );
+                }
+            }
+        }
+
+        pointer_pos.inspect(|pos| {
+            painter.circle_filled(*pos, 2., Color32::RED);
+        });
     }
 }
 
@@ -193,39 +284,48 @@ impl eframe::App for PlantEvolutionApp {
         egui::Panel::top("settings").show_inside(ui, |ui| {});
 
         egui::Panel::left("plants_list").show_inside(ui, |ui| {
-            let response = ui
-                .add(TextEdit::singleline(&mut self.selected_map_index_str).desired_width(150.));
-            let new_selected_map_index_str = Self::get_selected_map_index_from_str(&self.selected_map_index_str, self.maps.len());
-            
+            let response =
+                ui.add(TextEdit::singleline(&mut self.selected_map_index_str).desired_width(150.));
+            let new_selected_map_index_str = Self::get_selected_map_index_from_str(
+                &self.selected_map_index_str,
+                self.maps.len(),
+            );
+
             if ui
                 .add_enabled(
                     new_selected_map_index_str.is_some(),
                     egui::Button::new("Select"),
                 )
-                .clicked() || (response.lost_focus() && ui.input(|inp| inp.key_pressed(egui::Key::Enter))) 
+                .clicked()
+                || (response.lost_focus() && ui.input(|inp| inp.key_pressed(egui::Key::Enter)))
             {
                 self.selected_maps_index = new_selected_map_index_str.unwrap();
-                self.selected_map_index_str = Self::get_selected_map_index_to_str(&self.selected_maps_index);
+                self.selected_map_index_str =
+                    Self::get_selected_map_index_to_str(&self.selected_maps_index);
             }
             if response.lost_focus() {
-                self.selected_map_index_str = Self::get_selected_map_index_to_str(&self.selected_maps_index);
+                self.selected_map_index_str =
+                    Self::get_selected_map_index_to_str(&self.selected_maps_index);
             };
 
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.set_min_width(80.);
                 self.maps.iter().enumerate().for_each(|(i, _)| {
                     let already_has = self.selected_maps_index.iter().position(|&idx| idx == i);
-                    if ui.selectable_label(already_has.is_some(), format!("Plant {}", i + 1)).clicked() {
+                    if ui
+                        .selectable_label(already_has.is_some(), format!("Plant {}", i + 1))
+                        .clicked()
+                    {
                         if ui.input(|inp| inp.modifiers.ctrl) {
                             match already_has {
                                 Some(idx) => {
                                     if self.selected_maps_index.len() > 1 {
                                         self.selected_maps_index.remove(idx);
                                     }
-                                },
+                                }
                                 None => {
                                     self.selected_maps_index.push(i);
-                                },
+                                }
                             }
                         } else if ui.input(|inp| inp.modifiers.shift) {
                             let range = *self.selected_maps_index.last().unwrap()..=i;
@@ -236,9 +336,12 @@ impl eframe::App for PlantEvolutionApp {
                                 }
                             }
                             if new_idx.len() == 0 {
-                                self.selected_maps_index = self.selected_maps_index.iter().filter(|&&j| {
-                                    !range.contains(&j)
-                                }).cloned().collect();
+                                self.selected_maps_index = self
+                                    .selected_maps_index
+                                    .iter()
+                                    .filter(|&&j| !range.contains(&j))
+                                    .cloned()
+                                    .collect();
                             } else {
                                 self.selected_maps_index.extend(new_idx);
                             }
@@ -249,7 +352,8 @@ impl eframe::App for PlantEvolutionApp {
                             self.selected_maps_index = vec![0];
                         }
                         self.selected_maps_index.sort();
-                        self.selected_map_index_str = Self::get_selected_map_index_to_str(&self.selected_maps_index);
+                        self.selected_map_index_str =
+                            Self::get_selected_map_index_to_str(&self.selected_maps_index);
                     }
                 });
             });
@@ -432,88 +536,20 @@ impl eframe::App for PlantEvolutionApp {
                 });
 
             Frame::canvas(ui.style()).show(ui, |ui| {
-                let (response, painter) =
-                    ui.allocate_painter(ui.available_size_before_wrap(), Sense::empty());
+                let available = ui.available_size();
                 self.cell_size = self.min_cell_size.max({
-                    (response.rect.width() / MAP_SIZE.0 as f32)
-                        .min(response.rect.height() / MAP_SIZE.1 as f32)
+                    (available.x / MAP_SIZE.0 as f32)
+                        .min(available.y / MAP_SIZE.1 as f32)
                 });
 
-                let canvas_start = (response.rect.center()
+                let canvas_start = (ui.next_widget_position() + available / 2.
                     - Pos2 {
                         x: self.cell_size * MAP_SIZE.0 as f32 / 2.,
                         y: self.cell_size * MAP_SIZE.1 as f32 / 2.,
                     })
                 .to_pos2();
 
-                let pointer_pos: Option<Pos2> = ui.ctx().input(|i| i.pointer.latest_pos());
-                self.hovered_cell = pointer_pos.and_then(|pos| {
-                    let pos = pos - canvas_start;
-                    if pos.x < 0. || pos.y < 0. {
-                        None
-                    } else {
-                        let x = (pos.x / self.cell_size) as usize;
-                        let y = (pos.y / self.cell_size) as usize;
-
-                        if x >= MAP_SIZE.0 || y >= MAP_SIZE.1 {
-                            None
-                        } else {
-                            Some((x, y))
-                        }
-                    }
-                });
-
-                for i in 0..MAP_SIZE.1 {
-                    for j in 0..MAP_SIZE.0 {
-                        let rect = Rect::from_min_size(
-                            canvas_start
-                                + Vec2 {
-                                    x: j as f32 * self.cell_size,
-                                    y: i as f32 * self.cell_size,
-                                },
-                            Vec2 {
-                                x: self.cell_size,
-                                y: self.cell_size,
-                            },
-                        );
-
-                        let color = if self.get_map().plants[i][j].is_some() {
-                            Color32::GREEN
-                        } else {
-                            match self.get_map().map[i][j] {
-                                MapCell::Air(_) => Color32::LIGHT_BLUE,
-                                MapCell::Soil(_) => Color32::YELLOW,
-                            }
-                        };
-
-                        let color = if self.hovered_cell.or(self.highlighted_cell) == Some((j, i)) {
-                            Color32::BROWN
-                        } else {
-                            color
-                        };
-                        painter.rect_filled(rect, 0., color);
-
-                        if self.get_map().plants[i][j].is_some()
-                            && self.get_map().evolution_data.cells_abilities
-                                [self.get_map().plants[i][j].t]
-                                .seed
-                        {
-                            painter.circle_filled(
-                                canvas_start
-                                    + Vec2 {
-                                        x: j as f32 * self.cell_size + 0.5 * self.cell_size,
-                                        y: i as f32 * self.cell_size + 0.5 * self.cell_size,
-                                    },
-                                self.cell_size * 0.4,
-                                Color32::RED,
-                            );
-                        }
-                    }
-                }
-
-                pointer_pos.inspect(|pos| {
-                    painter.circle_filled(*pos, 2., Color32::RED);
-                });
+                self.draw_map(ui, self.selected_maps_index[0], canvas_start);
             });
         });
     }
