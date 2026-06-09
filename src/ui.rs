@@ -27,7 +27,7 @@ pub struct PlantEvolutionApp {
     cell_size: f32,
 
     selected_map_index_str: String,
-    selected_map_index: usize,
+    selected_maps_index: Vec<usize>,
     maps: Vec<MapData>,
 
     maps_version: u128,
@@ -52,7 +52,7 @@ impl PlantEvolutionApp {
             min_cell_size: 2.,
             cell_size: 6.,
             selected_map_index_str: "1".to_owned(),
-            selected_map_index: 0,
+            selected_maps_index: vec![0],
             maps_version: 0,
             command_sender: sender,
             maps: slow_maps.force_read(),
@@ -67,7 +67,71 @@ impl PlantEvolutionApp {
     }
 
     fn get_map(&self) -> &MapData {
-        &self.maps[self.selected_map_index]
+        &self.maps[self.selected_maps_index[0]]
+    }
+
+    fn get_selected_map_index_to_str(selected_maps_index: &[usize]) -> String {
+        let mut str = vec![];
+        let mut is_in_range = vec![false; selected_maps_index.len()];
+        for i in 1..selected_maps_index.len() {
+            if selected_maps_index[i - 1] + 1 == selected_maps_index[i] {
+                is_in_range[i] = true;
+            }
+        }
+        let mut i = 0;
+        while i < selected_maps_index.len() {
+            let mut j = i;
+            while j + 1 < selected_maps_index.len() && is_in_range[j + 1] {
+                j += 1;
+            }
+            if i == j {
+                str.push((selected_maps_index[i] + 1).to_string());
+            } else if selected_maps_index[i] + 1 == selected_maps_index[j] {
+                str.push((selected_maps_index[i] + 1).to_string());
+                str.push((selected_maps_index[j] + 1).to_string());
+            } else {
+                str.push(format!("{}-{}", selected_maps_index[i] + 1, selected_maps_index[j] + 1));
+            }
+            i = j + 1;
+        }
+        str.into_iter().intersperse(", ".to_string()).collect::<Vec<_>>().concat()
+    }
+
+    fn get_selected_map_index_from_str(selected_maps_index_str: &str, max_idx: usize) -> Option<Vec<usize>> {
+        let mut str = selected_maps_index_str.split(",").map(|s| s.trim()).filter(|s| s.len() > 0);
+        let res = str.try_fold(vec![], |mut acc, str| {
+            if str.contains("-") {
+                let sp = str.split("-").map(|s| s.trim()).collect::<Vec<_>>();
+                if sp.len() != 2 {
+                    None
+                } else {
+                    sp[0].parse().ok().and_then(|lower_bound: usize| {
+                        sp[1].parse().ok().and_then(|upper_bound: usize| {
+                            if lower_bound <= upper_bound && upper_bound <= max_idx {
+                                acc.extend(lower_bound - 1..=upper_bound - 1);
+                                Some(acc)
+                            } else {
+                                None
+                            }
+                        })
+                    })
+                }
+            } else {
+                str.parse().ok().and_then(|v: usize| {
+                    if v <= max_idx {
+                        acc.push(v - 1);
+                        Some(acc)
+                    } else {
+                        None
+                    }
+                })
+            }
+        });
+        res.map(|mut v| {
+            v.sort();
+            v.dedup();
+            v
+        })
     }
 }
 
@@ -129,39 +193,63 @@ impl eframe::App for PlantEvolutionApp {
         egui::Panel::top("settings").show_inside(ui, |ui| {});
 
         egui::Panel::left("plants_list").show_inside(ui, |ui| {
-            ui.horizontal(|ui| {
-                let response = ui
-                    .add(TextEdit::singleline(&mut self.selected_map_index_str).desired_width(64.));
-                let idx = self.selected_map_index_str.parse::<usize>();
-                if ui
-                    .add_enabled(
-                        idx.as_ref().is_ok_and(|&idx| idx <= self.maps.len()),
-                        egui::Button::new("Select"),
-                    )
-                    .clicked()
-                {
-                    self.selected_map_index = idx.unwrap() - 1;
-                    self.selected_map_index_str = (self.selected_map_index + 1).to_string();
-                }
-                if response.lost_focus() {
-                    self.selected_map_index_str = (self.selected_map_index + 1).to_string();
-                };
-            });
+            let response = ui
+                .add(TextEdit::singleline(&mut self.selected_map_index_str).desired_width(150.));
+            let new_selected_map_index_str = Self::get_selected_map_index_from_str(&self.selected_map_index_str, self.maps.len());
+            
+            if ui
+                .add_enabled(
+                    new_selected_map_index_str.is_some(),
+                    egui::Button::new("Select"),
+                )
+                .clicked() || (response.lost_focus() && ui.input(|inp| inp.key_pressed(egui::Key::Enter))) 
+            {
+                self.selected_maps_index = new_selected_map_index_str.unwrap();
+                self.selected_map_index_str = Self::get_selected_map_index_to_str(&self.selected_maps_index);
+            }
+            if response.lost_focus() {
+                self.selected_map_index_str = Self::get_selected_map_index_to_str(&self.selected_maps_index);
+            };
+
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.set_min_width(80.);
                 self.maps.iter().enumerate().for_each(|(i, _)| {
-                    if ui
-                        .selectable_value(
-                            &mut self.selected_map_index,
-                            i,
-                            format!("Plant {}", i + 1),
-                        )
-                        .clicked()
-                    {
-                        if self.selected_map_index == i {
-                            self.selected_map_index = i;
-                            self.selected_map_index_str = (self.selected_map_index + 1).to_string();
+                    let already_has = self.selected_maps_index.iter().position(|&idx| idx == i);
+                    if ui.selectable_label(already_has.is_some(), format!("Plant {}", i + 1)).clicked() {
+                        if ui.input(|inp| inp.modifiers.ctrl) {
+                            match already_has {
+                                Some(idx) => {
+                                    if self.selected_maps_index.len() > 1 {
+                                        self.selected_maps_index.remove(idx);
+                                    }
+                                },
+                                None => {
+                                    self.selected_maps_index.push(i);
+                                },
+                            }
+                        } else if ui.input(|inp| inp.modifiers.shift) {
+                            let range = *self.selected_maps_index.last().unwrap()..=i;
+                            let mut new_idx = vec![];
+                            for j in range.clone() {
+                                if !self.selected_maps_index.contains(&j) {
+                                    new_idx.push(j);
+                                }
+                            }
+                            if new_idx.len() == 0 {
+                                self.selected_maps_index = self.selected_maps_index.iter().filter(|&&j| {
+                                    !range.contains(&j)
+                                }).cloned().collect();
+                            } else {
+                                self.selected_maps_index.extend(new_idx);
+                            }
+                        } else {
+                            self.selected_maps_index = vec![i];
                         }
+                        if self.selected_maps_index.len() == 0 {
+                            self.selected_maps_index = vec![0];
+                        }
+                        self.selected_maps_index.sort();
+                        self.selected_map_index_str = Self::get_selected_map_index_to_str(&self.selected_maps_index);
                     }
                 });
             });
@@ -250,12 +338,12 @@ impl eframe::App for PlantEvolutionApp {
                             if ui
                                 .add_enabled(
                                     self.selected_decision_tree
-                                        != Some((self.selected_map_index, i)),
+                                        != Some((self.selected_maps_index[0], i)),
                                     Button::new("Decision tree"),
                                 )
                                 .clicked()
                             {
-                                new_desision_tree = Some((self.selected_map_index, i));
+                                new_desision_tree = Some((self.selected_maps_index[0], i));
                             }
                             ui.label(format!("Sunlight: {:.2}", cell.sunlight_consumption));
                             ui.label(format!("Air: {:.2}", cell.air_consumption));

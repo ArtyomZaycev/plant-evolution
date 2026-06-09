@@ -1,5 +1,6 @@
 #![feature(integer_atomics)]
 #![feature(lock_value_accessors)]
+#![feature(iter_intersperse)]
 
 pub mod cell;
 mod const_precalc;
