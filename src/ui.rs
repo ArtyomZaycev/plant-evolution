@@ -152,7 +152,6 @@ impl PlantEvolutionApp {
             MAP_SIZE.0 as f32 * self.cell_size,
             MAP_SIZE.1 as f32 * self.cell_size,
         );
-        let response = ui.allocate_response(ui.available_size(), Sense::empty());
         let painter = ui.painter_at(Rect::from_min_size(canvas_start, ui_map_size));
 
         let pointer_pos: Option<Pos2> = ui.ctx().input(|i| i.pointer.latest_pos());
@@ -186,10 +185,10 @@ impl PlantEvolutionApp {
                     },
                 );
 
-                let color = if self.get_map().plants[i][j].is_some() {
+                let color = if self.maps[map_idx].plants[i][j].is_some() {
                     Color32::GREEN
                 } else {
-                    match self.get_map().map[i][j] {
+                    match self.maps[map_idx].map[i][j] {
                         MapCell::Air(_) => Color32::LIGHT_BLUE,
                         MapCell::Soil(_) => Color32::YELLOW,
                     }
@@ -202,9 +201,9 @@ impl PlantEvolutionApp {
                 };
                 painter.rect_filled(rect, 0., color);
 
-                if self.get_map().plants[i][j].is_some()
-                    && self.get_map().evolution_data.cells_abilities
-                        [self.get_map().plants[i][j].t]
+                if self.maps[map_idx].plants[i][j].is_some()
+                    && self.maps[map_idx].evolution_data.cells_abilities
+                        [self.maps[map_idx].plants[i][j].t]
                         .seed
                 {
                     painter.circle_filled(
@@ -535,22 +534,20 @@ impl eframe::App for PlantEvolutionApp {
                     }
                 });
 
-            Frame::canvas(ui.style()).show(ui, |ui| {
-                let available = ui.available_size();
-                self.cell_size = self.min_cell_size.max({
-                    (available.x / MAP_SIZE.0 as f32)
-                        .min(available.y / MAP_SIZE.1 as f32)
-                });
-
-                let canvas_start = (ui.next_widget_position() + available / 2.
-                    - Pos2 {
-                        x: self.cell_size * MAP_SIZE.0 as f32 / 2.,
-                        y: self.cell_size * MAP_SIZE.1 as f32 / 2.,
-                    })
-                .to_pos2();
-
-                self.draw_map(ui, self.selected_maps_index[0], canvas_start);
+            let available = ui.available_size();
+            self.cell_size = self.min_cell_size.max({
+                (available.x / MAP_SIZE.0 as f32)
+                    .min(available.y / MAP_SIZE.1 as f32)
             });
+
+            let canvas_start = (ui.next_widget_position() + available / 2.
+                - Pos2 {
+                    x: self.cell_size * MAP_SIZE.0 as f32 / 2.,
+                    y: self.cell_size * MAP_SIZE.1 as f32 / 2.,
+                })
+            .to_pos2();
+
+            self.draw_map(ui, self.selected_maps_index[0], canvas_start);
         });
     }
 }
