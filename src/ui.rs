@@ -38,6 +38,7 @@ pub struct PlantEvolutionApp {
     run: bool,
     run_evolution: bool,
 
+    highlighted_map: Option<usize>,
     hovered_cell: Option<(usize, usize, usize)>,
     highlighted_cell: Option<(usize, usize, usize)>,
     selected_decision_tree: Option<(usize, usize)>,
@@ -60,6 +61,7 @@ impl PlantEvolutionApp {
             engine_parameters: EngineParameters::default(),
             run: false,
             run_evolution: false,
+            highlighted_map: None,
             hovered_cell: None,
             highlighted_cell: None,
             selected_decision_tree: None,
@@ -143,14 +145,17 @@ impl PlantEvolutionApp {
         })
     }
 
-    fn draw_map(&mut self, ui: &mut egui::Ui, map_idx: usize, canvas_start: Pos2) {
-        let ui_map_size = Vec2::new(
+    fn get_ui_map_size(&self) -> Vec2 {
+        Vec2::new(
             MAP_SIZE.0 as f32 * self.cell_size,
             MAP_SIZE.1 as f32 * self.cell_size,
-        );
-        let painter = ui.painter_at(Rect::from_min_size(canvas_start, ui_map_size));
+        )
+    }
 
-        let pointer_pos: Option<Pos2> = ui.ctx().input(|i| i.pointer.latest_pos());
+    fn draw_map(&mut self, ui: &mut egui::Ui, map_idx: usize, canvas_start: Pos2) {
+        let painter = ui.painter_at(Rect::from_min_size(canvas_start, self.get_ui_map_size()));
+
+        let pointer_pos: Option<Pos2> = ui.ctx().input(|i| i.pointer.interact_pos());
         if self.hovered_cell.is_none() {
             self.hovered_cell = pointer_pos.and_then(|pos| {
                 let pos = pos - canvas_start;
@@ -229,6 +234,27 @@ impl PlantEvolutionApp {
             Color32::BLACK,
         );
     }
+
+    fn draw_map_border(&self, ui: &mut egui::Ui, canvas_start: Pos2, strong: bool) {
+        let (border_width, color) = if strong {(self.cell_size / 2., Color32::PURPLE)} else {(self.cell_size / 2., Color32::BLUE)};
+        let min = (canvas_start - Pos2::new(border_width, border_width)).to_pos2();
+        let max = canvas_start + self.get_ui_map_size() + Vec2::new(border_width, border_width);
+        let rect = Rect::from_min_max(min, max);
+        let painter = ui.painter_at(rect);
+        painter.rect_stroke(rect, 0., (border_width, color), egui::StrokeKind::Inside);
+    }
+    
+    fn update_selected_maps(&mut self) {
+        if self.selected_maps_index.len() == 0 {
+            self.selected_maps_index = vec![0];
+        }
+        self.selected_maps_index.sort();
+        self.selected_map_index_str =
+            Self::get_selected_map_index_to_str(&self.selected_maps_index);
+        if !self.highlighted_map.is_some_and(|map_idx| self.selected_maps_index.contains(&map_idx)) {
+            self.highlighted_map = None;
+        }
+    }
 }
 
 impl eframe::App for PlantEvolutionApp {
@@ -305,8 +331,7 @@ impl eframe::App for PlantEvolutionApp {
                 || (response.lost_focus() && ui.input(|inp| inp.key_pressed(egui::Key::Enter)))
             {
                 self.selected_maps_index = new_selected_map_index_str.unwrap();
-                self.selected_map_index_str =
-                    Self::get_selected_map_index_to_str(&self.selected_maps_index);
+                self.update_selected_maps();
             }
             if response.lost_focus() {
                 self.selected_map_index_str =
@@ -315,7 +340,7 @@ impl eframe::App for PlantEvolutionApp {
 
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.set_min_width(80.);
-                self.maps.iter().enumerate().for_each(|(i, _)| {
+                (0..self.maps.len()).for_each(|i| {
                     let already_has = self.selected_maps_index.iter().position(|&idx| idx == i);
                     if ui
                         .selectable_label(already_has.is_some(), format!("Plant {}", i + 1))
@@ -353,12 +378,7 @@ impl eframe::App for PlantEvolutionApp {
                         } else {
                             self.selected_maps_index = vec![i];
                         }
-                        if self.selected_maps_index.len() == 0 {
-                            self.selected_maps_index = vec![0];
-                        }
-                        self.selected_maps_index.sort();
-                        self.selected_map_index_str =
-                            Self::get_selected_map_index_to_str(&self.selected_maps_index);
+                        self.update_selected_maps();
                     }
                 });
             });
@@ -410,7 +430,7 @@ impl eframe::App for PlantEvolutionApp {
 
             ui.separator();
             
-            let map_idx = self.hovered_cell.map_or(self.selected_maps_index[0], |(map_idx, _, _)| map_idx);
+            let map_idx = self.hovered_cell.map_or(self.highlighted_map.unwrap_or(self.selected_maps_index[0]), |(map_idx, _, _)| map_idx);
 
             ui.heading(format!("Plant {}", map_idx + 1));
 
@@ -480,7 +500,7 @@ impl eframe::App for PlantEvolutionApp {
             self.highlighted_cell = None;
             if ui
                 .label(format!(
-                    "Next growth {:.2}: cell {} at {:?}",
+                    "Next growth {:.2} cell {} at {:?}",
                     self.maps[map_idx].next_cell_growth.0,
                     self.maps[map_idx].next_cell_growth.3,
                     (
@@ -554,7 +574,7 @@ impl eframe::App for PlantEvolutionApp {
                     let available = ui.available_size();
 
                     let min_border_size = self.min_cell_size * 2.;
-                    let min_map_width = self.min_cell_size * MAP_SIZE.0 as f32;
+                    let min_map_width: f32 = self.min_cell_size * MAP_SIZE.0 as f32;
                     let columns = (((available.x - min_border_size) / (min_map_width + min_border_size)).floor() as usize).min(self.selected_maps_index.len());
                     let rows = self.selected_maps_index.len().div_ceil(columns);
                     let map_width = (available.x - (columns + 1) as f32 * min_border_size) / columns as f32;
@@ -573,12 +593,13 @@ impl eframe::App for PlantEvolutionApp {
                     let border_width = (available.x - columns as f32 * map_width) / (columns + 1) as f32;
                     let border_height = min_border_size;
 
-                    let start_pos = ui.next_widget_position();
-                    ui.allocate_rect(Rect::from_min_size(start_pos, Vec2::new(
-                        border_width * (columns + 1) as f32 + columns as f32 * map_width,
-                        rows as f32 * map_height + rows as f32 * border_height,
-                    )), Sense::empty());
+                    let start_pos = ui.next_widget_position() + Vec2::new(0., border_height);
+                    let canvas_reponse = ui.allocate_rect(Rect::from_min_size(start_pos, Vec2::new(
+                        border_width * (columns + 1) as f32 + map_width * columns as f32,
+                        border_height * rows as f32 + map_height * rows as f32,
+                    )), Sense::click());
                     for i in 0..self.selected_maps_index.len() {
+                        let map_idx = self.selected_maps_index[i];
                         let row = i / columns;
                         let column = i % columns;
 
@@ -587,7 +608,21 @@ impl eframe::App for PlantEvolutionApp {
                             start_pos.y + map_height * row as f32 + border_height * row as f32
                         );
 
-                        self.draw_map(ui, self.selected_maps_index[i], canvas_start);
+                        self.draw_map(ui, map_idx, canvas_start);
+
+                        let map_rect = Rect::from_min_size(canvas_start, self.get_ui_map_size());
+                        if ui.input(|inp| inp.pointer.hover_pos()).is_some_and(|p| map_rect.contains(p)) {
+                            self.draw_map_border(ui, canvas_start, false);
+                            if ui.input(|inp| inp.pointer.primary_clicked()) {
+                                match self.highlighted_map {
+                                    Some(idx) if idx == map_idx => self.highlighted_map = None,
+                                    _ => self.highlighted_map = Some(map_idx),
+                                }
+                            }
+                        }
+                        if self.highlighted_map == Some(map_idx) {
+                            self.draw_map_border(ui, canvas_start, true);
+                        }
                     }
                 });
             });
