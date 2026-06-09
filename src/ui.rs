@@ -3,7 +3,7 @@ use std::{
     time::Duration,
 };
 
-use egui::{Button, Color32, Frame, Pos2, Rect, Sense, TextEdit, UiBuilder, Vec2};
+use egui::{Align2, Button, Color32, FontId, Frame, Pos2, Rect, Sense, TextEdit, UiBuilder, Vec2};
 
 use crate::{
     const_precalc::*,
@@ -38,8 +38,8 @@ pub struct PlantEvolutionApp {
     run: bool,
     run_evolution: bool,
 
-    hovered_cell: Option<(usize, usize)>,
-    highlighted_cell: Option<(usize, usize)>,
+    hovered_cell: Option<(usize, usize, usize)>,
+    highlighted_cell: Option<(usize, usize, usize)>,
     selected_decision_tree: Option<(usize, usize)>,
 }
 
@@ -49,7 +49,7 @@ impl PlantEvolutionApp {
         slow_maps: Arc<SlowMutex<Vec<MapData>>>,
     ) -> Self {
         Self {
-            min_cell_size: 2.,
+            min_cell_size: 4.,
             cell_size: 6.,
             selected_map_index_str: "1".to_owned(),
             selected_maps_index: vec![0],
@@ -166,7 +166,7 @@ impl PlantEvolutionApp {
                 if x >= MAP_SIZE.0 || y >= MAP_SIZE.1 {
                     None
                 } else {
-                    Some((x, y))
+                    Some((map_idx, x, y))
                 }
             }
         });
@@ -194,7 +194,7 @@ impl PlantEvolutionApp {
                     }
                 };
 
-                let color = if self.hovered_cell.or(self.highlighted_cell) == Some((j, i)) {
+                let color = if self.hovered_cell.or(self.highlighted_cell) == Some((map_idx, j, i)) {
                     Color32::BROWN
                 } else {
                     color
@@ -222,6 +222,14 @@ impl PlantEvolutionApp {
         pointer_pos.inspect(|pos| {
             painter.circle_filled(*pos, 2., Color32::RED);
         });
+
+        painter.text(
+            canvas_start + Vec2::splat(self.cell_size * 2.),
+            Align2::LEFT_TOP,
+            format!("Plant {}", map_idx + 1),
+            FontId::default(),
+            Color32::BLACK,
+        );
     }
 }
 
@@ -479,6 +487,7 @@ impl eframe::App for PlantEvolutionApp {
                 .hovered()
             {
                 self.highlighted_cell = Some((
+                    self.selected_maps_index[0],
                     self.get_map().next_cell_growth.1,
                     self.get_map().next_cell_growth.2,
                 ));
@@ -499,6 +508,7 @@ impl eframe::App for PlantEvolutionApp {
                     .is_some()
                 {
                     self.highlighted_cell = Some((
+                        self.selected_maps_index[0],
                         self.get_map().next_cell_suicide.1,
                         self.get_map().next_cell_suicide.2,
                     ));
@@ -510,18 +520,18 @@ impl eframe::App for PlantEvolutionApp {
             egui::Panel::bottom("cell_info")
                 .min_size(100.)
                 .show_inside(ui, |ui| match self.hovered_cell.or(self.highlighted_cell) {
-                    Some((x, y)) => {
-                        let cell_info = format!("cell_info {:?};", &self.get_map().map[y][x]);
+                    Some((map_idx, x, y)) => {
+                        let cell_info = format!("cell_info {:?};", &self.maps[map_idx].map[y][x]);
                         ui.label(format!("({}, {}) => {}", x, y, cell_info));
 
-                        let plant_info = if self.get_map().plants[y][x].is_some() {
+                        let plant_info = if self.maps[map_idx].plants[y][x].is_some() {
                             format!(
                                 "plant {}, sunlight: {:.2}, air: {:.2}, minerals: {:.2}, water: {:.2}",
-                                self.get_map().plants[y][x].t + 1,
-                                self.get_map().plants[y][x].input.sunlight,
-                                self.get_map().plants[y][x].input.air,
-                                self.get_map().plants[y][x].input.minerals,
-                                self.get_map().plants[y][x].input.water
+                                self.maps[map_idx].plants[y][x].t + 1,
+                                self.maps[map_idx].plants[y][x].input.sunlight,
+                                self.maps[map_idx].plants[y][x].input.air,
+                                self.maps[map_idx].plants[y][x].input.minerals,
+                                self.maps[map_idx].plants[y][x].input.water
                             )
                         } else {
                             "".to_owned()
@@ -534,20 +544,48 @@ impl eframe::App for PlantEvolutionApp {
                     }
                 });
 
-            let available = ui.available_size();
-            self.cell_size = self.min_cell_size.max({
-                (available.x / MAP_SIZE.0 as f32)
-                    .min(available.y / MAP_SIZE.1 as f32)
+            egui::Frame::canvas(ui.style()).show(ui, |ui| {
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    let available = ui.available_size();
+
+                    let min_border_size = self.min_cell_size * 2.;
+                    let min_map_width = self.min_cell_size * MAP_SIZE.0 as f32;
+                    let columns = (((available.x - min_border_size) / (min_map_width + min_border_size)).floor() as usize).min(self.selected_maps_index.len());
+                    let rows = self.selected_maps_index.len().div_ceil(columns);
+                    let map_width = (available.x - (columns + 1) as f32 * min_border_size) / columns as f32;
+                    let map_height = map_width;
+                    if self.selected_maps_index.len() == 1 {
+                        self.cell_size = self.min_cell_size.max({
+                            (available.x / MAP_SIZE.0 as f32)
+                                .min(available.y / MAP_SIZE.1 as f32)
+                        });
+                    } else {
+                        self.cell_size = self.min_cell_size.max({
+                            map_width / MAP_SIZE.0 as f32
+                        });
+                    }
+                    let map_width = self.cell_size * MAP_SIZE.0 as f32;
+                    let border_width = (available.x - columns as f32 * map_width) / (columns + 1) as f32;
+                    let border_height = min_border_size;
+
+                    let start_pos = ui.next_widget_position();
+                    ui.allocate_rect(Rect::from_min_size(start_pos, Vec2::new(
+                        border_width * (columns + 1) as f32 + columns as f32 * map_width,
+                        rows as f32 * map_height + rows as f32 * border_height,
+                    )), Sense::empty());
+                    for i in 0..self.selected_maps_index.len() {
+                        let row = i / columns;
+                        let column = i % columns;
+
+                        let canvas_start = Pos2::new(
+                            start_pos.x + border_width + column as f32 * map_width + border_width * column as f32,
+                            start_pos.y + map_height * row as f32 + border_height * row as f32
+                        );
+
+                        self.draw_map(ui, self.selected_maps_index[i], canvas_start);
+                    }
+                });
             });
-
-            let canvas_start = (ui.next_widget_position() + available / 2.
-                - Pos2 {
-                    x: self.cell_size * MAP_SIZE.0 as f32 / 2.,
-                    y: self.cell_size * MAP_SIZE.1 as f32 / 2.,
-                })
-            .to_pos2();
-
-            self.draw_map(ui, self.selected_maps_index[0], canvas_start);
         });
     }
 }
