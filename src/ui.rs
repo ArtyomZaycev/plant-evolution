@@ -66,10 +66,6 @@ impl PlantEvolutionApp {
         }
     }
 
-    fn get_map(&self) -> &MapData {
-        &self.maps[self.selected_maps_index[0]]
-    }
-
     fn get_selected_map_index_to_str(selected_maps_index: &[usize]) -> String {
         let mut str = vec![];
         let mut is_in_range = vec![false; selected_maps_index.len()];
@@ -155,21 +151,23 @@ impl PlantEvolutionApp {
         let painter = ui.painter_at(Rect::from_min_size(canvas_start, ui_map_size));
 
         let pointer_pos: Option<Pos2> = ui.ctx().input(|i| i.pointer.latest_pos());
-        self.hovered_cell = pointer_pos.and_then(|pos| {
-            let pos = pos - canvas_start;
-            if pos.x < 0. || pos.y < 0. {
-                None
-            } else {
-                let x = (pos.x / self.cell_size) as usize;
-                let y = (pos.y / self.cell_size) as usize;
-
-                if x >= MAP_SIZE.0 || y >= MAP_SIZE.1 {
+        if self.hovered_cell.is_none() {
+            self.hovered_cell = pointer_pos.and_then(|pos| {
+                let pos = pos - canvas_start;
+                if pos.x < 0. || pos.y < 0. {
                     None
                 } else {
-                    Some((map_idx, x, y))
+                    let x = (pos.x / self.cell_size) as usize;
+                    let y = (pos.y / self.cell_size) as usize;
+
+                    if x >= MAP_SIZE.0 || y >= MAP_SIZE.1 {
+                        None
+                    } else {
+                        Some((map_idx, x, y))
+                    }
                 }
-            }
-        });
+            });
+        }
 
         for i in 0..MAP_SIZE.1 {
             for j in 0..MAP_SIZE.0 {
@@ -368,14 +366,8 @@ impl eframe::App for PlantEvolutionApp {
 
         egui::Panel::right("control_menu").show_inside(ui, |ui| {
             ui.set_min_width(200.);
-            ui.horizontal(|ui| {
-                ui.label(format!("Evolutions: {}", self.get_map().evolutions));
-                ui.label(format!("Step: {}", self.get_map().ticks));
-            });
-            ui.label(format!("Score: {:.2}", calculate_score(&self.get_map())));
 
-            ui.separator();
-
+            
             ui.horizontal(|ui| {
                 if ui.add_enabled(true, Button::new("Evolve!")).clicked() {
                     self.command_sender.send(EngineCommand::Evolve).unwrap();
@@ -417,28 +409,40 @@ impl eframe::App for PlantEvolutionApp {
             }
 
             ui.separator();
+            
+            let map_idx = self.hovered_cell.map_or(self.selected_maps_index[0], |(map_idx, _, _)| map_idx);
+
+            ui.heading(format!("Plant {}", map_idx + 1));
+
+            ui.horizontal(|ui| {
+                ui.label(format!("Evolutions: {}", self.maps[map_idx].evolutions));
+                ui.label(format!("Step: {}", self.maps[map_idx].ticks));
+            });
+            ui.label(format!("Score: {:.2}", calculate_score(&self.maps[map_idx])));
+
+            ui.separator();
 
             ui.label("Nutritions:");
             ui.label(format!(
                 "Sunlight: {:.2}",
-                self.get_map().plant_nutrition.sunlight
+                self.maps[map_idx].plant_nutrition.sunlight
             ));
-            ui.label(format!("Air: {:.2}", self.get_map().plant_nutrition.air));
+            ui.label(format!("Air: {:.2}", self.maps[map_idx].plant_nutrition.air));
             ui.label(format!(
                 "Minerals: {}",
-                self.get_map().plant_nutrition.minerals
+                self.maps[map_idx].plant_nutrition.minerals
             ));
             ui.label(format!(
                 "Water: {:.2}",
-                self.get_map().plant_nutrition.water
+                self.maps[map_idx].plant_nutrition.water
             ));
             ui.label(format!(
                 "Power: {:.2}",
-                self.get_map().plant_nutrition.energy
+                self.maps[map_idx].plant_nutrition.energy
             ));
 
             let mut new_desision_tree = None;
-            self.get_map()
+            self.maps[map_idx]
                 .evolution_data
                 .cells_abilities
                 .iter()
@@ -449,12 +453,12 @@ impl eframe::App for PlantEvolutionApp {
                             if ui
                                 .add_enabled(
                                     self.selected_decision_tree
-                                        != Some((self.selected_maps_index[0], i)),
+                                        != Some((map_idx, i)),
                                     Button::new("Decision tree"),
                                 )
                                 .clicked()
                             {
-                                new_desision_tree = Some((self.selected_maps_index[0], i));
+                                new_desision_tree = Some((map_idx, i));
                             }
                             ui.label(format!("Sunlight: {:.2}", cell.sunlight_consumption));
                             ui.label(format!("Air: {:.2}", cell.air_consumption));
@@ -477,40 +481,40 @@ impl eframe::App for PlantEvolutionApp {
             if ui
                 .label(format!(
                     "Next growth {:.2}: cell {} at {:?}",
-                    self.get_map().next_cell_growth.0,
-                    self.get_map().next_cell_growth.3,
+                    self.maps[map_idx].next_cell_growth.0,
+                    self.maps[map_idx].next_cell_growth.3,
                     (
-                        self.get_map().next_cell_growth.1,
-                        self.get_map().next_cell_growth.2
+                        self.maps[map_idx].next_cell_growth.1,
+                        self.maps[map_idx].next_cell_growth.2
                     )
                 ))
                 .hovered()
             {
                 self.highlighted_cell = Some((
-                    self.selected_maps_index[0],
-                    self.get_map().next_cell_growth.1,
-                    self.get_map().next_cell_growth.2,
+                    map_idx,
+                    self.maps[map_idx].next_cell_growth.1,
+                    self.maps[map_idx].next_cell_growth.2,
                 ));
             }
             if ui
                 .label(format!(
                     "Next suicide {:.2} at {:?}",
-                    self.get_map().next_cell_suicide.0,
+                    self.maps[map_idx].next_cell_suicide.0,
                     (
-                        self.get_map().next_cell_suicide.1,
-                        self.get_map().next_cell_suicide.2
+                        self.maps[map_idx].next_cell_suicide.1,
+                        self.maps[map_idx].next_cell_suicide.2
                     )
                 ))
                 .hovered()
             {
-                if self.get_map().plants[self.get_map().next_cell_suicide.2]
-                    [self.get_map().next_cell_suicide.1]
+                if self.maps[map_idx].plants[self.maps[map_idx].next_cell_suicide.2]
+                    [self.maps[map_idx].next_cell_suicide.1]
                     .is_some()
                 {
                     self.highlighted_cell = Some((
-                        self.selected_maps_index[0],
-                        self.get_map().next_cell_suicide.1,
-                        self.get_map().next_cell_suicide.2,
+                        map_idx,
+                        self.maps[map_idx].next_cell_suicide.1,
+                        self.maps[map_idx].next_cell_suicide.2,
                     ));
                 }
             }
@@ -537,13 +541,14 @@ impl eframe::App for PlantEvolutionApp {
                             "".to_owned()
                         };
                         ui.label(format!("{}", plant_info));
-                        ui.label(format!("{:?}", self.get_map().plants[y][x]));
+                        ui.label(format!("{:?}", self.maps[map_idx].plants[y][x]));
                     }
                     None => {
                         ui.label("Nothing selected");
                     }
                 });
 
+            self.hovered_cell = None;
             egui::Frame::canvas(ui.style()).show(ui, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     let available = ui.available_size();
