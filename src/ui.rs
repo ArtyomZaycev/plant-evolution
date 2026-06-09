@@ -3,7 +3,7 @@ use std::{
     time::Duration,
 };
 
-use egui::{Align2, Button, Color32, FontId, Frame, Pos2, Rect, Sense, TextEdit, UiBuilder, Vec2};
+use egui::{Align2, Button, Color32, FontId, Pos2, Rect, Sense, TextEdit, Vec2};
 
 use crate::{
     const_precalc::*,

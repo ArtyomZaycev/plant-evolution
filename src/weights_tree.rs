@@ -159,8 +159,7 @@ impl WeightsTree {
         });
         self.nodes
             .iter_mut()
-            .enumerate()
-            .for_each(|(i, node)| match node {
+            .for_each(|node| match node {
                 TreeNode::Operation(op_node) => match op_node {
                     OpNode::Unary(_, idx1) => {
                         *idx1 = new_idx[*idx1];

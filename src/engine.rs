@@ -9,7 +9,7 @@ use std::{
 use rand::RngExt;
 use serde::{Deserialize, Serialize};
 
-use crate::{evolution::*, map::*, random_evolution::RandomEvolution, slow_mutex::SlowMutex};
+use crate::{evolution::*, map::*, slow_mutex::*};
 
 #[derive(Debug, Clone, Copy)]
 pub enum SavingPeriod {
@@ -194,7 +194,7 @@ pub fn run_engine(
     loop {
         if let Ok(command) = receiver.try_recv() {
             match command {
-                EngineCommand::Load(path) => {
+                EngineCommand::Load(_) => {
                     state = EngineState::Stale;
                 }
                 EngineCommand::Save => {

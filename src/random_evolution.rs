@@ -2,7 +2,7 @@ use std::sync::mpsc;
 
 use rand::RngExt;
 
-use crate::{cell::*, const_precalc::NUMBER_OF_CELLS, evolution::*, map::*, weights_tree::*};
+use crate::{cell::*, evolution::*, map::*, weights_tree::*};
 
 pub type Rng = rand::rngs::ThreadRng;
 
@@ -35,7 +35,6 @@ fn randomize_bool_value_change_chance(
     value: &mut bool,
     rng: &mut Rng,
     change_chance: f32,
-    change_entropy: f32,
 ) {
     apply_change_chance(change_chance, rng.random(), || {
         if rng.random::<f32>() > 0.5 {
@@ -124,7 +123,7 @@ impl RandomEvolution for PlantCellAbilities {
             0.,
             1.,
         );
-        randomize_bool_value_change_chance(&mut self.seed, rng, change_chance, change_entropy);
+        randomize_bool_value_change_chance(&mut self.seed, rng, change_chance);
         self.populate_cost();
     }
 }
