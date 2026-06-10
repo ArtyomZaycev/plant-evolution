@@ -598,11 +598,10 @@ impl eframe::App for PlantEvolutionApp {
                     let columns = (((available.x - min_border_size) / (min_map_width + min_border_size)).floor() as usize).min(self.selected_maps_index.len());
                     let rows = self.selected_maps_index.len().div_ceil(columns);
                     let map_width = (available.x - (columns + 1) as f32 * min_border_size) / columns as f32;
-                    let map_height = map_width;
                     if self.selected_maps_index.len() == 1 {
                         self.cell_size = self.min_cell_size.max({
-                            (available.x / MAP_SIZE.0 as f32)
-                                .min(available.y / MAP_SIZE.1 as f32)
+                            ((available.x - 2. * min_border_size) / MAP_SIZE.0 as f32)
+                                .min((available.y - 2. * min_border_size) / MAP_SIZE.1 as f32)
                         });
                     } else {
                         self.cell_size = self.min_cell_size.max({
@@ -610,6 +609,7 @@ impl eframe::App for PlantEvolutionApp {
                         });
                     }
                     let map_width = self.cell_size * MAP_SIZE.0 as f32;
+                    let map_height = self.cell_size * MAP_SIZE.1 as f32;
                     let border_width = (available.x - columns as f32 * map_width) / (columns + 1) as f32;
                     let border_height = min_border_size;
 
