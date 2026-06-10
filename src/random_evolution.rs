@@ -183,21 +183,27 @@ impl RandomEvolution for WeightsTree {
                         TreeNode::generate_operation(rng, self.nodes.len());
                     if let TreeNode::Operation(op_node) = new_node {
                         let op_node = match op_node {
-                            OpNode::Unary(unary_op, idx) => {
-                                new_leaves = vec![];
-                                OpNode::Unary(unary_op, idx)
+                            OpNode::Unary(unary_op, idx1) => {
+                                new_leaves = vec![self.nodes[idx]];
+                                OpNode::Unary(unary_op, idx1)
                             }
                             OpNode::Binary(binary_op, idx1, idx2) => {
                                 if rng.random_range(0..=1) == 0 {
-                                    new_leaves.remove(0);
-                                    OpNode::Binary(binary_op, idx, idx2)
+                                    new_leaves = vec![
+                                        self.nodes[idx],
+                                        new_leaves[1],
+                                    ];
+                                    OpNode::Binary(binary_op, idx1, idx2)
                                 } else {
-                                    new_leaves.remove(1);
-                                    OpNode::Binary(binary_op, idx1, idx)
+                                    new_leaves = vec![
+                                        new_leaves[0],
+                                        self.nodes[idx],
+                                    ];
+                                    OpNode::Binary(binary_op, idx1, idx2)
                                 }
                             }
                         };
-                        self.nodes.push(TreeNode::Operation(op_node));
+                        self.nodes[idx] = TreeNode::Operation(op_node);
                         self.nodes.append(&mut new_leaves);
                         self.compact();
                     }
