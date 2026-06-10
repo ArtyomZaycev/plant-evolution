@@ -4,16 +4,15 @@ use rand::RngExt;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    cell::*, const_precalc::*, map::*, parents_evolution::parent_combine,
-    random_evolution::RandomEvolution, weights_tree::*,
+    cell::*, const_precalc::*, evolution_volatility::WithVolatility, map::*, parents_evolution::parent_combine, random_evolution::RandomEvolution, weights_tree::*
 };
 
 type Rng = rand::rngs::ThreadRng;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CellEvolutionData {
-    pub weights: [[(WeightsTree, f32); NUMBER_OF_CELLS]; 3],
-    pub suicide_weights: (WeightsTree, f32),
+    pub weights: [[WithVolatility<WeightsTree>; NUMBER_OF_CELLS]; 3],
+    pub suicide_weights: WithVolatility<WeightsTree>,
 }
 
 impl WeightsTree {
@@ -28,25 +27,22 @@ impl CellEvolutionData {
     fn rand_generate(rng: &mut Rng) -> Self {
         Self {
             weights: std::array::from_fn(|_| {
-                std::array::from_fn(|_| (WeightsTree::rand_generate(rng), 1.))
+                std::array::from_fn(|_| WithVolatility::new(WeightsTree::rand_generate(rng)))
             }),
-            suicide_weights: (
-                WeightsTree {
-                    nodes: vec![TreeNode::Value(0.)],
-                },
-                1.,
-            ),
+            suicide_weights: WithVolatility::new(WeightsTree {
+                nodes: vec![TreeNode::Value(0.)],
+            }),
         }
     }
 
     pub fn calc_suicide(&self, input: &PlantCellInput, height: f32, xdist: f32) -> f32 {
-        self.suicide_weights.0.calculate(input, height, xdist)
+        self.suicide_weights.calculate(input, height, xdist)
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlantEvolutionData {
-    pub cells_evolution_data: [CellEvolutionData; NUMBER_OF_CELLS],
+    pub cells_evolution_data: [WithVolatility<CellEvolutionData>; NUMBER_OF_CELLS],
     pub cells_abilities: [PlantCellAbilities; NUMBER_OF_CELLS],
 }
 
@@ -82,11 +78,7 @@ impl PlantEvolutionData {
         .with_populated_cost();
 
         Self {
-            cells_evolution_data: (0..NUMBER_OF_CELLS)
-                .map(|_| CellEvolutionData::rand_generate(rng))
-                .collect::<Vec<CellEvolutionData>>()
-                .try_into()
-                .unwrap(),
+            cells_evolution_data: std::array::from_fn(|_| WithVolatility::new(CellEvolutionData::rand_generate(rng))),
             cells_abilities: cells,
         }
     }

@@ -308,7 +308,7 @@ impl TreeNode {
                 )),
                 vec![
                     Self::generate(rng, next_node_idx, false).0,
-                    Self::generate(rng, next_node_idx, false).0,
+                    Self::generate(rng, next_node_idx + 1, false).0,
                 ],
             ),
             _ => {

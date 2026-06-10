@@ -260,7 +260,7 @@ impl MapData {
                     if self.plants[ni][nj].t == usize::MAX {
                         let weights = &evolution.weights[d];
                         for c in 0..NUMBER_OF_CELLS {
-                            let score = weights[c].0.calculate(
+                            let score = weights[c].calculate(
                                 &plant_cell.input,
                                 (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
                                 (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),

@@ -6,6 +6,14 @@ use crate::{cell::*, evolution::*, map::*, weights_tree::*};
 
 pub type Rng = rand::rngs::ThreadRng;
 
+fn apply_change_chance_and<F: FnOnce() -> bool>(change_chance: f32, random: f32, f: F) -> bool {
+    if random < change_chance {
+        f()
+    } else {
+        false
+    }
+}
+
 fn apply_change_chance<F: FnOnce()>(change_chance: f32, random: f32, f: F) -> bool {
     if random < change_chance {
         f();
@@ -62,17 +70,6 @@ impl<T: RandomEvolution, const N: usize> RandomEvolution for [T; N] {
     }
 }
 
-// Evolution with volatility parameter
-impl<T: RandomEvolution> RandomEvolution for (T, f32) {
-    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
-        let changed = self
-            .0
-            .evolve_random(rng, change_chance * self.1, change_entropy * self.1);
-        self.1 *= if changed { 1.1 } else { 0.996 };
-        changed
-    }
-}
-
 impl RandomEvolution for PlantEvolutionData {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
         self.cells_evolution_data
@@ -85,11 +82,13 @@ impl RandomEvolution for PlantEvolutionData {
 
 impl RandomEvolution for CellEvolutionData {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
-        self.weights
-            .evolve_random(rng, change_chance, change_entropy)
-            | self
-                .suicide_weights
+        apply_change_chance_and(change_chance, rng.random(), || {
+            self.weights
                 .evolve_random(rng, change_chance, change_entropy)
+                | self
+                    .suicide_weights
+                    .evolve_random(rng, change_chance, change_entropy)
+        })
     }
 }
 

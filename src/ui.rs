@@ -284,33 +284,34 @@ impl eframe::App for PlantEvolutionApp {
             .collapsible(false)
             .resizable(false)
             .show(ui.ctx(), |ui| {
+                ui.label(format!("Cell volatility: {:.2}", evolution_data.volatility));
                 ui.label(format!(
                     "Suicide (v={:.2}): {}",
-                    evolution_data.suicide_weights.1,
-                    evolution_data.suicide_weights.0.get_formula()
+                    evolution_data.suicide_weights.volatility,
+                    evolution_data.suicide_weights.get_formula()
                 ));
-                ui.collapsing("Up", |ui| {
+                egui::CollapsingHeader::new("Up").default_open(true).show(ui, |ui| {
                     evolution_data.weights[0]
                         .iter()
                         .enumerate()
                         .for_each(|(i, w)| {
-                            ui.label(format!("{} (v={:.2}): {}", i + 1, w.1, w.0.get_formula()));
+                            ui.label(format!("{} (v={:.2}): {}", i + 1, w.volatility, w.get_formula()));
                         });
                 });
-                ui.collapsing("Sideways", |ui| {
+                egui::CollapsingHeader::new("Sideways").default_open(true).show(ui, |ui| {
                     evolution_data.weights[1]
                         .iter()
                         .enumerate()
                         .for_each(|(i, w)| {
-                            ui.label(format!("{} (v={:.2}): {}", i + 1, w.1, w.0.get_formula()));
+                            ui.label(format!("{} (v={:.2}): {}", i + 1, w.volatility, w.get_formula()));
                         });
                 });
-                ui.collapsing("Down", |ui| {
+                egui::CollapsingHeader::new("Down").default_open(true).show(ui, |ui| {
                     evolution_data.weights[2]
                         .iter()
                         .enumerate()
                         .for_each(|(i, w)| {
-                            ui.label(format!("{} (v={:.2}): {}", i + 1, w.1, w.0.get_formula()));
+                            ui.label(format!("{} (v={:.2}): {}", i + 1, w.volatility, w.get_formula()));
                         });
                 });
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
@@ -455,7 +456,7 @@ impl eframe::App for PlantEvolutionApp {
             ));
 
             ui.separator();
-
+            egui::ScrollArea::vertical().show(ui, |ui| {
             ui.label("Nutritions:");
             ui.label(format!(
                 "Sunlight: {:.2}",
@@ -479,7 +480,8 @@ impl eframe::App for PlantEvolutionApp {
             ));
 
             let mut new_desision_tree = None;
-            self.maps[map_idx]
+            
+                self.maps[map_idx]
                 .evolution_data
                 .cells_abilities
                 .iter()
@@ -487,6 +489,7 @@ impl eframe::App for PlantEvolutionApp {
                 .for_each(|(i, cell)| {
                     ui.horizontal_top(|ui| {
                         ui.collapsing(format!("Cell {}", i + 1), |ui| {
+                            ui.label(format!("Volatility: {:.2}", self.maps[map_idx].evolution_data.cells_evolution_data[i].volatility));
                             if ui
                                 .add_enabled(
                                     self.selected_decision_tree != Some((map_idx, i)),
@@ -507,6 +510,7 @@ impl eframe::App for PlantEvolutionApp {
                         });
                     });
                 });
+            
             if new_desision_tree.is_some() {
                 self.selected_decision_tree = new_desision_tree;
             }
@@ -553,7 +557,7 @@ impl eframe::App for PlantEvolutionApp {
                         self.maps[map_idx].next_cell_suicide.2,
                     ));
                 }
-            }
+            }});
         });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
@@ -627,9 +631,9 @@ impl eframe::App for PlantEvolutionApp {
                         self.draw_map(ui, map_idx, canvas_start);
 
                         let map_rect = Rect::from_min_size(canvas_start, self.get_ui_map_size());
-                        if ui.input(|inp| inp.pointer.hover_pos()).is_some_and(|p| map_rect.contains(p)) {
+                        if canvas_reponse.hovered() && ui.input(|inp| inp.pointer.hover_pos()).is_some_and(|p| map_rect.contains(p)) {
                             self.draw_map_border(ui, canvas_start, false);
-                            if ui.input(|inp| inp.pointer.primary_clicked()) {
+                            if canvas_reponse.clicked() && ui.input(|inp| inp.pointer.primary_clicked()) {
                                 match self.highlighted_map {
                                     Some(idx) if idx == map_idx => self.highlighted_map = None,
                                     _ => self.highlighted_map = Some(map_idx),
