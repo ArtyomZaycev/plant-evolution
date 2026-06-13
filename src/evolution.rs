@@ -4,7 +4,8 @@ use rand::RngExt;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    cell::*, const_precalc::*, evolution_volatility::WithVolatility, map::*, parents_evolution::parent_combine, random_evolution::RandomEvolution, weights_tree::*
+    cell::*, const_precalc::*, evolution_volatility::WithVolatility, map::*, parents_evolution::*,
+    random_evolution::*, weights_tree::*,
 };
 
 type Rng = rand::rngs::ThreadRng;
@@ -78,7 +79,9 @@ impl PlantEvolutionData {
         .with_populated_cost();
 
         Self {
-            cells_evolution_data: std::array::from_fn(|_| WithVolatility::new(CellEvolutionData::rand_generate(rng))),
+            cells_evolution_data: std::array::from_fn(|_| {
+                WithVolatility::new(CellEvolutionData::rand_generate(rng))
+            }),
             cells_abilities: cells,
         }
     }

@@ -290,30 +290,51 @@ impl eframe::App for PlantEvolutionApp {
                     evolution_data.suicide_weights.volatility,
                     evolution_data.suicide_weights.get_formula()
                 ));
-                egui::CollapsingHeader::new("Up").default_open(true).show(ui, |ui| {
-                    evolution_data.weights[0]
-                        .iter()
-                        .enumerate()
-                        .for_each(|(i, w)| {
-                            ui.label(format!("{} (v={:.2}): {}", i + 1, w.volatility, w.get_formula()));
-                        });
-                });
-                egui::CollapsingHeader::new("Sideways").default_open(true).show(ui, |ui| {
-                    evolution_data.weights[1]
-                        .iter()
-                        .enumerate()
-                        .for_each(|(i, w)| {
-                            ui.label(format!("{} (v={:.2}): {}", i + 1, w.volatility, w.get_formula()));
-                        });
-                });
-                egui::CollapsingHeader::new("Down").default_open(true).show(ui, |ui| {
-                    evolution_data.weights[2]
-                        .iter()
-                        .enumerate()
-                        .for_each(|(i, w)| {
-                            ui.label(format!("{} (v={:.2}): {}", i + 1, w.volatility, w.get_formula()));
-                        });
-                });
+                egui::CollapsingHeader::new("Up")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        evolution_data.weights[0]
+                            .iter()
+                            .enumerate()
+                            .for_each(|(i, w)| {
+                                ui.label(format!(
+                                    "{} (v={:.2}): {}",
+                                    i + 1,
+                                    w.volatility,
+                                    w.get_formula()
+                                ));
+                            });
+                    });
+                egui::CollapsingHeader::new("Sideways")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        evolution_data.weights[1]
+                            .iter()
+                            .enumerate()
+                            .for_each(|(i, w)| {
+                                ui.label(format!(
+                                    "{} (v={:.2}): {}",
+                                    i + 1,
+                                    w.volatility,
+                                    w.get_formula()
+                                ));
+                            });
+                    });
+                egui::CollapsingHeader::new("Down")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        evolution_data.weights[2]
+                            .iter()
+                            .enumerate()
+                            .for_each(|(i, w)| {
+                                ui.label(format!(
+                                    "{} (v={:.2}): {}",
+                                    i + 1,
+                                    w.volatility,
+                                    w.get_formula()
+                                ));
+                            });
+                    });
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
                     if ui.button("Close").clicked() {
                         self.selected_decision_tree = None;
@@ -457,107 +478,112 @@ impl eframe::App for PlantEvolutionApp {
 
             ui.separator();
             egui::ScrollArea::vertical().show(ui, |ui| {
-            ui.label("Nutritions:");
-            ui.label(format!(
-                "Sunlight: {:.2}",
-                self.maps[map_idx].plant_nutrition.sunlight
-            ));
-            ui.label(format!(
-                "Air: {:.2}",
-                self.maps[map_idx].plant_nutrition.air
-            ));
-            ui.label(format!(
-                "Minerals: {}",
-                self.maps[map_idx].plant_nutrition.minerals
-            ));
-            ui.label(format!(
-                "Water: {:.2}",
-                self.maps[map_idx].plant_nutrition.water
-            ));
-            ui.label(format!(
-                "Power: {:.2}",
-                self.maps[map_idx].plant_nutrition.energy
-            ));
+                ui.label("Nutritions:");
+                ui.label(format!(
+                    "Sunlight: {:.2}",
+                    self.maps[map_idx].plant_nutrition.sunlight
+                ));
+                ui.label(format!(
+                    "Air: {:.2}",
+                    self.maps[map_idx].plant_nutrition.air
+                ));
+                ui.label(format!(
+                    "Minerals: {}",
+                    self.maps[map_idx].plant_nutrition.minerals
+                ));
+                ui.label(format!(
+                    "Water: {:.2}",
+                    self.maps[map_idx].plant_nutrition.water
+                ));
+                ui.label(format!(
+                    "Power: {:.2}",
+                    self.maps[map_idx].plant_nutrition.energy
+                ));
 
-            let mut new_desision_tree = None;
-            
+                let mut new_desision_tree = None;
+
                 self.maps[map_idx]
-                .evolution_data
-                .cells_abilities
-                .iter()
-                .enumerate()
-                .for_each(|(i, cell)| {
-                    ui.horizontal_top(|ui| {
-                        ui.collapsing(format!("Cell {}", i + 1), |ui| {
-                            ui.label(format!("Volatility: {:.2}", self.maps[map_idx].evolution_data.cells_evolution_data[i].volatility));
-                            if ui
-                                .add_enabled(
-                                    self.selected_decision_tree != Some((map_idx, i)),
-                                    Button::new("Decision tree"),
-                                )
-                                .clicked()
-                            {
-                                new_desision_tree = Some((map_idx, i));
-                            }
-                            ui.label(format!("Sunlight: {:.2}", cell.sunlight_consumption));
-                            ui.label(format!("Air: {:.2}", cell.air_consumption));
-                            ui.label(format!("Minerals: {:.2}", cell.minerals_consumption));
-                            ui.label(format!("Water: {:.2}", cell.water_consumption));
-                            ui.label(format!("Power: {:.2}", cell.energy_production_speed));
-                            ui.label(format!("Seed: {}", cell.seed));
-                            ui.label(format!("Grow cost: {:.2}", cell.grow_cost));
-                            ui.label(format!("Passive cost: {:.2}", cell.passive_cost));
+                    .evolution_data
+                    .cells_abilities
+                    .iter()
+                    .enumerate()
+                    .for_each(|(i, cell)| {
+                        ui.horizontal_top(|ui| {
+                            ui.collapsing(format!("Cell {}", i + 1), |ui| {
+                                ui.label(format!(
+                                    "Volatility: {:.2}",
+                                    self.maps[map_idx].evolution_data.cells_evolution_data[i]
+                                        .volatility
+                                ));
+                                if ui
+                                    .add_enabled(
+                                        self.selected_decision_tree != Some((map_idx, i)),
+                                        Button::new("Decision tree"),
+                                    )
+                                    .clicked()
+                                {
+                                    new_desision_tree = Some((map_idx, i));
+                                }
+                                ui.label(format!("Sunlight: {:.2}", cell.sunlight_consumption));
+                                ui.label(format!("Air: {:.2}", cell.air_consumption));
+                                ui.label(format!("Minerals: {:.2}", cell.minerals_consumption));
+                                ui.label(format!("Water: {:.2}", cell.water_consumption));
+                                ui.label(format!("Power: {:.2}", cell.energy_production_speed));
+                                ui.label(format!("Seed: {}", cell.seed));
+                                ui.label(format!("Grow cost: {:.2}", cell.grow_cost));
+                                ui.label(format!("Passive cost: {:.2}", cell.passive_cost));
+                            });
                         });
                     });
-                });
-            
-            if new_desision_tree.is_some() {
-                self.selected_decision_tree = new_desision_tree;
-            }
 
-            ui.separator();
+                if new_desision_tree.is_some() {
+                    self.selected_decision_tree = new_desision_tree;
+                }
 
-            self.highlighted_cell = None;
-            if ui
-                .label(format!(
-                    "Next growth {:.2} cell {} at {:?}",
-                    self.maps[map_idx].next_cell_growth.0,
-                    self.maps[map_idx].next_cell_growth.3,
-                    (
-                        self.maps[map_idx].next_cell_growth.1,
-                        self.maps[map_idx].next_cell_growth.2
-                    )
-                ))
-                .hovered()
-            {
-                self.highlighted_cell = Some((
-                    map_idx,
-                    self.maps[map_idx].next_cell_growth.1,
-                    self.maps[map_idx].next_cell_growth.2,
-                ));
-            }
-            if ui
-                .label(format!(
-                    "Next suicide {:.2} at {:?}",
-                    self.maps[map_idx].next_cell_suicide.0,
-                    (
-                        self.maps[map_idx].next_cell_suicide.1,
-                        self.maps[map_idx].next_cell_suicide.2
-                    )
-                ))
-                .hovered()
-            {
-                if self.maps[map_idx].plants[self.maps[map_idx].next_cell_suicide.2]
-                    [self.maps[map_idx].next_cell_suicide.1]
-                    .is_some()
+                ui.separator();
+
+                self.highlighted_cell = None;
+                if ui
+                    .label(format!(
+                        "Next growth {:.2} cell {} at {:?}",
+                        self.maps[map_idx].next_cell_growth.0,
+                        self.maps[map_idx].next_cell_growth.3,
+                        (
+                            self.maps[map_idx].next_cell_growth.1,
+                            self.maps[map_idx].next_cell_growth.2
+                        )
+                    ))
+                    .hovered()
                 {
                     self.highlighted_cell = Some((
                         map_idx,
-                        self.maps[map_idx].next_cell_suicide.1,
-                        self.maps[map_idx].next_cell_suicide.2,
+                        self.maps[map_idx].next_cell_growth.1,
+                        self.maps[map_idx].next_cell_growth.2,
                     ));
                 }
-            }});
+                if ui
+                    .label(format!(
+                        "Next suicide {:.2} at {:?}",
+                        self.maps[map_idx].next_cell_suicide.0,
+                        (
+                            self.maps[map_idx].next_cell_suicide.1,
+                            self.maps[map_idx].next_cell_suicide.2
+                        )
+                    ))
+                    .hovered()
+                {
+                    if self.maps[map_idx].plants[self.maps[map_idx].next_cell_suicide.2]
+                        [self.maps[map_idx].next_cell_suicide.1]
+                        .is_some()
+                    {
+                        self.highlighted_cell = Some((
+                            map_idx,
+                            self.maps[map_idx].next_cell_suicide.1,
+                            self.maps[map_idx].next_cell_suicide.2,
+                        ));
+                    }
+                }
+            });
         });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {

@@ -477,7 +477,8 @@ pub fn get_basic_map_data() -> (PlantEvolutionData, PlantNutrition) {
 
 impl RandomEvolution for MapData {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
-        let changed = self.evolution_data
+        let changed = self
+            .evolution_data
             .evolve_random(rng, change_chance, change_entropy);
         self.evolutions += 1;
         changed
