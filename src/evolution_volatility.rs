@@ -38,7 +38,7 @@ impl<T: RandomEvolution> RandomEvolution for WithVolatility<T> {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
         let changed = self.value
             .evolve_random(rng, (change_chance * self.volatility).clamp(0.05, 0.9), change_entropy);
-        self.volatility *= if changed { 1.1 } else { 0.99 };
+        self.volatility *= if changed { 1.1 } else { 0.999 };
         self.volatility = self.volatility.clamp(0.1, 2.);
         changed
     }

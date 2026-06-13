@@ -121,7 +121,7 @@ impl Default for EvolutionParameters {
         Self {
             samples: 10,
             parent_evolution: true,
-            change_chance: 0.1,
+            change_chance: 0.05,
             change_entropy: 0.8,
         }
     }
