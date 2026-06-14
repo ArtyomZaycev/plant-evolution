@@ -1,4 +1,4 @@
-use crate::{engine::EngineParameters, ui::UiSettings, ui_settings::settings_trait::RawSetting};
+use crate::{engine::EngineParameters, ui::UiSettings, ui_settings::basics::RawSetting};
 
 use super::{evolution_parameters_raw::*, saving_parameters_raw::*, ui_settings_raw::*};
 

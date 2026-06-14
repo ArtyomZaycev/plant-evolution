@@ -1,19 +1,23 @@
-use crate::{ui::UiSettings, ui_settings::settings_trait::RawSetting};
+use crate::{ui::UiSettings, ui_settings::basics::RawSetting};
 
 pub struct UiSettingsRaw {}
 
 impl RawSetting<UiSettings> for UiSettingsRaw {
     fn new(settings: UiSettings) -> Self {
-        todo!()
+        Self {
+
+        }
     }
 
     fn parse(&self) -> Option<UiSettings> {
-        todo!()
+        Some(UiSettings {  })
     }
 }
 
 impl egui::Widget for &mut UiSettingsRaw {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-        todo!()
+        ui.vertical(|ui| {
+
+        }).response
     }
 }
