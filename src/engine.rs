@@ -143,9 +143,11 @@ impl Default for RunEvolutionParameters {
 }
 
 pub enum EngineCommand {
-    Load(String),
-    Save,
     Restart,
+
+    UpdateSavingParameters(SavingParameters),
+    Save,
+    Load(String),
 
     Tick,
     RunTick,
@@ -154,7 +156,6 @@ pub enum EngineCommand {
     UpdateEvolutionParameters(EvolutionParameters),
     Evolve,
 
-    UpdateSavingParameters(SavingParameters),
     UpdateRunEvolutionParameters(RunEvolutionParameters),
     RunEvolution,
     StopRunEvolution,
@@ -169,9 +170,9 @@ enum EngineState {
 
 #[derive(Debug, Clone, Default)]
 pub struct EngineParameters {
-    saving_parameters: SavingParameters,
-    evolution_parameters: EvolutionParameters,
-    run_evolution_parameters: RunEvolutionParameters,
+    pub saving_parameters: SavingParameters,
+    pub evolution_parameters: EvolutionParameters,
+    pub run_evolution_parameters: RunEvolutionParameters,
 }
 
 pub fn run_engine(
@@ -194,12 +195,6 @@ pub fn run_engine(
     loop {
         if let Ok(command) = receiver.try_recv() {
             match command {
-                EngineCommand::Load(_) => {
-                    state = EngineState::Stale;
-                }
-                EngineCommand::Save => {
-                    save = true;
-                }
                 EngineCommand::Restart => {
                     maps.iter_mut().for_each(|map| {
                         map.evolution_data = PlantEvolutionData::generate();
@@ -208,6 +203,22 @@ pub fn run_engine(
                     });
                     last_save = 0;
                     slow_maps.force_write(maps.clone());
+                }
+
+                EngineCommand::UpdateSavingParameters(new_saving_parameters) => {
+                    if !new_saving_parameters.enabled
+                        || discriminant(&parameters.saving_parameters.period)
+                            != discriminant(&new_saving_parameters.period)
+                    {
+                        last_save = 0;
+                    }
+                    parameters.saving_parameters = new_saving_parameters;
+                }
+                EngineCommand::Save => {
+                    save = true;
+                }
+                EngineCommand::Load(_) => {
+                    state = EngineState::Stale;
                 }
 
                 EngineCommand::Tick => {
@@ -224,15 +235,6 @@ pub fn run_engine(
                     slow_maps.force_write(maps.clone());
                 }
 
-                EngineCommand::UpdateSavingParameters(new_saving_parameters) => {
-                    if !new_saving_parameters.enabled
-                        || discriminant(&parameters.saving_parameters.period)
-                            != discriminant(&new_saving_parameters.period)
-                    {
-                        last_save = 0;
-                    }
-                    parameters.saving_parameters = new_saving_parameters;
-                }
                 EngineCommand::UpdateEvolutionParameters(new_evolution_parameters) => {
                     parameters.evolution_parameters = new_evolution_parameters;
                 }
