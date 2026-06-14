@@ -16,6 +16,7 @@ pub enum SavingPeriod {
     // Always works
     EveryDuration(Duration),
     // For Tick and RunTick
+    // TODO: Remove, only EvolutionData is saved
     EveryTick(u32),
     // For RunEvolution
     EveryEvolution(u32),

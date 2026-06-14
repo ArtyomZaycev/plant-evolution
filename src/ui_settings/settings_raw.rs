@@ -5,7 +5,7 @@ use super::{evolution_parameters_raw::*, saving_parameters_raw::*, ui_settings_r
 pub enum SettingsRawState {
     InProgress,
     Cancelled,
-    Applied((UiSettings, EngineParameters)),
+    Applied(UiSettings, EngineParameters),
 }
 
 pub struct SettingsRaw {
@@ -66,16 +66,26 @@ impl egui::Widget for &mut SettingsRaw {
                 2 => ui.add(&mut self.evolution_parameters),
                 _ => panic!("Unknown tab"),
             };
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
-                if ui
-                    .add_enabled(self.is_valid(), egui::Button::new("Apply"))
-                    .clicked()
-                {
-                    self.state = SettingsRawState::Applied(self.parse().unwrap());
+            ui.separator();
+            ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
+                if ui.button("Reset all to default").clicked() {
+                    self.state = SettingsRawState::Applied(
+                        UiSettings::default(),
+                        EngineParameters::default(),
+                    );
                 }
-                if ui.button("Cancel").clicked() {
-                    self.state = SettingsRawState::Cancelled;
-                }
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
+                    if ui
+                        .add_enabled(self.is_valid(), egui::Button::new("Apply"))
+                        .clicked()
+                    {
+                        let (ui_settings, engine_parameters) = self.parse().unwrap();
+                        self.state = SettingsRawState::Applied(ui_settings, engine_parameters);
+                    }
+                    if ui.button("Cancel").clicked() {
+                        self.state = SettingsRawState::Cancelled;
+                    }
+                });
             });
         })
         .response

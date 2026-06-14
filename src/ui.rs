@@ -11,6 +11,10 @@ use crate::{
     evolution::*,
     map::*,
     slow_mutex::SlowMutex,
+    ui_settings::{
+        basics::RawSetting,
+        settings_raw::{SettingsRaw, SettingsRawState},
+    },
 };
 
 pub struct SavingEngineParametersInput {
@@ -22,9 +26,13 @@ pub struct SavingEngineParametersInput {
     pub selection_value: String,
 }
 
+#[derive(Debug, Clone, Default)]
 pub struct UiSettings {}
 
 pub struct PlantEvolutionApp {
+    ui_settings: UiSettings,
+    settings: Option<SettingsRaw>,
+
     min_cell_size: f32,
     cell_size: f32,
 
@@ -52,6 +60,8 @@ impl PlantEvolutionApp {
         slow_maps: Arc<SlowMutex<Vec<MapData>>>,
     ) -> Self {
         Self {
+            ui_settings: UiSettings::default(),
+            settings: None,
             min_cell_size: 4.,
             cell_size: 6.,
             selected_map_index_str: "1".to_owned(),
@@ -276,6 +286,32 @@ impl eframe::App for PlantEvolutionApp {
             self.maps = maps;
         }
 
+        let mut close_settings = false;
+        if let Some(settings) = &mut self.settings {
+            match settings.get_state() {
+                SettingsRawState::InProgress => {}
+                SettingsRawState::Cancelled => {
+                    close_settings = true;
+                }
+                SettingsRawState::Applied(ui_settings, engine_parameters) => {
+                    self.ui_settings = ui_settings.clone();
+                    self.engine_parameters = engine_parameters.clone();
+                    self.command_sender
+                        .send(EngineCommand::UpdateParameters(
+                            self.engine_parameters.clone(),
+                        ))
+                        .unwrap();
+                    close_settings = true;
+                }
+            }
+            egui::Modal::new("settings".into()).show(ui.ctx(), |ui| {
+                ui.add(settings);
+            });
+        }
+        if close_settings {
+            self.settings = None;
+        }
+
         if let Some((map_idx, cell_idx)) = self.selected_decision_tree {
             let evolution_data = &self.maps[map_idx].evolution_data.cells_evolution_data[cell_idx];
             egui::Window::new(format!(
@@ -348,7 +384,12 @@ impl eframe::App for PlantEvolutionApp {
         egui::Panel::top("settings").show_inside(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.menu_button("File", |ui| {});
-                ui.menu_button("Settings", |ui| {});
+                if ui.button("Settings").clicked() {
+                    self.settings = Some(SettingsRaw::new((
+                        self.ui_settings.clone(),
+                        self.engine_parameters.clone(),
+                    )));
+                }
             })
         });
 
