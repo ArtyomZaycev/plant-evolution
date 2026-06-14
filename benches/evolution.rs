@@ -1,3 +1,5 @@
+#![feature(vec_from_fn)]
+
 use std::{hint::black_box, thread, time::Duration};
 
 use criterion::{Criterion, criterion_group, criterion_main};
@@ -9,12 +11,7 @@ extern crate plant_evolution_lib;
 
 fn evolution_benchmark() {
     let number_of_plants: usize = 200;
-    let mut maps = (0..number_of_plants)
-        .map(|_| {
-            let (a, b) = get_basic_map_data();
-            MapData::generate(a, b)
-        })
-        .collect::<Vec<_>>();
+    let mut maps = Vec::from_fn(number_of_plants, |_| MapData::default());
     run_evolution_random(None, &mut maps, 1000, 1000, 0.9, 0.1);
     black_box(maps);
 }

@@ -1,6 +1,7 @@
 #![feature(integer_atomics)]
 #![feature(lock_value_accessors)]
 #![feature(iter_intersperse)]
+#![feature(vec_from_fn)]
 
 pub mod cell;
 mod const_precalc;

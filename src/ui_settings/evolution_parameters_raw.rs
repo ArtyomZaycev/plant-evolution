@@ -32,19 +32,17 @@ impl RawSetting<EvolutionParameters> for EvolutionParametersRaw {
         let change_entropy = self.change_entropy.parse::<f32>().ok()?;
         let ticks_per_evolution = self.ticks_per_evolution.parse::<u32>().ok()?;
 
-        Some(
-            (EvolutionParameters {
-                samples,
-                parent_evolution,
-                change_chance,
-                change_entropy,
-                run_evolution_parameters: RunEvolutionParameters {
-                    ticks_per_evolution,
-                    ..RunEvolutionParameters::default()
-                },
-                ..EvolutionParameters::default()
-            }),
-        )
+        Some(EvolutionParameters {
+            plants,
+            samples,
+            parent_evolution,
+            change_chance,
+            change_entropy,
+            run_evolution_parameters: RunEvolutionParameters {
+                ticks_per_evolution,
+                ticks_per_slow_write: RunEvolutionParameters::default().ticks_per_slow_write,
+            },
+        })
     }
 }
 

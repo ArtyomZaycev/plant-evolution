@@ -1,3 +1,5 @@
+#![feature(vec_from_fn)]
+
 use std::{thread, time::Duration};
 
 use criterion::{Criterion, criterion_group, criterion_main};
@@ -9,12 +11,7 @@ extern crate plant_evolution_lib;
 
 fn growth_benchmark() {
     let number_of_plants: usize = 100;
-    let mut maps = (0..number_of_plants)
-        .map(|_| {
-            let (a, b) = get_basic_map_data();
-            MapData::generate(a, b)
-        })
-        .collect::<Vec<_>>();
+    let mut maps = Vec::from_fn(number_of_plants, |_| MapData::default());
     (0..2000).for_each(|_| {
         maps.iter_mut().for_each(|map| {
             map.tick();

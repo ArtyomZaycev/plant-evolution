@@ -193,11 +193,13 @@ fn sample_best_maps_evolution(maps: &mut Vec<MapData>, samples: usize) -> Vec<Pl
 pub fn random_evolve(
     rng: &mut Rng,
     maps: &mut Vec<MapData>,
+    plants: usize,
     samples: usize,
     change_chance: f32,
     change_entropy: f32,
 ) {
     let best_evolution_data = sample_best_maps_evolution(maps, samples);
+    maps.resize(plants, MapData::default());
     best_evolution_data
         .iter()
         .enumerate()
@@ -218,11 +220,13 @@ pub fn random_evolve(
 pub fn parents_random_evolve(
     rng: &mut Rng,
     maps: &mut Vec<MapData>,
+    plants: usize,
     samples: usize,
     change_chance: f32,
     change_entropy: f32,
 ) {
     let best_evolution_data = sample_best_maps_evolution(maps, samples);
+    maps.resize(plants, MapData::default());
     let children_evolution_data = parent_combine(rng, &best_evolution_data, maps.len() - samples);
 
     best_evolution_data

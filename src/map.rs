@@ -88,6 +88,13 @@ pub struct MapData {
     pub plants: [[PlantCell; MAP_SIZE.0]; MAP_SIZE.1],
 }
 
+impl Default for MapData {
+    fn default() -> Self {
+        let (a, b) = get_basic_map_data();
+        Self::generate(a, b)
+    }
+}
+
 impl MapData {
     #[hotpath::measure]
     fn update_sunlight(&mut self, x: usize, y: usize) {

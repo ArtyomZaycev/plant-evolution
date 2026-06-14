@@ -110,6 +110,7 @@ fn save_maps(parameters: &SavingParameters, simulation_id: &str, maps: &Vec<MapD
 
 #[derive(Debug, Clone, Copy)]
 pub struct EvolutionParameters {
+    pub plants: usize,
     pub samples: usize,
     pub parent_evolution: bool,
     pub change_chance: f32,
@@ -121,6 +122,7 @@ pub struct EvolutionParameters {
 impl Default for EvolutionParameters {
     fn default() -> Self {
         Self {
+            plants: 200,
             samples: 10,
             parent_evolution: true,
             change_chance: 0.05,
@@ -239,6 +241,7 @@ pub fn run_engine(
                         parents_random_evolve(
                             &mut rng,
                             &mut maps,
+                            parameters.evolution_parameters.plants,
                             parameters.evolution_parameters.samples,
                             parameters.evolution_parameters.change_chance,
                             parameters.evolution_parameters.change_entropy,
@@ -247,6 +250,7 @@ pub fn run_engine(
                         random_evolve(
                             &mut rng,
                             &mut maps,
+                            parameters.evolution_parameters.plants,
                             parameters.evolution_parameters.samples,
                             parameters.evolution_parameters.change_chance,
                             parameters.evolution_parameters.change_entropy,
@@ -338,6 +342,7 @@ pub fn run_engine(
                         parents_random_evolve(
                             &mut rng,
                             &mut maps,
+                            parameters.evolution_parameters.plants,
                             parameters.evolution_parameters.samples,
                             parameters.evolution_parameters.change_chance,
                             parameters.evolution_parameters.change_entropy,
@@ -346,6 +351,7 @@ pub fn run_engine(
                         random_evolve(
                             &mut rng,
                             &mut maps,
+                            parameters.evolution_parameters.plants,
                             parameters.evolution_parameters.samples,
                             parameters.evolution_parameters.change_chance,
                             parameters.evolution_parameters.change_entropy,

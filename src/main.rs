@@ -1,3 +1,5 @@
+#![feature(vec_from_fn)]
+
 use std::{
     sync::{Arc, mpsc},
     thread,
@@ -20,14 +22,7 @@ fn main() {
         ..Default::default()
     };
 
-    let maps = Arc::new(SlowMutex::new(
-        (0..200)
-            .map(|_| {
-                let (a, b) = get_basic_map_data();
-                MapData::generate(a, b)
-            })
-            .collect(),
-    ));
+    let maps = Arc::new(SlowMutex::new(Vec::from_fn(200, |_| MapData::default())));
 
     let (tx, rx) = mpsc::channel();
 
