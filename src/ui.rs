@@ -26,14 +26,38 @@ pub struct SavingEngineParametersInput {
     pub selection_value: String,
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct UiSettings {}
+#[derive(Debug, Clone)]
+pub struct VisualSettings {
+    pub min_cell_size: f32,
+
+    pub plant_color: Color32,
+    pub seed_color: Color32,
+
+    pub air_color: Color32,
+    pub soil_color: Color32,
+
+    pub highlight_hovered_cell: bool,
+    pub highlight_pointer: bool,
+}
+
+impl Default for VisualSettings {
+    fn default() -> Self {
+        Self {
+            min_cell_size: 4.,
+            plant_color: Color32::GREEN,
+            seed_color: Color32::RED,
+            air_color: Color32::LIGHT_BLUE,
+            soil_color: Color32::YELLOW,
+            highlight_hovered_cell: true,
+            highlight_pointer: true,
+        }
+    }
+}
 
 pub struct PlantEvolutionApp {
-    ui_settings: UiSettings,
+    visual_settings: VisualSettings,
     settings: Option<SettingsRaw>,
 
-    min_cell_size: f32,
     cell_size: f32,
 
     selected_map_index_str: String,
@@ -60,9 +84,8 @@ impl PlantEvolutionApp {
         slow_maps: Arc<SlowMutex<Vec<MapData>>>,
     ) -> Self {
         Self {
-            ui_settings: UiSettings::default(),
+            visual_settings: VisualSettings::default(),
             settings: None,
-            min_cell_size: 4.,
             cell_size: 6.,
             selected_map_index_str: "1".to_owned(),
             selected_maps_index: vec![0],
@@ -201,15 +224,15 @@ impl PlantEvolutionApp {
                 );
 
                 let color = if self.maps[map_idx].plants[i][j].is_some() {
-                    Color32::GREEN
+                    self.visual_settings.plant_color
                 } else {
                     match self.maps[map_idx].map[i][j] {
-                        MapCell::Air(_) => Color32::LIGHT_BLUE,
-                        MapCell::Soil(_) => Color32::YELLOW,
+                        MapCell::Air(_) => self.visual_settings.air_color,
+                        MapCell::Soil(_) => self.visual_settings.soil_color,
                     }
                 };
 
-                let color = if self.hovered_cell.or(self.highlighted_cell) == Some((map_idx, j, i))
+                let color = if self.visual_settings.highlight_hovered_cell && self.hovered_cell.or(self.highlighted_cell) == Some((map_idx, j, i))
                 {
                     Color32::BROWN
                 } else {
@@ -229,15 +252,17 @@ impl PlantEvolutionApp {
                                 y: i as f32 * self.cell_size + 0.5 * self.cell_size,
                             },
                         self.cell_size * 0.4,
-                        Color32::RED,
+                        self.visual_settings.seed_color,
                     );
                 }
             }
         }
 
-        pointer_pos.inspect(|pos| {
-            painter.circle_filled(*pos, 2., Color32::RED);
-        });
+        if self.visual_settings.highlight_pointer {
+            pointer_pos.inspect(|pos| {
+                painter.circle_filled(*pos, 2., Color32::RED);
+            });
+        }
 
         painter.text(
             canvas_start + Vec2::splat(self.cell_size * 2.),
@@ -294,7 +319,7 @@ impl eframe::App for PlantEvolutionApp {
                     close_settings = true;
                 }
                 SettingsRawState::Applied(ui_settings, engine_parameters) => {
-                    self.ui_settings = ui_settings.clone();
+                    self.visual_settings = ui_settings.clone();
                     self.engine_parameters = engine_parameters.clone();
                     self.command_sender
                         .send(EngineCommand::UpdateParameters(
@@ -386,7 +411,7 @@ impl eframe::App for PlantEvolutionApp {
                 ui.menu_button("File", |ui| {});
                 if ui.button("Settings").clicked() {
                     self.settings = Some(SettingsRaw::new((
-                        self.ui_settings.clone(),
+                        self.visual_settings.clone(),
                         self.engine_parameters.clone(),
                     )));
                 }
@@ -667,18 +692,18 @@ impl eframe::App for PlantEvolutionApp {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     let available = ui.available_size();
 
-                    let min_border_size = self.min_cell_size * 2.;
-                    let min_map_width: f32 = self.min_cell_size * MAP_SIZE.0 as f32;
-                    let columns = (((available.x - min_border_size) / (min_map_width + min_border_size)).floor() as usize).min(self.selected_maps_index.len());
+                    let min_border_size = self.visual_settings.min_cell_size * 2.;
+                    let min_map_width: f32 = self.visual_settings.min_cell_size * MAP_SIZE.0 as f32;
+                    let columns = (((available.x - min_border_size) / (min_map_width + min_border_size)).floor() as usize).min(self.selected_maps_index.len()).max(1);
                     let rows = self.selected_maps_index.len().div_ceil(columns);
                     let map_width = (available.x - (columns + 1) as f32 * min_border_size) / columns as f32;
                     if self.selected_maps_index.len() == 1 {
-                        self.cell_size = self.min_cell_size.max({
+                        self.cell_size = self.visual_settings.min_cell_size.max({
                             ((available.x - 2. * min_border_size) / MAP_SIZE.0 as f32)
                                 .min((available.y - 2. * min_border_size) / MAP_SIZE.1 as f32)
                         });
                     } else {
-                        self.cell_size = self.min_cell_size.max({
+                        self.cell_size = self.visual_settings.min_cell_size.max({
                             map_width / MAP_SIZE.0 as f32
                         });
                     }

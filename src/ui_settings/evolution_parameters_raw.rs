@@ -1,9 +1,6 @@
 use egui::{Align, Layout, Slider, Vec2};
 
-use crate::{
-    engine::*,
-    ui_settings::basics::*,
-};
+use crate::{engine::*, ui_settings::basics::*};
 
 pub struct EvolutionParametersRaw {
     plants: usize,
@@ -52,18 +49,24 @@ impl RawSetting<EvolutionParameters> for EvolutionParametersRaw {
 impl egui::Widget for &mut EvolutionParametersRaw {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         let desired_size = Vec2::new(120., 10.);
-        let layout = Layout::left_to_right(Align::Center).with_main_justify(true).with_main_align(Align::LEFT);
+        let layout = Layout::left_to_right(Align::Center)
+            .with_main_justify(true)
+            .with_main_align(Align::LEFT);
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
                 ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Number of plants"));
                 ui.add(Slider::new(&mut self.plants, 1..=1000));
             });
             ui.horizontal(|ui| {
-                ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Number of samples"));
+                ui.allocate_ui_with_layout(desired_size, layout, |ui| {
+                    ui.label("Number of samples")
+                });
                 ui.add(Slider::new(&mut self.samples, 1..=self.plants));
             });
             ui.horizontal(|ui| {
-                ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Parents Evolution"));
+                ui.allocate_ui_with_layout(desired_size, layout, |ui| {
+                    ui.label("Parents Evolution")
+                });
                 ui.radio_value(&mut self.parent_evolution, true, "Enabled");
                 ui.radio_value(&mut self.parent_evolution, false, "Disabled");
             });
@@ -72,11 +75,15 @@ impl egui::Widget for &mut EvolutionParametersRaw {
                 ui.add(Slider::new(&mut self.change_chance, 0.05..=1.0));
             });
             ui.horizontal(|ui| {
-                ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Evolution entropy"));
+                ui.allocate_ui_with_layout(desired_size, layout, |ui| {
+                    ui.label("Evolution entropy")
+                });
                 ui.add(Slider::new(&mut self.change_entropy, 0.05..=1.0));
             });
             ui.horizontal(|ui| {
-                ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Ticks per evolution"));
+                ui.allocate_ui_with_layout(desired_size, layout, |ui| {
+                    ui.label("Ticks per evolution")
+                });
                 ui.add(Slider::new(&mut self.ticks_per_evolution, 50..=10000));
             });
         })

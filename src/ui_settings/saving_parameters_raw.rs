@@ -77,13 +77,13 @@ impl egui::Widget for &mut SavingParametersRaw {
                         let mut value = duration.as_secs_f32();
                         ui.add(egui::Slider::new(&mut value, 5.0..=900.));
                         *duration = Duration::from_secs_f32(value);
-                    },
+                    }
                     SavingPeriod::EveryTick(value) => {
                         ui.add(egui::Slider::new(value, 100..=10000));
-                    },
+                    }
                     SavingPeriod::EveryEvolution(value) => {
                         ui.add(egui::Slider::new(value, 1..=10000));
-                    },
+                    }
                 };
 
                 ui.horizontal(|ui| {
