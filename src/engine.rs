@@ -114,6 +114,8 @@ pub struct EvolutionParameters {
     pub parent_evolution: bool,
     pub change_chance: f32,
     pub change_entropy: f32,
+
+    pub run_evolution_parameters: RunEvolutionParameters,
 }
 
 impl Default for EvolutionParameters {
@@ -123,6 +125,7 @@ impl Default for EvolutionParameters {
             parent_evolution: true,
             change_chance: 0.05,
             change_entropy: 0.8,
+            run_evolution_parameters: RunEvolutionParameters::default(),
         }
     }
 }
@@ -144,8 +147,8 @@ impl Default for RunEvolutionParameters {
 
 pub enum EngineCommand {
     Restart,
+    UpdateParameters(EngineParameters),
 
-    UpdateSavingParameters(SavingParameters),
     Save,
     Load(String),
 
@@ -153,10 +156,7 @@ pub enum EngineCommand {
     RunTick,
     StopRunTick,
 
-    UpdateEvolutionParameters(EvolutionParameters),
     Evolve,
-
-    UpdateRunEvolutionParameters(RunEvolutionParameters),
     RunEvolution,
     StopRunEvolution,
 }
@@ -172,7 +172,6 @@ enum EngineState {
 pub struct EngineParameters {
     pub saving_parameters: SavingParameters,
     pub evolution_parameters: EvolutionParameters,
-    pub run_evolution_parameters: RunEvolutionParameters,
 }
 
 pub fn run_engine(
@@ -204,16 +203,16 @@ pub fn run_engine(
                     last_save = 0;
                     slow_maps.force_write(maps.clone());
                 }
-
-                EngineCommand::UpdateSavingParameters(new_saving_parameters) => {
-                    if !new_saving_parameters.enabled
+                EngineCommand::UpdateParameters(new_parameters) => {
+                    if !new_parameters.saving_parameters.enabled
                         || discriminant(&parameters.saving_parameters.period)
-                            != discriminant(&new_saving_parameters.period)
+                            != discriminant(&new_parameters.saving_parameters.period)
                     {
                         last_save = 0;
                     }
-                    parameters.saving_parameters = new_saving_parameters;
+                    parameters = new_parameters;
                 }
+
                 EngineCommand::Save => {
                     save = true;
                 }
@@ -235,9 +234,6 @@ pub fn run_engine(
                     slow_maps.force_write(maps.clone());
                 }
 
-                EngineCommand::UpdateEvolutionParameters(new_evolution_parameters) => {
-                    parameters.evolution_parameters = new_evolution_parameters;
-                }
                 EngineCommand::Evolve => {
                     if parameters.evolution_parameters.parent_evolution {
                         parents_random_evolve(
@@ -257,9 +253,6 @@ pub fn run_engine(
                         );
                     }
                     slow_maps.force_write(maps.clone());
-                }
-                EngineCommand::UpdateRunEvolutionParameters(new_run_evolution_parameters) => {
-                    parameters.run_evolution_parameters = new_run_evolution_parameters;
                 }
                 EngineCommand::RunEvolution => {
                     state = EngineState::RunEvolution;
@@ -321,10 +314,12 @@ pub fn run_engine(
             }
             EngineState::RunEvolution => {
                 (0..(parameters
+                    .evolution_parameters
                     .run_evolution_parameters
                     .ticks_per_slow_write
                     .min(
                         parameters
+                            .evolution_parameters
                             .run_evolution_parameters
                             .ticks_per_evolution
                             .saturating_sub(maps[0].ticks),
@@ -332,7 +327,12 @@ pub fn run_engine(
                     .for_each(|_| {
                         maps.iter_mut().for_each(|map| map.tick());
                     });
-                if maps[0].ticks >= parameters.run_evolution_parameters.ticks_per_evolution {
+                if maps[0].ticks
+                    >= parameters
+                        .evolution_parameters
+                        .run_evolution_parameters
+                        .ticks_per_evolution
+                {
                     slow_maps.force_write(maps.clone());
                     if parameters.evolution_parameters.parent_evolution {
                         parents_random_evolve(

@@ -1,9 +1,6 @@
 use crate::{ui::UiSettings, ui_settings::settings_trait::RawSetting};
 
-
-pub struct UiSettingsRaw {
-
-}
+pub struct UiSettingsRaw {}
 
 impl RawSetting<UiSettings> for UiSettingsRaw {
     fn new(settings: UiSettings) -> Self {

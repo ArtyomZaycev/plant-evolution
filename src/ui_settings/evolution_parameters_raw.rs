@@ -1,6 +1,5 @@
 use crate::{engine::*, ui_settings::settings_trait::RawSetting};
 
-
 pub struct EvolutionParametersRaw {
     pub plants: String,
     pub samples: String,
@@ -10,19 +9,22 @@ pub struct EvolutionParametersRaw {
     pub ticks_per_evolution: String,
 }
 
-impl RawSetting<(EvolutionParameters, RunEvolutionParameters)> for EvolutionParametersRaw {
-    fn new(settings: (EvolutionParameters, RunEvolutionParameters)) -> Self {
+impl RawSetting<EvolutionParameters> for EvolutionParametersRaw {
+    fn new(settings: EvolutionParameters) -> Self {
         Self {
             plants: 200.to_string(),
-            samples: settings.0.samples.to_string(),
-            parent_evolution: settings.0.parent_evolution,
-            change_chance: settings.0.change_chance.to_string(),
-            change_entropy: settings.0.change_entropy.to_string(),
-            ticks_per_evolution: settings.1.ticks_per_evolution.to_string(),
+            samples: settings.samples.to_string(),
+            parent_evolution: settings.parent_evolution,
+            change_chance: settings.change_chance.to_string(),
+            change_entropy: settings.change_entropy.to_string(),
+            ticks_per_evolution: settings
+                .run_evolution_parameters
+                .ticks_per_evolution
+                .to_string(),
         }
     }
 
-    fn parse(&self) -> Option<(EvolutionParameters, RunEvolutionParameters)> {
+    fn parse(&self) -> Option<EvolutionParameters> {
         let plants = self.plants.parse::<usize>().ok()?;
         let samples = self.samples.parse::<usize>().ok()?;
         let parent_evolution = self.parent_evolution;
@@ -30,19 +32,19 @@ impl RawSetting<(EvolutionParameters, RunEvolutionParameters)> for EvolutionPara
         let change_entropy = self.change_entropy.parse::<f32>().ok()?;
         let ticks_per_evolution = self.ticks_per_evolution.parse::<u32>().ok()?;
 
-        Some((
-            EvolutionParameters {
+        Some(
+            (EvolutionParameters {
                 samples,
                 parent_evolution,
                 change_chance,
                 change_entropy,
+                run_evolution_parameters: RunEvolutionParameters {
+                    ticks_per_evolution,
+                    ..RunEvolutionParameters::default()
+                },
                 ..EvolutionParameters::default()
-            },
-            RunEvolutionParameters {
-                ticks_per_evolution,
-                ..RunEvolutionParameters::default()
-            }
-        ))
+            }),
+        )
     }
 }
 

@@ -12,8 +12,8 @@ pub mod parents_evolution;
 pub mod random_evolution;
 pub mod slow_mutex;
 pub mod ui;
+pub mod ui_settings;
 pub mod weights_tree;
 pub mod weights_tree_ui;
-pub mod ui_settings;
 
 pub use const_precalc::populate_consts;

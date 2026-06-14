@@ -1,9 +1,6 @@
 use crate::{engine::SavingParameters, ui_settings::settings_trait::RawSetting};
 
-
-pub struct SavingParametersRaw {
-
-}
+pub struct SavingParametersRaw {}
 
 impl RawSetting<SavingParameters> for SavingParametersRaw {
     fn new(settings: SavingParameters) -> Self {

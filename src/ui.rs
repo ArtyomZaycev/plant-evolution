@@ -22,9 +22,7 @@ pub struct SavingEngineParametersInput {
     pub selection_value: String,
 }
 
-pub struct UiSettings {
-    
-}
+pub struct UiSettings {}
 
 pub struct PlantEvolutionApp {
     min_cell_size: f32,
@@ -349,12 +347,8 @@ impl eframe::App for PlantEvolutionApp {
 
         egui::Panel::top("settings").show_inside(ui, |ui| {
             ui.horizontal(|ui| {
-                ui.menu_button("File", |ui| {
-                    
-                });
-                ui.menu_button("Settings", |ui| {
-                    
-                });
+                ui.menu_button("File", |ui| {});
+                ui.menu_button("Settings", |ui| {});
             })
         });
 
