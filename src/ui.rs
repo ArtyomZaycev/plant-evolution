@@ -1,7 +1,4 @@
-use std::{
-    sync::{Arc, mpsc},
-    time::Duration,
-};
+use std::sync::{Arc, mpsc};
 
 use egui::{Align2, Button, Color32, FontId, Pos2, Rect, Sense, TextEdit, Vec2};
 

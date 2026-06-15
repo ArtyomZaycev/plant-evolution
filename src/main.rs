@@ -7,7 +7,7 @@ use std::{
 
 use plant_evolution_lib::{
     engine::run_engine,
-    map::{MapData, get_basic_map_data},
+    map::MapData,
     populate_consts,
     slow_mutex::SlowMutex,
     ui::PlantEvolutionApp,

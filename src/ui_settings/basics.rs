@@ -1,7 +1,3 @@
-use std::{ops::RangeInclusive, str::FromStr};
-
-use egui::{Widget, emath::Numeric};
-
 pub trait RawSetting<T> {
     fn new(settings: T) -> Self;
 

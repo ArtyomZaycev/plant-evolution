@@ -1,5 +1,4 @@
-use egui::Widget;
-
+#![allow(dead_code, unused)]
 use crate::weights_tree::*;
 
 impl WeightsTree {
