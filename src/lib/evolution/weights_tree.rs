@@ -1,7 +1,7 @@
 use rand::RngExt;
 use serde::{Deserialize, Serialize};
 
-use crate::{cell::PlantCellInput, const_precalc::NUMBER_OF_CELLS};
+use crate::{map::PlantCellInput, precalc::NUMBER_OF_CELLS, utils::Rng};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum InputNode {
@@ -221,8 +221,6 @@ impl WeightsTree {
         self.get_subformula(0)
     }
 }
-
-type Rng = rand::rngs::ThreadRng;
 
 impl InputNode {
     pub fn generate(rng: &mut Rng) -> Self {

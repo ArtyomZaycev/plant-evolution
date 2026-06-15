@@ -1,4 +1,7 @@
 #![feature(vec_from_fn)]
+#![feature(iter_intersperse)]
+
+mod ui;
 
 use std::{
     sync::{Arc, mpsc},
@@ -6,12 +9,13 @@ use std::{
 };
 
 use plant_evolution_lib::{
-    engine::run_engine,
+    engine::*,
     map::MapData,
-    populate_consts,
-    slow_mutex::SlowMutex,
-    ui::PlantEvolutionApp,
+    precalc::populate_consts,
+    utils::SlowMutex,
 };
+
+use crate::ui::ui::PlantEvolutionApp;
 
 #[hotpath::main]
 fn main() {

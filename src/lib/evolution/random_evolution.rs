@@ -2,9 +2,8 @@ use std::sync::mpsc;
 
 use rand::RngExt;
 
-use crate::{cell::*, evolution::*, map::*, weights_tree::*};
-
-pub type Rng = rand::rngs::ThreadRng;
+use super::{PlantEvolutionData, CellEvolutionData, weights_tree::*, RunningEvolutionData, run_evolution};
+use crate::{map::*, utils::*};
 
 fn apply_change_chance_and<F: FnOnce() -> bool>(change_chance: f32, random: f32, f: F) -> bool {
     if random < change_chance { f() } else { false }

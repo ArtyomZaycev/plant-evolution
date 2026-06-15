@@ -1,8 +1,9 @@
 use egui::{Align, Layout, Slider, Vec2};
 
-use crate::{engine::*, ui_settings::basics::*};
+use plant_evolution_lib::engine::*;
+use super::utils::*;
 
-pub struct EvolutionParametersRaw {
+pub struct EvolutionParametersEditor {
     plants: usize,
     samples: usize,
     parent_evolution: bool,
@@ -11,7 +12,7 @@ pub struct EvolutionParametersRaw {
     ticks_per_evolution: u32,
 }
 
-impl RawSetting<EvolutionParameters> for EvolutionParametersRaw {
+impl EditorUi<EvolutionParameters> for EvolutionParametersEditor {
     fn new(settings: EvolutionParameters) -> Self {
         Self {
             plants: settings.plants,
@@ -46,7 +47,7 @@ impl RawSetting<EvolutionParameters> for EvolutionParametersRaw {
     }
 }
 
-impl egui::Widget for &mut EvolutionParametersRaw {
+impl egui::Widget for &mut EvolutionParametersEditor {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         let desired_size = Vec2::new(120., 10.);
         let layout = Layout::left_to_right(Align::Center)

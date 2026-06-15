@@ -3,7 +3,7 @@
 use std::{hint::black_box, thread, time::Duration};
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use plant_evolution_lib::{map::*, populate_consts, random_evolution::*};
+use plant_evolution_lib::{map::*, precalc::*, evolution::run_evolution_random};
 
 extern crate plant_evolution_lib;
 

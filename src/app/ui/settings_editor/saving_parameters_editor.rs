@@ -1,17 +1,15 @@
 use std::time::Duration;
 
-use crate::{
-    engine::{SaveSelection, SavingParameters, SavingPeriod},
-    ui_settings::basics::*,
-};
+use plant_evolution_lib::engine::*;
+use super::utils::*;
 
-pub struct SavingParametersRaw {
+pub struct SavingParametersEditor {
     enabled: bool,
     period: SavingPeriod,
     selection: SaveSelection,
 }
 
-impl RawSetting<SavingParameters> for SavingParametersRaw {
+impl EditorUi<SavingParameters> for SavingParametersEditor {
     fn new(settings: SavingParameters) -> Self {
         Self {
             enabled: settings.enabled,
@@ -37,7 +35,7 @@ impl RawSetting<SavingParameters> for SavingParametersRaw {
     }
 }
 
-impl egui::Widget for &mut SavingParametersRaw {
+impl egui::Widget for &mut SavingParametersEditor {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         ui.vertical(|ui| {
             ui.horizontal(|ui| {

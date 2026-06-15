@@ -3,7 +3,7 @@
 use std::{thread, time::Duration};
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use plant_evolution_lib::{map::*, populate_consts};
+use plant_evolution_lib::{map::*, precalc::*};
 
 extern crate plant_evolution_lib;
 

@@ -5,11 +5,11 @@ edition = "2024"
 
 [lib]
 name = "plant_evolution_lib"
-path = "src/lib.rs"
+path = "src/lib/lib.rs"
 
 [[bin]]
 name = "plant_evolution_app"
-path = "src/main.rs"
+path = "src/app/main.rs"
 
 [dependencies]
 eframe = "0.34.2"

@@ -1,8 +1,10 @@
 use egui::{Align, Button, Color32, Layout, PopupCloseBehavior, Slider, Vec2, color_picker, containers::menu::{self, MenuConfig}};
 
-use crate::{ui::VisualSettings, ui_settings::basics::RawSetting};
+use crate::ui::settings::VisualSettings;
 
-pub struct VisualSettingsRaw {
+use super::utils::*;
+
+pub struct VisualSettingsEditor {
     min_cell_size: f32,
     plant_color: Color32,
     seed_color: Color32,
@@ -14,7 +16,7 @@ pub struct VisualSettingsRaw {
     highlight_pointer: bool,
 }
 
-impl RawSetting<VisualSettings> for VisualSettingsRaw {
+impl EditorUi<VisualSettings> for VisualSettingsEditor {
     fn new(settings: VisualSettings) -> Self {
         Self {
             min_cell_size: settings.min_cell_size,
@@ -44,7 +46,7 @@ impl RawSetting<VisualSettings> for VisualSettingsRaw {
     }
 }
 
-impl egui::Widget for &mut VisualSettingsRaw {
+impl egui::Widget for &mut VisualSettingsEditor {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         let desired_size = Vec2::new(150., 10.);
         let layout = Layout::left_to_right(Align::Center)

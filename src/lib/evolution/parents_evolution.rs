@@ -1,8 +1,7 @@
 use rand::RngExt;
 
-use crate::{cell::*, evolution::*, weights_tree::WeightsTree};
-
-pub type Rng = rand::rngs::ThreadRng;
+use super::WeightsTree;
+use crate::{evolution::evolution::*, map::*, utils::*};
 
 fn choose_random<T: Clone>(rng: &mut Rng, v1: &T, v2: &T) -> T {
     if rng.random_bool(0.5) {

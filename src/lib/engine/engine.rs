@@ -9,7 +9,7 @@ use std::{
 use rand::RngExt;
 use serde::{Deserialize, Serialize};
 
-use crate::{evolution::*, map::*, slow_mutex::*};
+use crate::{evolution::*, map::MapData, utils::SlowMutex};
 
 #[derive(Debug, Clone, Copy)]
 pub enum SavingPeriod {

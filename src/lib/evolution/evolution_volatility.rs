@@ -2,9 +2,11 @@ use std::ops::{Deref, DerefMut};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    parents_evolution::ParentCombination,
-    random_evolution::{RandomEvolution, Rng},
+use crate::utils::Rng;
+
+use super::{
+    parents_evolution::*,
+    random_evolution::*,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

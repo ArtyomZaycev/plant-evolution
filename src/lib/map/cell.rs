@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::const_precalc::*;
+use crate::precalc::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlantCellAbilities {

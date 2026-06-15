@@ -1,8 +1,12 @@
 use egui::{Align, Layout};
 
-use crate::{engine::EngineParameters, ui::VisualSettings, ui_settings::basics::RawSetting};
+use plant_evolution_lib::engine::*;
 
-use super::{evolution_parameters_raw::*, saving_parameters_raw::*, visual_settings_raw::*};
+use crate::ui::settings::VisualSettings;
+
+use super::{utils::*};
+
+use super::{evolution_parameters_editor::*, saving_parameters_editor::*, visual_settings_editor::*};
 
 pub enum SettingsRawState {
     InProgress,
@@ -10,29 +14,29 @@ pub enum SettingsRawState {
     Applied(VisualSettings, EngineParameters),
 }
 
-pub struct SettingsRaw {
+pub struct AppSettingsEditor {
     tab: usize,
     state: SettingsRawState,
 
-    visual_settings: VisualSettingsRaw,
-    saving_parameters: SavingParametersRaw,
-    evolution_parameters: EvolutionParametersRaw,
+    visual_settings: VisualSettingsEditor,
+    saving_parameters: SavingParametersEditor,
+    evolution_parameters: EvolutionParametersEditor,
 }
 
-impl SettingsRaw {
+impl AppSettingsEditor {
     pub fn get_state(&self) -> &SettingsRawState {
         &self.state
     }
 }
 
-impl RawSetting<(VisualSettings, EngineParameters)> for SettingsRaw {
+impl EditorUi<(VisualSettings, EngineParameters)> for AppSettingsEditor {
     fn new(settings: (VisualSettings, EngineParameters)) -> Self {
         Self {
             tab: 0,
             state: SettingsRawState::InProgress,
-            visual_settings: VisualSettingsRaw::new(settings.0),
-            saving_parameters: SavingParametersRaw::new(settings.1.saving_parameters),
-            evolution_parameters: EvolutionParametersRaw::new(settings.1.evolution_parameters),
+            visual_settings: VisualSettingsEditor::new(settings.0),
+            saving_parameters: SavingParametersEditor::new(settings.1.saving_parameters),
+            evolution_parameters: EvolutionParametersEditor::new(settings.1.evolution_parameters),
         }
     }
 
@@ -53,7 +57,7 @@ impl RawSetting<(VisualSettings, EngineParameters)> for SettingsRaw {
     }
 }
 
-impl egui::Widget for &mut SettingsRaw {
+impl egui::Widget for &mut AppSettingsEditor {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         ui.with_layout(Layout::left_to_right(Align::TOP)
             .with_main_justify(true), |ui| ui.heading("Settings"));

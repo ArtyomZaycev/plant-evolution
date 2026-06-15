@@ -1,6 +1,7 @@
 use std::{cell::LazyCell, collections::HashMap, f32};
 
-use crate::{cell::*, const_precalc::*, evolution::PlantEvolutionData, random_evolution::*};
+use super::cell::*;
+use crate::{precalc::*, evolution::*, utils::*};
 
 #[derive(Debug, Clone)]
 pub struct PlantCell {
