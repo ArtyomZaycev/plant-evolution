@@ -1,5 +1,5 @@
-mod types;
 mod slow_mutex;
+mod types;
 
-pub use types::*;
 pub use slow_mutex::*;
+pub use types::*;

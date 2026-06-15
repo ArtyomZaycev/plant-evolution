@@ -8,12 +8,7 @@ use std::{
     thread,
 };
 
-use plant_evolution_lib::{
-    engine::*,
-    map::MapData,
-    precalc::populate_consts,
-    utils::SlowMutex,
-};
+use plant_evolution_lib::{engine::*, map::MapData, precalc::populate_consts, utils::SlowMutex};
 
 use crate::ui::ui::PlantEvolutionApp;
 

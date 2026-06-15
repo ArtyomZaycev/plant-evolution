@@ -3,15 +3,8 @@ use std::sync::mpsc;
 use rand::RngExt;
 use serde::{Deserialize, Serialize};
 
-use super::{
-    evolution_volatility::*,
-    weights_tree::*,
-    random_evolution::*,
-    parents_evolution::*,
-};
-use crate::{
-    map::*, precalc::*, utils::Rng
-};
+use super::{evolution_volatility::*, parents_evolution::*, random_evolution::*, weights_tree::*};
+use crate::{map::*, precalc::*, utils::Rng};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CellEvolutionData {

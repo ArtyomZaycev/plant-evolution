@@ -3,14 +3,17 @@ use std::sync::{Arc, mpsc};
 use egui::{Align2, Button, Color32, FontId, Pos2, Rect, Sense, TextEdit, Vec2};
 
 use plant_evolution_lib::{
-    precalc::*,
     engine::{EngineCommand, EngineParameters},
     evolution::*,
     map::*,
+    precalc::*,
     utils::SlowMutex,
 };
 
-use crate::ui::{settings::VisualSettings, settings_editor::{utils::EditorUi, editor::*}};
+use crate::ui::{
+    settings::VisualSettings,
+    settings_editor::{editor::*, utils::EditorUi},
+};
 
 pub struct PlantEvolutionApp {
     visual_settings: VisualSettings,
@@ -171,7 +174,8 @@ impl PlantEvolutionApp {
                     }
                 };
 
-                let color = if self.visual_settings.highlight_hovered_cell && self.hovered_cell.or(self.highlighted_cell) == Some((map_idx, j, i))
+                let color = if self.visual_settings.highlight_hovered_cell
+                    && self.hovered_cell.or(self.highlighted_cell) == Some((map_idx, j, i))
                 {
                     Color32::BROWN
                 } else {
@@ -214,9 +218,15 @@ impl PlantEvolutionApp {
 
     fn draw_map_border(&self, ui: &mut egui::Ui, canvas_start: Pos2, highlighted: bool) {
         let (border_width, color) = if highlighted {
-            (self.cell_size / 2., self.visual_settings.highlighted_map_border_color)
+            (
+                self.cell_size / 2.,
+                self.visual_settings.highlighted_map_border_color,
+            )
         } else {
-            (self.cell_size / 2., self.visual_settings.hovered_map_border_color)
+            (
+                self.cell_size / 2.,
+                self.visual_settings.hovered_map_border_color,
+            )
         };
         let min = (canvas_start - Pos2::new(border_width, border_width)).to_pos2();
         let max = canvas_start + self.get_ui_map_size() + Vec2::new(border_width, border_width);

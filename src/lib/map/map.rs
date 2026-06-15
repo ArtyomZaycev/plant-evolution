@@ -1,63 +1,7 @@
 use std::{cell::LazyCell, collections::HashMap, f32};
 
-use super::cell::*;
-use crate::{precalc::*, evolution::*, utils::*};
-
-#[derive(Debug, Clone)]
-pub struct PlantCell {
-    pub t: usize,
-    pub input: PlantCellInput,
-}
-
-impl PlantCell {
-    pub fn is_none(&self) -> bool {
-        self.t == usize::MAX
-    }
-    pub fn is_some(&self) -> bool {
-        !self.is_none()
-    }
-}
-
-impl Default for PlantCell {
-    fn default() -> Self {
-        Self {
-            t: usize::MAX,
-            input: Default::default(),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct AirParameters {
-    pub sunlight: f32,
-}
-
-impl Default for AirParameters {
-    fn default() -> Self {
-        Self { sunlight: 0. }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct SoilParameters {
-    pub minerals: f32,
-    pub water: f32,
-}
-
-impl Default for SoilParameters {
-    fn default() -> Self {
-        Self {
-            minerals: 0.1,
-            water: 0.1,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum MapCell {
-    Air(AirParameters),
-    Soil(SoilParameters),
-}
+use super::{map_cell::*, plant_cell::*};
+use crate::{evolution::*, precalc::*, utils::*};
 
 #[derive(Debug, Default, Clone)]
 pub struct PlantNutrition {

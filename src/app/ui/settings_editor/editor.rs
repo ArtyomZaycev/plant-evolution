@@ -4,9 +4,11 @@ use plant_evolution_lib::engine::*;
 
 use crate::ui::settings::VisualSettings;
 
-use super::{utils::*};
+use super::utils::*;
 
-use super::{evolution_parameters_editor::*, saving_parameters_editor::*, visual_settings_editor::*};
+use super::{
+    evolution_parameters_editor::*, saving_parameters_editor::*, visual_settings_editor::*,
+};
 
 pub enum SettingsRawState {
     InProgress,
@@ -59,8 +61,10 @@ impl EditorUi<(VisualSettings, EngineParameters)> for AppSettingsEditor {
 
 impl egui::Widget for &mut AppSettingsEditor {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-        ui.with_layout(Layout::left_to_right(Align::TOP)
-            .with_main_justify(true), |ui| ui.heading("Settings"));
+        ui.with_layout(
+            Layout::left_to_right(Align::TOP).with_main_justify(true),
+            |ui| ui.heading("Settings"),
+        );
         ui.separator();
         ui.add_enabled_ui(matches!(self.state, SettingsRawState::InProgress), |ui| {
             ui.horizontal(|ui| {

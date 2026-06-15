@@ -4,10 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::utils::Rng;
 
-use super::{
-    parents_evolution::*,
-    random_evolution::*,
-};
+use super::{parents_evolution::*, random_evolution::*};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WithVolatility<T> {

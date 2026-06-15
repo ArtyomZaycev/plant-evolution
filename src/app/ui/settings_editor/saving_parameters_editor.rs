@@ -1,7 +1,7 @@
 use std::time::Duration;
 
-use plant_evolution_lib::engine::*;
 use super::utils::*;
+use plant_evolution_lib::engine::*;
 
 pub struct SavingParametersEditor {
     enabled: bool,

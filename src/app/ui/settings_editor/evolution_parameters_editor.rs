@@ -1,7 +1,7 @@
 use egui::{Align, Layout, Slider, Vec2};
 
-use plant_evolution_lib::engine::*;
 use super::utils::*;
+use plant_evolution_lib::engine::*;
 
 pub struct EvolutionParametersEditor {
     plants: usize,

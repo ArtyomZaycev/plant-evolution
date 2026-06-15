@@ -1,6 +1,5 @@
 use egui::Color32;
 
-
 #[derive(Debug, Clone)]
 pub struct VisualSettings {
     pub min_cell_size: f32,

@@ -1,0 +1,74 @@
+use std::time::Duration;
+
+#[derive(Debug, Clone, Copy)]
+pub enum SavingPeriod {
+    // Always works
+    EveryDuration(Duration),
+    // For Tick and RunTick
+    // TODO: Remove, only EvolutionData is saved
+    EveryTick(u32),
+    // For RunEvolution
+    EveryEvolution(u32),
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum SaveSelection {
+    All,
+    Best(usize),
+}
+
+#[derive(Debug, Clone)]
+pub struct SavingParameters {
+    pub enabled: bool,
+    pub period: SavingPeriod,
+    pub selection: SaveSelection,
+}
+
+impl Default for SavingParameters {
+    fn default() -> Self {
+        Self {
+            enabled: Default::default(),
+            period: SavingPeriod::EveryDuration(Duration::from_mins(5)),
+            selection: SaveSelection::Best(1),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct EvolutionParameters {
+    pub plants: usize,
+    pub samples: usize,
+    pub parent_evolution: bool,
+    pub change_chance: f32,
+    pub change_entropy: f32,
+
+    pub run_evolution_parameters: RunEvolutionParameters,
+}
+
+impl Default for EvolutionParameters {
+    fn default() -> Self {
+        Self {
+            plants: 200,
+            samples: 10,
+            parent_evolution: true,
+            change_chance: 0.05,
+            change_entropy: 0.8,
+            run_evolution_parameters: RunEvolutionParameters::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct RunEvolutionParameters {
+    pub ticks_per_evolution: u32,
+    pub ticks_per_slow_write: u32,
+}
+
+impl Default for RunEvolutionParameters {
+    fn default() -> Self {
+        Self {
+            ticks_per_evolution: 500,
+            ticks_per_slow_write: 2000,
+        }
+    }
+}

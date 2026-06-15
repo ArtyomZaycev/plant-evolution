@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::precalc::*;
+use crate::precalc::NUMBER_OF_CELLS;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlantCellAbilities {
@@ -47,4 +47,28 @@ pub struct PlantCellInput {
     pub minerals: f32,
     pub water: f32,
     pub cells_proximity_data: [[bool; NUMBER_OF_CELLS]; 4],
+}
+
+#[derive(Debug, Clone)]
+pub struct PlantCell {
+    pub t: usize,
+    pub input: PlantCellInput,
+}
+
+impl PlantCell {
+    pub fn is_none(&self) -> bool {
+        self.t == usize::MAX
+    }
+    pub fn is_some(&self) -> bool {
+        !self.is_none()
+    }
+}
+
+impl Default for PlantCell {
+    fn default() -> Self {
+        Self {
+            t: usize::MAX,
+            input: Default::default(),
+        }
+    }
 }

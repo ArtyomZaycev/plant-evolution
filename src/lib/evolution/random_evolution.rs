@@ -2,7 +2,9 @@ use std::sync::mpsc;
 
 use rand::RngExt;
 
-use super::{PlantEvolutionData, CellEvolutionData, weights_tree::*, RunningEvolutionData, run_evolution};
+use super::{
+    CellEvolutionData, PlantEvolutionData, RunningEvolutionData, run_evolution, weights_tree::*,
+};
 use crate::{map::*, utils::*};
 
 fn apply_change_chance_and<F: FnOnce() -> bool>(change_chance: f32, random: f32, f: F) -> bool {

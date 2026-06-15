@@ -1,4 +1,7 @@
-use egui::{Align, Button, Color32, Layout, PopupCloseBehavior, Slider, Vec2, color_picker, containers::menu::{self, MenuConfig}};
+use egui::{
+    Align, Button, Color32, Layout, PopupCloseBehavior, Slider, Vec2, color_picker,
+    containers::menu::{self, MenuConfig},
+};
 
 use crate::ui::settings::VisualSettings;
 
@@ -53,7 +56,8 @@ impl egui::Widget for &mut VisualSettingsEditor {
             .with_main_justify(true)
             .with_main_align(Align::LEFT);
         let show_color_picker = |ui: &mut egui::Ui, color: &mut Color32| {
-            let mut menu_button = menu::MenuButton::new("Change").config(MenuConfig::new().close_behavior(PopupCloseBehavior::CloseOnClickOutside));
+            let mut menu_button = menu::MenuButton::new("Change")
+                .config(MenuConfig::new().close_behavior(PopupCloseBehavior::CloseOnClickOutside));
             menu_button.button = menu_button.button.fill(*color);
             menu_button.ui(ui, |ui| {
                 color_picker::color_picker_color32(ui, color, color_picker::Alpha::Opaque);
@@ -62,30 +66,51 @@ impl egui::Widget for &mut VisualSettingsEditor {
                 }
             });
         };
-        let color_selection = |ui: &mut egui::Ui, label: &str, color: &mut Color32, default_color: Color32| {
-            ui.horizontal(|ui| {
-                ui.allocate_ui_with_layout(desired_size, layout, |ui| {
-                    ui.label(label)
-                });
+        let color_selection =
+            |ui: &mut egui::Ui, label: &str, color: &mut Color32, default_color: Color32| {
                 ui.horizontal(|ui| {
-                    show_color_picker(ui, color);
-                    if ui.add(Button::new("Reset").fill(default_color)).clicked() {
-                        *color = default_color;
-                    }
+                    ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label(label));
+                    ui.horizontal(|ui| {
+                        show_color_picker(ui, color);
+                        if ui.add(Button::new("Reset").fill(default_color)).clicked() {
+                            *color = default_color;
+                        }
+                    });
                 });
-            });
-        };
+            };
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
-                ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Minimum cell size (pixels)"));
+                ui.allocate_ui_with_layout(desired_size, layout, |ui| {
+                    ui.label("Minimum cell size (pixels)")
+                });
                 ui.add(Slider::new(&mut self.min_cell_size, 1.0..=32.0));
             });
 
-            color_selection(ui, "Plant cell color", &mut self.plant_color, VisualSettings::default().plant_color);
-            color_selection(ui, "Plant seed color", &mut self.seed_color, VisualSettings::default().seed_color);
-            color_selection(ui, "Air color", &mut self.air_color, VisualSettings::default().air_color);
-            color_selection(ui, "Soil color", &mut self.soil_color, VisualSettings::default().soil_color);
-            
+            color_selection(
+                ui,
+                "Plant cell color",
+                &mut self.plant_color,
+                VisualSettings::default().plant_color,
+            );
+            color_selection(
+                ui,
+                "Plant seed color",
+                &mut self.seed_color,
+                VisualSettings::default().seed_color,
+            );
+            color_selection(
+                ui,
+                "Air color",
+                &mut self.air_color,
+                VisualSettings::default().air_color,
+            );
+            color_selection(
+                ui,
+                "Soil color",
+                &mut self.soil_color,
+                VisualSettings::default().soil_color,
+            );
+
             ui.horizontal(|ui| {
                 ui.allocate_ui_with_layout(desired_size, layout, |ui| {
                     ui.label("Highlight hovered")
