@@ -1,4 +1,4 @@
-use egui::{Align, Color32, Layout, Slider, Vec2};
+use egui::{Align, Button, Color32, Layout, PopupCloseBehavior, Slider, Vec2, color_picker, containers::menu::{self, MenuConfig}};
 
 use crate::{ui::VisualSettings, ui_settings::basics::RawSetting};
 
@@ -8,6 +8,8 @@ pub struct VisualSettingsRaw {
     seed_color: Color32,
     air_color: Color32,
     soil_color: Color32,
+    hovered_map_border_color: Color32,
+    highlighted_map_border_color: Color32,
     highlight_hovered_cell: bool,
     highlight_pointer: bool,
 }
@@ -20,6 +22,8 @@ impl RawSetting<VisualSettings> for VisualSettingsRaw {
             seed_color: settings.seed_color,
             air_color: settings.air_color,
             soil_color: settings.soil_color,
+            hovered_map_border_color: settings.hovered_map_border_color,
+            highlighted_map_border_color: settings.highlighted_map_border_color,
             highlight_hovered_cell: settings.highlight_hovered_cell,
             highlight_pointer: settings.highlight_pointer,
         }
@@ -32,6 +36,8 @@ impl RawSetting<VisualSettings> for VisualSettingsRaw {
             seed_color: self.seed_color,
             air_color: self.air_color,
             soil_color: self.soil_color,
+            hovered_map_border_color: self.hovered_map_border_color,
+            highlighted_map_border_color: self.highlighted_map_border_color,
             highlight_hovered_cell: self.highlight_hovered_cell,
             highlight_pointer: self.highlight_pointer,
         })
@@ -44,34 +50,40 @@ impl egui::Widget for &mut VisualSettingsRaw {
         let layout = Layout::left_to_right(Align::Center)
             .with_main_justify(true)
             .with_main_align(Align::LEFT);
+        let show_color_picker = |ui: &mut egui::Ui, color: &mut Color32| {
+            let mut menu_button = menu::MenuButton::new("Change").config(MenuConfig::new().close_behavior(PopupCloseBehavior::CloseOnClickOutside));
+            menu_button.button = menu_button.button.fill(*color);
+            menu_button.ui(ui, |ui| {
+                color_picker::color_picker_color32(ui, color, color_picker::Alpha::Opaque);
+                if ui.button("Apply").clicked() {
+                    egui::Popup::close_all(ui.ctx());
+                }
+            });
+        };
+        let color_selection = |ui: &mut egui::Ui, label: &str, color: &mut Color32, default_color: Color32| {
+            ui.horizontal(|ui| {
+                ui.allocate_ui_with_layout(desired_size, layout, |ui| {
+                    ui.label(label)
+                });
+                ui.horizontal(|ui| {
+                    show_color_picker(ui, color);
+                    if ui.add(Button::new("Reset").fill(default_color)).clicked() {
+                        *color = default_color;
+                    }
+                });
+            });
+        };
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
                 ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Minimum cell size (pixels)"));
                 ui.add(Slider::new(&mut self.min_cell_size, 1.0..=32.0));
             });
-            /*ui.horizontal(|ui| {
-                ui.allocate_ui_with_layout(desired_size, layout, |ui| {
-                    ui.label("Number of samples")
-                });
-                ui.add(Slider::new(&mut self.samples, 1..=self.plants));
-            });
-            ui.horizontal(|ui| {
-                ui.allocate_ui_with_layout(desired_size, layout, |ui| {
-                    ui.label("Parents Evolution")
-                });
-                ui.radio_value(&mut self.parent_evolution, true, "Enabled");
-                ui.radio_value(&mut self.parent_evolution, false, "Disabled");
-            });
-            ui.horizontal(|ui| {
-                ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Evolution chance"));
-                ui.add(Slider::new(&mut self.change_chance, 0.05..=1.0));
-            });
-            ui.horizontal(|ui| {
-                ui.allocate_ui_with_layout(desired_size, layout, |ui| {
-                    ui.label("Evolution entropy")
-                });
-                ui.add(Slider::new(&mut self.change_entropy, 0.05..=1.0));
-            });*/
+
+            color_selection(ui, "Plant cell color", &mut self.plant_color, VisualSettings::default().plant_color);
+            color_selection(ui, "Plant seed color", &mut self.seed_color, VisualSettings::default().seed_color);
+            color_selection(ui, "Air color", &mut self.air_color, VisualSettings::default().air_color);
+            color_selection(ui, "Soil color", &mut self.soil_color, VisualSettings::default().soil_color);
+            
             ui.horizontal(|ui| {
                 ui.allocate_ui_with_layout(desired_size, layout, |ui| {
                     ui.label("Highlight hovered")

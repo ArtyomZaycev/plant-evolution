@@ -17,15 +17,6 @@ use crate::{
     },
 };
 
-pub struct SavingEngineParametersInput {
-    pub enabled: bool,
-    pub period_type: usize,
-    pub period_duration: Duration,
-    pub period_value: String,
-    pub selection_type: usize,
-    pub selection_value: String,
-}
-
 #[derive(Debug, Clone)]
 pub struct VisualSettings {
     pub min_cell_size: f32,
@@ -35,6 +26,9 @@ pub struct VisualSettings {
 
     pub air_color: Color32,
     pub soil_color: Color32,
+
+    pub hovered_map_border_color: Color32,
+    pub highlighted_map_border_color: Color32,
 
     pub highlight_hovered_cell: bool,
     pub highlight_pointer: bool,
@@ -48,6 +42,8 @@ impl Default for VisualSettings {
             seed_color: Color32::RED,
             air_color: Color32::LIGHT_BLUE,
             soil_color: Color32::YELLOW,
+            hovered_map_border_color: Color32::PURPLE,
+            highlighted_map_border_color: Color32::BLUE,
             highlight_hovered_cell: true,
             highlight_pointer: true,
         }
@@ -190,25 +186,6 @@ impl PlantEvolutionApp {
     fn draw_map(&mut self, ui: &mut egui::Ui, map_idx: usize, canvas_start: Pos2) {
         let painter = ui.painter_at(Rect::from_min_size(canvas_start, self.get_ui_map_size()));
 
-        let pointer_pos: Option<Pos2> = ui.ctx().input(|i| i.pointer.interact_pos());
-        if self.hovered_cell.is_none() {
-            self.hovered_cell = pointer_pos.and_then(|pos| {
-                let pos = pos - canvas_start;
-                if pos.x < 0. || pos.y < 0. {
-                    None
-                } else {
-                    let x = (pos.x / self.cell_size) as usize;
-                    let y = (pos.y / self.cell_size) as usize;
-
-                    if x >= MAP_SIZE.0 || y >= MAP_SIZE.1 {
-                        None
-                    } else {
-                        Some((map_idx, x, y))
-                    }
-                }
-            });
-        }
-
         for i in 0..MAP_SIZE.1 {
             for j in 0..MAP_SIZE.0 {
                 let rect = Rect::from_min_size(
@@ -259,7 +236,7 @@ impl PlantEvolutionApp {
         }
 
         if self.visual_settings.highlight_pointer {
-            pointer_pos.inspect(|pos| {
+            ui.ctx().input(|i| i.pointer.interact_pos()).inspect(|pos| {
                 painter.circle_filled(*pos, 2., Color32::RED);
             });
         }
@@ -273,11 +250,11 @@ impl PlantEvolutionApp {
         );
     }
 
-    fn draw_map_border(&self, ui: &mut egui::Ui, canvas_start: Pos2, strong: bool) {
-        let (border_width, color) = if strong {
-            (self.cell_size / 2., Color32::PURPLE)
+    fn draw_map_border(&self, ui: &mut egui::Ui, canvas_start: Pos2, highlighted: bool) {
+        let (border_width, color) = if highlighted {
+            (self.cell_size / 2., self.visual_settings.highlighted_map_border_color)
         } else {
-            (self.cell_size / 2., Color32::BLUE)
+            (self.cell_size / 2., self.visual_settings.hovered_map_border_color)
         };
         let min = (canvas_start - Pos2::new(border_width, border_width)).to_pos2();
         let max = canvas_start + self.get_ui_map_size() + Vec2::new(border_width, border_width);
@@ -727,7 +704,23 @@ impl eframe::App for PlantEvolutionApp {
                             start_pos.y + map_height * row as f32 + border_height * row as f32
                         );
 
-                        self.draw_map(ui, map_idx, canvas_start);
+                        if self.hovered_cell.is_none() && canvas_reponse.hovered() {
+                            self.hovered_cell = ui.ctx().input(|i| i.pointer.interact_pos()).and_then(|pos| {
+                                let pos = pos - canvas_start;
+                                if pos.x < 0. || pos.y < 0. {
+                                    None
+                                } else {
+                                    let x = (pos.x / self.cell_size) as usize;
+                                    let y = (pos.y / self.cell_size) as usize;
+
+                                    if x >= MAP_SIZE.0 || y >= MAP_SIZE.1 {
+                                        None
+                                    } else {
+                                        Some((map_idx, x, y))
+                                    }
+                                }
+                            });
+                        }
 
                         let map_rect = Rect::from_min_size(canvas_start, self.get_ui_map_size());
                         if canvas_reponse.hovered() && ui.input(|inp| inp.pointer.hover_pos()).is_some_and(|p| map_rect.contains(p)) {
@@ -739,6 +732,8 @@ impl eframe::App for PlantEvolutionApp {
                                 }
                             }
                         }
+
+                        self.draw_map(ui, map_idx, canvas_start);
                         if self.highlighted_map == Some(map_idx) {
                             self.draw_map_border(ui, canvas_start, true);
                         }

@@ -1,3 +1,5 @@
+use egui::{Align, Layout};
+
 use crate::{engine::EngineParameters, ui::VisualSettings, ui_settings::basics::RawSetting};
 
 use super::{evolution_parameters_raw::*, saving_parameters_raw::*, visual_settings_raw::*};
@@ -53,10 +55,13 @@ impl RawSetting<(VisualSettings, EngineParameters)> for SettingsRaw {
 
 impl egui::Widget for &mut SettingsRaw {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
+        ui.with_layout(Layout::left_to_right(Align::TOP)
+            .with_main_justify(true), |ui| ui.heading("Settings"));
+        ui.separator();
         ui.add_enabled_ui(matches!(self.state, SettingsRawState::InProgress), |ui| {
             ui.horizontal(|ui| {
                 ui.selectable_value(&mut self.tab, 0, "Visual");
-                ui.selectable_value(&mut self.tab, 1, "Saving");
+                ui.selectable_value(&mut self.tab, 1, "Autosaving");
                 ui.selectable_value(&mut self.tab, 2, "Evolution");
             });
             ui.separator();
