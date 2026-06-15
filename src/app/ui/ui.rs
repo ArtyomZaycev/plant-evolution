@@ -4,7 +4,6 @@ use egui::{Align2, Button, Color32, FontId, Pos2, Rect, Sense, TextEdit, Vec2};
 
 use plant_evolution_lib::{
     engine::{EngineCommand, EngineParameters},
-    evolution::*,
     map::*,
     precalc::*,
     utils::SlowMutex,
@@ -165,7 +164,7 @@ impl PlantEvolutionApp {
                     },
                 );
 
-                let color = if self.maps[map_idx].plants[i][j].is_some() {
+                let color = if self.maps[map_idx].cells[i][j].is_some() {
                     self.visual_settings.plant_color
                 } else {
                     match self.maps[map_idx].map[i][j] {
@@ -183,9 +182,9 @@ impl PlantEvolutionApp {
                 };
                 painter.rect_filled(rect, 0., color);
 
-                if self.maps[map_idx].plants[i][j].is_some()
+                if self.maps[map_idx].cells[i][j].is_some()
                     && self.maps[map_idx].evolution_data.cells_abilities
-                        [self.maps[map_idx].plants[i][j].t]
+                        [self.maps[map_idx].cells[i][j].t]
                         .seed
                 {
                     painter.circle_filled(
@@ -495,7 +494,7 @@ impl eframe::App for PlantEvolutionApp {
             });
             ui.label(format!(
                 "Score: {:.2}",
-                calculate_score(&self.maps[map_idx])
+                self.maps[map_idx].calculate_score(),
             ));
 
             ui.separator();
@@ -594,7 +593,7 @@ impl eframe::App for PlantEvolutionApp {
                     ))
                     .hovered()
                 {
-                    if self.maps[map_idx].plants[self.maps[map_idx].next_cell_suicide.2]
+                    if self.maps[map_idx].cells[self.maps[map_idx].next_cell_suicide.2]
                         [self.maps[map_idx].next_cell_suicide.1]
                         .is_some()
                     {
@@ -616,20 +615,20 @@ impl eframe::App for PlantEvolutionApp {
                         let cell_info = format!("cell_info {:?};", &self.maps[map_idx].map[y][x]);
                         ui.label(format!("({}, {}) => {}", x, y, cell_info));
 
-                        let plant_info = if self.maps[map_idx].plants[y][x].is_some() {
+                        let plant_info = if self.maps[map_idx].cells[y][x].is_some() {
                             format!(
                                 "plant {}, sunlight: {:.2}, air: {:.2}, minerals: {:.2}, water: {:.2}",
-                                self.maps[map_idx].plants[y][x].t + 1,
-                                self.maps[map_idx].plants[y][x].input.sunlight,
-                                self.maps[map_idx].plants[y][x].input.air,
-                                self.maps[map_idx].plants[y][x].input.minerals,
-                                self.maps[map_idx].plants[y][x].input.water
+                                self.maps[map_idx].cells[y][x].t + 1,
+                                self.maps[map_idx].cells[y][x].input.sunlight,
+                                self.maps[map_idx].cells[y][x].input.air,
+                                self.maps[map_idx].cells[y][x].input.minerals,
+                                self.maps[map_idx].cells[y][x].input.water
                             )
                         } else {
                             "".to_owned()
                         };
                         ui.label(format!("{}", plant_info));
-                        ui.label(format!("{:?}", self.maps[map_idx].plants[y][x]));
+                        ui.label(format!("{:?}", self.maps[map_idx].cells[y][x]));
                     }
                     None => {
                         ui.label("Nothing selected");

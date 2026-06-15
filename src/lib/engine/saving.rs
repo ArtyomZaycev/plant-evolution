@@ -3,7 +3,7 @@ use std::time::UNIX_EPOCH;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{evolution::calculate_score, map::MapData};
+use crate::map::MapData;
 
 use super::parameters::*;
 
@@ -58,7 +58,7 @@ pub fn save_maps(parameters: &SavingParameters, simulation_id: &str, maps: &Vec<
                     let mut maps_score = maps
                         .iter()
                         .enumerate()
-                        .map(|(i, map)| (calculate_score(map), i))
+                        .map(|(i, map)| (map.calculate_score(), i))
                         .collect::<Vec<_>>();
                     maps_score.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap().reverse());
 

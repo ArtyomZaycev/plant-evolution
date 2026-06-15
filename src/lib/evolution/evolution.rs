@@ -83,57 +83,6 @@ impl PlantEvolutionData {
     }
 }
 
-pub fn calculate_score(map: &MapData) -> f32 {
-    let mut seeds = vec![];
-
-    let nutrition = map
-        .plants_pos
-        .iter()
-        .fold(PlantNutrition::default(), |nutrition, &(j, i)| {
-            let cell = &map.plants[i][j];
-            let cell_abilities = &map.evolution_data.cells_abilities[cell.t];
-            if cell_abilities.seed && matches!(map.map[i][j], MapCell::Air(_)) {
-                seeds.push((j, i));
-            }
-            PlantNutrition {
-                sunlight: nutrition.sunlight
-                    + cell.input.sunlight * cell_abilities.sunlight_consumption,
-                air: nutrition.air + cell.input.air * cell_abilities.air_consumption,
-                minerals: nutrition.minerals
-                    + cell.input.minerals * cell_abilities.minerals_consumption,
-                water: nutrition.water + cell.input.water * cell_abilities.water_consumption,
-                energy: nutrition.energy + cell_abilities.energy_production_speed,
-            }
-        });
-
-    let mut seeds_score: f32 = 0.;
-    for &(x, y) in &seeds {
-        let mut cnt = 0;
-        for &(x2, y2) in &seeds {
-            if x != x2 || y != y2 {
-                if (x as f32 - x2 as f32).powi(2) + (y as f32 - y2 as f32).powi(2) < 25. {
-                    cnt += 1;
-                }
-            }
-        }
-        seeds_score += 2. / (cnt + 1) as f32;
-    }
-
-    (seeds_score * 10.)
-        + ([
-            nutrition.sunlight,
-            nutrition.air,
-            nutrition.minerals,
-            nutrition.water,
-            nutrition.energy,
-        ]
-        .into_iter()
-        .reduce(f32::min)
-        .unwrap()
-            * 100.)
-            .sqrt()
-}
-
 #[derive(Debug)]
 pub struct RunningEvolutionData {
     pub evolution_total: usize,
@@ -173,8 +122,8 @@ pub fn run_evolution<F: FnMut(&mut Vec<MapData>)>(
 #[hotpath::measure]
 fn sample_best_maps_evolution(maps: &mut Vec<MapData>, samples: usize) -> Vec<PlantEvolutionData> {
     maps.sort_by(|a, b| {
-        calculate_score(a)
-            .partial_cmp(&calculate_score(b))
+        a.calculate_score()
+            .partial_cmp(&b.calculate_score())
             .unwrap()
             .reverse()
     });
