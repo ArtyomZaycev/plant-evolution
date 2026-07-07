@@ -12,6 +12,7 @@ use plant_evolution_lib::{
 use crate::ui::{
     settings::VisualSettings,
     settings_editor::{editor::*, utils::EditorUi},
+    toast::{TOAST_MANAGER, Toast},
 };
 
 pub struct PlantEvolutionApp {
@@ -43,6 +44,14 @@ impl PlantEvolutionApp {
         sender: mpsc::Sender<EngineCommand>,
         slow_maps: Arc<SlowMutex<Vec<MapData>>>,
     ) -> Self {
+        TOAST_MANAGER.lock().add(Toast::new("ted12312312312312asdaczxczsdasdasdasda sd asd ad123123asd a  adasdasdtted12312312312312asdaczxczsdasdasdasda1"));
+        TOAST_MANAGER.lock().add(Toast::new("tedt2"));
+        TOAST_MANAGER.lock().add(Toast::new("tedt2"));
+        TOAST_MANAGER.lock().add(Toast::new("tedt2"));
+        TOAST_MANAGER.lock().add(Toast::new("tedt2"));
+        TOAST_MANAGER.lock().add(Toast::new("tedt2"));
+        TOAST_MANAGER.lock().add(Toast::new("tedt2"));
+
         Self {
             visual_settings: VisualSettings::default(),
             settings: None,
@@ -259,6 +268,9 @@ impl eframe::App for PlantEvolutionApp {
             self.maps = maps;
         }
 
+        let mut manager = TOAST_MANAGER.lock();
+        manager.show(ui);
+
         let mut close_settings = false;
         if let Some(settings) = &mut self.settings {
             match settings.get_state() {
@@ -356,7 +368,9 @@ impl eframe::App for PlantEvolutionApp {
 
         egui::Panel::top("settings").show_inside(ui, |ui| {
             ui.horizontal(|ui| {
-                ui.menu_button("File", |ui| {});
+                ui.menu_button("File", |ui| {
+                    
+                });
                 if ui.button("Settings").clicked() {
                     self.settings = Some(AppSettingsEditor::new((
                         self.visual_settings.clone(),
