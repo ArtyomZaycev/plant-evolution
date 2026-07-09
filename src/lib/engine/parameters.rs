@@ -2,19 +2,15 @@ use std::time::Duration;
 
 #[derive(Debug, Clone, Copy)]
 pub enum SavingPeriod {
-    // Always works
     EveryDuration(Duration),
-    // For Tick and RunTick
-    // TODO: Remove, only EvolutionData is saved
-    EveryTick(u32),
-    // For RunEvolution
     EveryEvolution(u32),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum SaveSelection {
     All,
     Best(usize),
+    Selected(Vec<usize>),
 }
 
 #[derive(Debug, Clone)]

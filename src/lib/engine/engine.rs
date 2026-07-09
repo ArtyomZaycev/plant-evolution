@@ -1,11 +1,8 @@
 use std::{
-    mem::discriminant,
     sync::{Arc, mpsc},
     thread,
     time::{Duration, SystemTime},
 };
-
-use rand::RngExt;
 
 use super::{parameters::*, saving::*};
 use crate::{evolution::*, map::MapData, utils::SlowMutex};
@@ -39,20 +36,33 @@ pub struct EngineParameters {
     pub evolution_parameters: EvolutionParameters,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct SaveMark {
+    time: SystemTime,
+    evolution: u32,
+}
+
+impl Default for SaveMark {
+    fn default() -> Self {
+        Self {
+            time: SystemTime::UNIX_EPOCH,
+            evolution: Default::default(),
+        }
+    }
+}
+
 pub fn run_engine(
     receiver: mpsc::Receiver<EngineCommand>,
     slow_maps: Arc<SlowMutex<Vec<MapData>>>,
 ) {
     let mut rng = rand::rng();
 
-    let simulation_id = rng.random::<u64>().to_string();
-
     let mut maps = slow_maps.force_read();
 
     let mut parameters = EngineParameters::default();
 
     let mut save = false;
-    let mut last_save: u128 = 0;
+    let mut last_save = SaveMark::default();
 
     let mut state = EngineState::Stale;
 
@@ -65,16 +75,10 @@ pub fn run_engine(
                         map.evolutions = 0;
                         map.restart();
                     });
-                    last_save = 0;
+                    last_save = SaveMark::default();
                     slow_maps.force_write(maps.clone());
                 }
                 EngineCommand::UpdateParameters(new_parameters) => {
-                    if !new_parameters.saving_parameters.enabled
-                        || discriminant(&parameters.saving_parameters.period)
-                            != discriminant(&new_parameters.saving_parameters.period)
-                    {
-                        last_save = 0;
-                    }
                     parameters = new_parameters;
                 }
 
@@ -131,41 +135,23 @@ pub fn run_engine(
             }
         }
 
-        if save || parameters.saving_parameters.enabled {
+        if !save && parameters.saving_parameters.enabled {
             match parameters.saving_parameters.period {
                 SavingPeriod::EveryDuration(duration) => {
-                    let time = std::time::SystemTime::now();
-                    if save
-                        || time
-                            .duration_since(
-                                SystemTime::UNIX_EPOCH + Duration::from_millis(last_save as u64),
-                            )
-                            .unwrap()
-                            > duration
-                    {
-                        save_maps(&parameters.saving_parameters, &simulation_id, &maps);
-                        last_save = time
-                            .duration_since(SystemTime::UNIX_EPOCH)
-                            .unwrap()
-                            .as_millis();
-                    }
-                }
-                SavingPeriod::EveryTick(period) => {
-                    if save || state != EngineState::RunEvolution {
-                        if save || maps[0].ticks.saturating_sub(last_save as u32) > period {
-                            save_maps(&parameters.saving_parameters, &simulation_id, &maps);
-                            last_save = maps[0].ticks as u128;
-                        }
-                    }
+                    save = SystemTime::now().duration_since(last_save.time).unwrap() > duration;
                 }
                 SavingPeriod::EveryEvolution(period) => {
-                    if save || maps[0].evolutions.saturating_sub(last_save as u32) > period {
-                        save_maps(&parameters.saving_parameters, &simulation_id, &maps);
-                        last_save = maps[0].evolutions as u128;
-                    }
+                    save = maps[0].evolutions.saturating_sub(last_save.evolution) > period;
                 }
             }
+        }
 
+        if save {
+            save_maps("".into(), &parameters.saving_parameters.selection, &maps);
+            last_save = SaveMark {
+                time: SystemTime::now(),
+                evolution: maps[0].evolutions,
+            };
             save = false;
         }
 

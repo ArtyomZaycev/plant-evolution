@@ -14,12 +14,12 @@ pub struct Toast {
 }
 
 impl Toast {
-    pub fn new(text: &str) -> Self {
+    pub fn new(text: impl Into<String>) -> Self {
         Self {
             closed: false,
             created: SystemTime::now(),
-            text: text.to_owned(),
-            autoclose: false,
+            text: text.into(),
+            autoclose: true,
         }
     }
 

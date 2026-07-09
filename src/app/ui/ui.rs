@@ -3,7 +3,7 @@ use std::sync::{Arc, mpsc};
 use egui::{Align2, Button, Color32, FontId, Pos2, Rect, Sense, TextEdit, Vec2};
 
 use plant_evolution_lib::{
-    engine::{EngineCommand, EngineParameters},
+    engine::*,
     map::*,
     precalc::*,
     utils::SlowMutex,
@@ -12,10 +12,12 @@ use plant_evolution_lib::{
 use crate::ui::{
     settings::VisualSettings,
     settings_editor::{editor::*, utils::EditorUi},
-    toast::{TOAST_MANAGER, Toast},
+    toast::*,
 };
 
 pub struct PlantEvolutionApp {
+    simulation_id: String,
+
     visual_settings: VisualSettings,
     settings: Option<AppSettingsEditor>,
 
@@ -28,6 +30,8 @@ pub struct PlantEvolutionApp {
     maps_version: u128,
     command_sender: mpsc::Sender<EngineCommand>,
     slow_maps: Arc<SlowMutex<Vec<MapData>>>,
+
+    next_save_log_idx: usize,
 
     engine_parameters: EngineParameters,
     run: bool,
@@ -44,15 +48,8 @@ impl PlantEvolutionApp {
         sender: mpsc::Sender<EngineCommand>,
         slow_maps: Arc<SlowMutex<Vec<MapData>>>,
     ) -> Self {
-        TOAST_MANAGER.lock().add(Toast::new("ted12312312312312asdaczxczsdasdasdasda sd asd ad123123asd a  adasdasdtted12312312312312asdaczxczsdasdasdasda1"));
-        TOAST_MANAGER.lock().add(Toast::new("tedt2"));
-        TOAST_MANAGER.lock().add(Toast::new("tedt2"));
-        TOAST_MANAGER.lock().add(Toast::new("tedt2"));
-        TOAST_MANAGER.lock().add(Toast::new("tedt2"));
-        TOAST_MANAGER.lock().add(Toast::new("tedt2"));
-        TOAST_MANAGER.lock().add(Toast::new("tedt2"));
-
         Self {
+            simulation_id: String::default(),
             visual_settings: VisualSettings::default(),
             settings: None,
             cell_size: 6.,
@@ -62,6 +59,7 @@ impl PlantEvolutionApp {
             command_sender: sender,
             maps: slow_maps.force_read(),
             slow_maps,
+            next_save_log_idx: 0,
             engine_parameters: EngineParameters::default(),
             run: false,
             run_evolution: false,
@@ -257,6 +255,14 @@ impl PlantEvolutionApp {
             self.highlighted_map = None;
         }
     }
+
+    fn push_save_log(save_log: &SaveLog) {
+        let mut toast_manager = TOAST_MANAGER.lock();
+        toast_manager.add(Toast::new(match &save_log.error {
+            Some(err) => format!("Error saving: {err}"),
+            None => format!("Saved to {:?}", save_log.path),
+        }));
+    }
 }
 
 impl eframe::App for PlantEvolutionApp {
@@ -268,8 +274,17 @@ impl eframe::App for PlantEvolutionApp {
             self.maps = maps;
         }
 
-        let mut manager = TOAST_MANAGER.lock();
-        manager.show(ui);
+        let save_logs = SAVE_LOGS.lock().unwrap();
+        if save_logs.len() > self.next_save_log_idx {
+            save_logs
+                .iter()
+                .skip(self.next_save_log_idx)
+                .for_each(Self::push_save_log);
+            self.next_save_log_idx = save_logs.len();
+        }
+        std::mem::drop(save_logs);
+
+        TOAST_MANAGER.lock().show(ui);
 
         let mut close_settings = false;
         if let Some(settings) = &mut self.settings {
@@ -369,14 +384,37 @@ impl eframe::App for PlantEvolutionApp {
         egui::Panel::top("settings").show_inside(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.menu_button("File", |ui| {
-                    
+                    ui.set_min_width(100.);
+                    ui.menu_button("Save", |ui| {
+                        ui.set_min_width(80.);
+                        if ui.button("Best").clicked() {
+                            Self::push_save_log(&save_maps(self.simulation_id.clone().into(), &SaveSelection::Best(1), &self.maps));
+                        }
+                        if ui.button("Selected").clicked() {
+                            Self::push_save_log(&save_maps(
+                                self.simulation_id.clone().into(),
+                                &SaveSelection::Selected(self.selected_maps_index.clone()),
+                                &self.maps,
+                            ));
+                        }
+                        if ui.button("All").clicked() {
+                            Self::push_save_log(&save_maps(self.simulation_id.clone().into(), &SaveSelection::All, &self.maps));
+                        }
+                    });
+                    if ui.button("Save As").clicked() {}
+                    if ui.button("Load").clicked() {}
+                    ui.separator();
+                    if ui.button("Restart").clicked() {
+                        self.command_sender.send(EngineCommand::Restart).unwrap();
+                    }
+                    ui.separator();
+                    if ui.button("Settings").clicked() {
+                        self.settings = Some(AppSettingsEditor::new((
+                            self.visual_settings.clone(),
+                            self.engine_parameters.clone(),
+                        )));
+                    }
                 });
-                if ui.button("Settings").clicked() {
-                    self.settings = Some(AppSettingsEditor::new((
-                        self.visual_settings.clone(),
-                        self.engine_parameters.clone(),
-                    )));
-                }
             })
         });
 
@@ -488,10 +526,6 @@ impl eframe::App for PlantEvolutionApp {
                     }
                 };
             });
-
-            if ui.button("Restart").clicked() {
-                self.command_sender.send(EngineCommand::Restart).unwrap();
-            }
 
             ui.separator();
 

@@ -27,7 +27,7 @@ impl EditorUi<SavingParameters> for SavingParametersEditor {
             Some(SavingParameters {
                 enabled: self.enabled,
                 period: self.period,
-                selection: self.selection,
+                selection: self.selection.clone(),
             })
         } else {
             None
@@ -55,12 +55,6 @@ impl egui::Widget for &mut SavingParametersEditor {
                         self.period = SavingPeriod::EveryDuration(Default::default());
                     }
                     if ui
-                        .radio(matches!(self.period, SavingPeriod::EveryTick(_)), "Ticks")
-                        .clicked()
-                    {
-                        self.period = SavingPeriod::EveryTick(Default::default());
-                    }
-                    if ui
                         .radio(
                             matches!(self.period, SavingPeriod::EveryEvolution(_)),
                             "Evolutions",
@@ -75,9 +69,6 @@ impl egui::Widget for &mut SavingParametersEditor {
                         let mut value = duration.as_secs_f32();
                         ui.add(egui::Slider::new(&mut value, 5.0..=900.));
                         *duration = Duration::from_secs_f32(value);
-                    }
-                    SavingPeriod::EveryTick(value) => {
-                        ui.add(egui::Slider::new(value, 100..=10000));
                     }
                     SavingPeriod::EveryEvolution(value) => {
                         ui.add(egui::Slider::new(value, 1..=10000));
@@ -104,6 +95,7 @@ impl egui::Widget for &mut SavingParametersEditor {
                     SaveSelection::Best(value) => {
                         ui.add(egui::Slider::new(value, 1..=10000));
                     }
+                    _ => {}
                 };
             });
         })
