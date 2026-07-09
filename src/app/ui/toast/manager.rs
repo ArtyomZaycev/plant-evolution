@@ -109,5 +109,6 @@ impl ToastManager {
     }
 }
 
+// TODO: you stupid ass move it to App
 pub static TOAST_MANAGER: LazyLock<Mutex<ToastManager>> =
     LazyLock::new(|| Mutex::new(ToastManager::new()));

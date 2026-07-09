@@ -1,5 +1,4 @@
 #![feature(integer_atomics)]
-#![feature(lock_value_accessors)]
 
 pub mod engine;
 pub mod evolution;

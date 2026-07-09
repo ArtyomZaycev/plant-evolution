@@ -16,16 +16,14 @@ pub struct SaveLog {
 }
 
 pub static SAVE_LOGS: LazyLock<Mutex<Vec<SaveLog>>> = LazyLock::new(Default::default);
-pub static SIMULATION_ID: LazyLock<String> =
-    LazyLock::new(|| format!("Simulation {}", Local::now().format("%Y-%m-%d %H-%M-%S")));
 
 pub fn get_saves_folder_path() -> PathBuf {
     PathBuf::from("./saves/")
 }
 
-pub fn main_save_folder_path() -> PathBuf {
+pub fn main_save_folder_path(simulation_id: String) -> PathBuf {
     let mut path = get_saves_folder_path();
-    path.push(format!("{}/", SIMULATION_ID.clone()));
+    path.push(format!("{}/", simulation_id));
     path
 }
 

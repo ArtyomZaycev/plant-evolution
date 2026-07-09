@@ -1,15 +1,15 @@
 use std::{
-    sync::{
+    ops::Deref, sync::{
         Mutex,
         atomic::{AtomicU128, Ordering},
-    },
-    time::SystemTime,
+    }, time::SystemTime,
 };
 
+// TODO: Use duration
+#[derive(Debug)]
 pub struct SlowMutex<T> {
     read_update_interval: u128,
     write_update_interval: u128,
-    last_read: AtomicU128,
     last_write: AtomicU128,
     data: Mutex<T>,
 }
@@ -21,6 +21,12 @@ fn get_timestamp() -> u128 {
         .as_millis()
 }
 
+impl<T: Default + Clone> Default for SlowMutex<T> {
+    fn default() -> Self {
+        Self::new(Default::default())
+    }
+}
+
 impl<T> SlowMutex<T>
 where
     T: Clone,
@@ -29,38 +35,38 @@ where
         Self {
             read_update_interval: 10,
             write_update_interval: 20,
-            last_read: 0.into(),
             last_write: get_timestamp().into(),
             data: Mutex::new(data),
         }
     }
 
     #[hotpath::measure]
-    pub fn slow_read(&self) -> Option<T> {
-        if get_timestamp() - self.last_read.load(Ordering::Relaxed) >= self.read_update_interval {
-            Some(self.force_read())
-        } else {
-            None
-        }
-    }
-
-    #[hotpath::measure]
-    pub fn slow_read_versioned(&self, old_version: u128) -> Option<(T, u128)> {
-        let version = self.last_write.load(Ordering::Relaxed);
-        if old_version != version
-            && get_timestamp() - self.last_read.load(Ordering::Relaxed) >= self.read_update_interval
-        {
-            Some((self.force_read(), version))
-        } else {
-            None
-        }
-    }
-
-    #[hotpath::measure]
-    pub fn force_read(&self) -> T {
+    pub fn read(&self) -> SlowMutexReadResult<T> {
         let data = self.data.lock().unwrap();
-        self.last_read.store(get_timestamp(), Ordering::Relaxed);
-        data.clone()
+        SlowMutexReadResult {
+            write_timestamp: self.last_write.load(Ordering::Relaxed),
+            read_timestamp: get_timestamp(),
+            data: data.clone()
+        }
+    }
+
+    #[hotpath::measure]
+    pub fn slow_update(&self, data: &mut SlowMutexReadResult<T>) -> bool {
+        if get_timestamp() - data.read_timestamp >= self.read_update_interval {
+            self.update(data)
+        } else {
+            false
+        }
+    }
+
+    #[hotpath::measure]
+    pub fn update(&self, data: &mut SlowMutexReadResult<T>) -> bool {
+        if data.write_timestamp != self.last_write.load(Ordering::Relaxed) {
+            *data = self.read();
+            true
+        } else {
+            false
+        }
     }
 
     #[hotpath::measure]
@@ -74,8 +80,31 @@ where
     }
 
     #[hotpath::measure]
-    pub fn force_write(&self, data: T) {
-        self.data.set(data).unwrap();
+    pub fn force_write(&self, new_data: T) {
+        let mut data = self.data.lock().unwrap();
+        *data = new_data;
         self.last_write.store(get_timestamp(), Ordering::Relaxed);
+    }
+}
+
+pub struct SlowMutexReadResult<T> {
+    // Basically version in the data
+    write_timestamp: u128,
+    // To make sure we don't read too frequently
+    read_timestamp: u128,
+    data: T
+}
+
+impl<T> SlowMutexReadResult<T> {
+    pub fn get_data(result: Self) -> T {
+        result.data
+    }
+}
+
+impl<T> Deref for SlowMutexReadResult<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.data
     }
 }

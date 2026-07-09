@@ -1,12 +1,9 @@
-use std::sync::{Arc, mpsc};
+use std::path::PathBuf;
 
 use egui::{Align2, Button, Color32, FontId, Pos2, Rect, Sense, TextEdit, Vec2};
 
 use plant_evolution_lib::{
-    engine::*,
-    map::*,
-    precalc::*,
-    utils::SlowMutex,
+    engine::*, map::*, precalc::*, utils::*
 };
 
 use crate::ui::{
@@ -16,24 +13,20 @@ use crate::ui::{
 };
 
 pub struct PlantEvolutionApp {
-    simulation_id: String,
+    engine: Engine,
 
     visual_settings: VisualSettings,
     settings: Option<AppSettingsEditor>,
 
+    // TODO: Remove
     cell_size: f32,
 
     selected_map_index_str: String,
     selected_maps_index: Vec<usize>,
-    maps: Vec<MapData>,
-
-    maps_version: u128,
-    command_sender: mpsc::Sender<EngineCommand>,
-    slow_maps: Arc<SlowMutex<Vec<MapData>>>,
+    maps: SlowMutexReadResult<Vec<MapData>>,
 
     next_save_log_idx: usize,
 
-    engine_parameters: EngineParameters,
     run: bool,
     run_evolution: bool,
 
@@ -45,22 +38,17 @@ pub struct PlantEvolutionApp {
 
 impl PlantEvolutionApp {
     pub fn new(
-        sender: mpsc::Sender<EngineCommand>,
-        slow_maps: Arc<SlowMutex<Vec<MapData>>>,
+        engine: Engine,
     ) -> Self {
         Self {
-            simulation_id: String::default(),
+            maps: engine.state.maps.read(),
+            engine,
             visual_settings: VisualSettings::default(),
             settings: None,
             cell_size: 6.,
             selected_map_index_str: "1".to_owned(),
             selected_maps_index: vec![0],
-            maps_version: 0,
-            command_sender: sender,
-            maps: slow_maps.force_read(),
-            slow_maps,
             next_save_log_idx: 0,
-            engine_parameters: EngineParameters::default(),
             run: false,
             run_evolution: false,
             highlighted_map: None,
@@ -263,16 +251,21 @@ impl PlantEvolutionApp {
             None => format!("Saved to {:?}", save_log.path),
         }));
     }
+
+    fn get_saves_simulation_folder(&self) -> PathBuf {
+        main_save_folder_path(self.engine.state.get_simulation_id())
+    }
+
+    fn save_maps(&self, selection: &SaveSelection) {
+        Self::push_save_log(&save_maps(self.get_saves_simulation_folder(), &selection, &self.maps));
+    }
 }
 
 impl eframe::App for PlantEvolutionApp {
     fn ui(&mut self, ui: &mut egui::Ui, _: &mut eframe::Frame) {
         ui.ctx().request_repaint();
 
-        if let Some((maps, version)) = self.slow_maps.slow_read_versioned(self.maps_version) {
-            self.maps_version = version;
-            self.maps = maps;
-        }
+        self.engine.state.maps.slow_update(&mut self.maps);
 
         let save_logs = SAVE_LOGS.lock().unwrap();
         if save_logs.len() > self.next_save_log_idx {
@@ -295,12 +288,7 @@ impl eframe::App for PlantEvolutionApp {
                 }
                 SettingsRawState::Applied(ui_settings, engine_parameters) => {
                     self.visual_settings = ui_settings.clone();
-                    self.engine_parameters = engine_parameters.clone();
-                    self.command_sender
-                        .send(EngineCommand::UpdateParameters(
-                            self.engine_parameters.clone(),
-                        ))
-                        .unwrap();
+                    self.engine.state.parameters.force_write(engine_parameters.clone());
                     close_settings = true;
                 }
             }
@@ -388,30 +376,26 @@ impl eframe::App for PlantEvolutionApp {
                     ui.menu_button("Save", |ui| {
                         ui.set_min_width(80.);
                         if ui.button("Best").clicked() {
-                            Self::push_save_log(&save_maps(self.simulation_id.clone().into(), &SaveSelection::Best(1), &self.maps));
+                            self.save_maps(&SaveSelection::Best(1));
                         }
                         if ui.button("Selected").clicked() {
-                            Self::push_save_log(&save_maps(
-                                self.simulation_id.clone().into(),
-                                &SaveSelection::Selected(self.selected_maps_index.clone()),
-                                &self.maps,
-                            ));
+                            self.save_maps(&SaveSelection::Selected(self.selected_maps_index.clone()));
                         }
                         if ui.button("All").clicked() {
-                            Self::push_save_log(&save_maps(self.simulation_id.clone().into(), &SaveSelection::All, &self.maps));
+                            self.save_maps(&SaveSelection::All);
                         }
                     });
                     if ui.button("Save As").clicked() {}
                     if ui.button("Load").clicked() {}
                     ui.separator();
                     if ui.button("Restart").clicked() {
-                        self.command_sender.send(EngineCommand::Restart).unwrap();
+                        self.engine.send_command(EngineCommand::Restart).unwrap();
                     }
                     ui.separator();
                     if ui.button("Settings").clicked() {
                         self.settings = Some(AppSettingsEditor::new((
                             self.visual_settings.clone(),
-                            self.engine_parameters.clone(),
+                            SlowMutexReadResult::get_data(self.engine.state.parameters.read()),
                         )));
                     }
                 });
@@ -493,7 +477,7 @@ impl eframe::App for PlantEvolutionApp {
 
             ui.horizontal(|ui| {
                 if ui.add_enabled(true, Button::new("Evolve!")).clicked() {
-                    self.command_sender.send(EngineCommand::Evolve).unwrap();
+                    self.engine.send_command(EngineCommand::Evolve).unwrap();
                 }
 
                 if ui
@@ -501,12 +485,10 @@ impl eframe::App for PlantEvolutionApp {
                     .changed()
                 {
                     if self.run_evolution {
-                        self.command_sender
-                            .send(EngineCommand::RunEvolution)
+                        self.engine.send_command(EngineCommand::RunEvolution)
                             .unwrap();
                     } else {
-                        self.command_sender
-                            .send(EngineCommand::StopRunEvolution)
+                        self.engine.send_command(EngineCommand::StopRunEvolution)
                             .unwrap();
                     }
                 }
@@ -514,14 +496,13 @@ impl eframe::App for PlantEvolutionApp {
 
             ui.horizontal(|ui| {
                 if ui.button("Tick!").clicked() {
-                    self.command_sender.send(EngineCommand::Tick).unwrap();
+                    self.engine.send_command(EngineCommand::Tick).unwrap();
                 }
                 if ui.toggle_value(&mut self.run, "Grow").changed() {
                     if self.run {
-                        self.command_sender.send(EngineCommand::RunTick).unwrap();
+                        self.engine.send_command(EngineCommand::RunTick).unwrap();
                     } else {
-                        self.command_sender
-                            .send(EngineCommand::StopRunTick)
+                        self.engine.send_command(EngineCommand::StopRunTick)
                             .unwrap();
                     }
                 };
