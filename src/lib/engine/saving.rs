@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use std::sync::{LazyLock, Mutex};
 use std::{fs::create_dir_all, time::SystemTime};
 
 use chrono::Local;
@@ -14,8 +13,6 @@ pub struct SaveLog {
     pub path: PathBuf,
     pub error: Option<String>,
 }
-
-pub static SAVE_LOGS: LazyLock<Mutex<Vec<SaveLog>>> = LazyLock::new(Default::default);
 
 pub fn get_saves_folder_path() -> PathBuf {
     PathBuf::from("./saves/")
@@ -38,7 +35,11 @@ struct SaveFileInfo {
     pub version: usize,
 }
 
-pub fn save_maps(simulation_folder: PathBuf, selection: &SaveSelection, maps: &Vec<MapData>) -> SaveLog {
+pub fn save_maps(
+    simulation_folder: PathBuf,
+    selection: &SaveSelection,
+    maps: &Vec<MapData>,
+) -> SaveLog {
     let mut save_log = SaveLog {
         time: SystemTime::now(),
         path: Default::default(),

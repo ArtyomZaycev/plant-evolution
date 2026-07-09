@@ -2,9 +2,7 @@ use std::path::PathBuf;
 
 use egui::{Align2, Button, Color32, FontId, Pos2, Rect, Sense, TextEdit, Vec2};
 
-use plant_evolution_lib::{
-    engine::*, map::*, precalc::*, utils::*
-};
+use plant_evolution_lib::{engine::*, map::*, precalc::*, utils::*};
 
 use crate::ui::{
     settings::VisualSettings,
@@ -13,19 +11,17 @@ use crate::ui::{
 };
 
 pub struct PlantEvolutionApp {
+    toast_manager: ToastManager,
     engine: Engine,
 
     visual_settings: VisualSettings,
     settings: Option<AppSettingsEditor>,
 
-    // TODO: Remove
     cell_size: f32,
 
     selected_map_index_str: String,
     selected_maps_index: Vec<usize>,
     maps: SlowMutexReadResult<Vec<MapData>>,
-
-    next_save_log_idx: usize,
 
     run: bool,
     run_evolution: bool,
@@ -37,10 +33,9 @@ pub struct PlantEvolutionApp {
 }
 
 impl PlantEvolutionApp {
-    pub fn new(
-        engine: Engine,
-    ) -> Self {
+    pub fn new(engine: Engine) -> Self {
         Self {
+            toast_manager: ToastManager::new(),
             maps: engine.state.maps.read(),
             engine,
             visual_settings: VisualSettings::default(),
@@ -48,7 +43,6 @@ impl PlantEvolutionApp {
             cell_size: 6.,
             selected_map_index_str: "1".to_owned(),
             selected_maps_index: vec![0],
-            next_save_log_idx: 0,
             run: false,
             run_evolution: false,
             highlighted_map: None,
@@ -244,9 +238,8 @@ impl PlantEvolutionApp {
         }
     }
 
-    fn push_save_log(save_log: &SaveLog) {
-        let mut toast_manager = TOAST_MANAGER.lock();
-        toast_manager.add(Toast::new(match &save_log.error {
+    fn push_save_log(&mut self, save_log: SaveLog) {
+        self.toast_manager.add(Toast::new(match save_log.error {
             Some(err) => format!("Error saving: {err}"),
             None => format!("Saved to {:?}", save_log.path),
         }));
@@ -256,8 +249,12 @@ impl PlantEvolutionApp {
         main_save_folder_path(self.engine.state.get_simulation_id())
     }
 
-    fn save_maps(&self, selection: &SaveSelection) {
-        Self::push_save_log(&save_maps(self.get_saves_simulation_folder(), &selection, &self.maps));
+    fn save_maps(&mut self, selection: &SaveSelection) {
+        self.push_save_log(save_maps(
+            self.get_saves_simulation_folder(),
+            &selection,
+            &self.maps,
+        ));
     }
 }
 
@@ -267,17 +264,7 @@ impl eframe::App for PlantEvolutionApp {
 
         self.engine.state.maps.slow_update(&mut self.maps);
 
-        let save_logs = SAVE_LOGS.lock().unwrap();
-        if save_logs.len() > self.next_save_log_idx {
-            save_logs
-                .iter()
-                .skip(self.next_save_log_idx)
-                .for_each(Self::push_save_log);
-            self.next_save_log_idx = save_logs.len();
-        }
-        std::mem::drop(save_logs);
-
-        TOAST_MANAGER.lock().show(ui);
+        self.toast_manager.show(ui);
 
         let mut close_settings = false;
         if let Some(settings) = &mut self.settings {
@@ -288,7 +275,10 @@ impl eframe::App for PlantEvolutionApp {
                 }
                 SettingsRawState::Applied(ui_settings, engine_parameters) => {
                     self.visual_settings = ui_settings.clone();
-                    self.engine.state.parameters.force_write(engine_parameters.clone());
+                    self.engine
+                        .state
+                        .parameters
+                        .force_write(engine_parameters.clone());
                     close_settings = true;
                 }
             }
@@ -379,7 +369,9 @@ impl eframe::App for PlantEvolutionApp {
                             self.save_maps(&SaveSelection::Best(1));
                         }
                         if ui.button("Selected").clicked() {
-                            self.save_maps(&SaveSelection::Selected(self.selected_maps_index.clone()));
+                            self.save_maps(&SaveSelection::Selected(
+                                self.selected_maps_index.clone(),
+                            ));
                         }
                         if ui.button("All").clicked() {
                             self.save_maps(&SaveSelection::All);
@@ -485,10 +477,12 @@ impl eframe::App for PlantEvolutionApp {
                     .changed()
                 {
                     if self.run_evolution {
-                        self.engine.send_command(EngineCommand::RunEvolution)
+                        self.engine
+                            .send_command(EngineCommand::RunEvolution)
                             .unwrap();
                     } else {
-                        self.engine.send_command(EngineCommand::StopRunEvolution)
+                        self.engine
+                            .send_command(EngineCommand::StopRunEvolution)
                             .unwrap();
                     }
                 }
@@ -502,7 +496,8 @@ impl eframe::App for PlantEvolutionApp {
                     if self.run {
                         self.engine.send_command(EngineCommand::RunTick).unwrap();
                     } else {
-                        self.engine.send_command(EngineCommand::StopRunTick)
+                        self.engine
+                            .send_command(EngineCommand::StopRunTick)
                             .unwrap();
                     }
                 };

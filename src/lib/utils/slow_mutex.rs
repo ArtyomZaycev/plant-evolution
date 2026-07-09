@@ -1,8 +1,10 @@
 use std::{
-    ops::Deref, sync::{
+    ops::Deref,
+    sync::{
         Mutex,
         atomic::{AtomicU128, Ordering},
-    }, time::{Duration, SystemTime},
+    },
+    time::{Duration, SystemTime},
 };
 
 // TODO: Use duration
@@ -46,7 +48,7 @@ where
         SlowMutexReadResult {
             write_timestamp: self.last_write.load(Ordering::Relaxed),
             read_timestamp: get_timestamp(),
-            data: data.clone()
+            data: data.clone(),
         }
     }
 
@@ -71,7 +73,9 @@ where
 
     #[hotpath::measure]
     pub fn slow_write(&self, data: &T) -> bool {
-        if get_timestamp() - self.last_write.load(Ordering::Relaxed) >= self.write_update_interval.as_millis() {
+        if get_timestamp() - self.last_write.load(Ordering::Relaxed)
+            >= self.write_update_interval.as_millis()
+        {
             self.force_write(data.clone());
             true
         } else {
@@ -92,7 +96,7 @@ pub struct SlowMutexReadResult<T> {
     write_timestamp: u128,
     // To make sure we don't read too frequently
     read_timestamp: u128,
-    data: T
+    data: T,
 }
 
 impl<T> SlowMutexReadResult<T> {

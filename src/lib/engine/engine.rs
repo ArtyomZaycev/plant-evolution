@@ -1,9 +1,15 @@
 use std::{
-    sync::{Arc, RwLock, mpsc}, thread::{self, JoinHandle}, time::{Duration, SystemTime},
+    sync::{Arc, RwLock, mpsc},
+    thread::{self, JoinHandle},
+    time::{Duration, SystemTime},
 };
 
 use super::{parameters::*, saving::*};
-use crate::{evolution::*, map::MapData, utils::{SlowMutex, SlowMutexReadResult}};
+use crate::{
+    evolution::*,
+    map::MapData,
+    utils::{SlowMutex, SlowMutexReadResult},
+};
 
 pub enum EngineCommand {
     Restart,
@@ -67,7 +73,10 @@ pub struct EngineSharedState {
 impl EngineSharedState {
     fn new(maps: SlowMutex<Vec<MapData>>) -> Self {
         Self {
-            simulation_id: Arc::new(RwLock::new(format!("Simulation {}", chrono::Local::now().format("%Y-%m-%d %H-%M-%S")))),
+            simulation_id: Arc::new(RwLock::new(format!(
+                "Simulation {}",
+                chrono::Local::now().format("%Y-%m-%d %H-%M-%S")
+            ))),
             maps: Arc::new(maps),
             parameters: Default::default(),
         }
@@ -90,11 +99,17 @@ impl Engine {
         }
     }
 
-    pub fn send_command(&mut self, command: EngineCommand) -> Result<(), mpsc::SendError<EngineCommand>> {
+    pub fn send_command(
+        &mut self,
+        command: EngineCommand,
+    ) -> Result<(), mpsc::SendError<EngineCommand>> {
         self.command_sender.send(command)
     }
 
-    fn create_run_thread(state: EngineSharedState, rx: mpsc::Receiver<EngineCommand>) -> JoinHandle<()> {
+    fn create_run_thread(
+        state: EngineSharedState,
+        rx: mpsc::Receiver<EngineCommand>,
+    ) -> JoinHandle<()> {
         thread::Builder::new()
             .stack_size(32 * 1024 * 1024)
             .spawn(|| {
@@ -103,10 +118,7 @@ impl Engine {
             .unwrap()
     }
 
-    fn run(
-        shared_state: EngineSharedState,
-        receiver: mpsc::Receiver<EngineCommand>
-    ) {
+    fn run(shared_state: EngineSharedState, receiver: mpsc::Receiver<EngineCommand>) {
         let mut rng = rand::rng();
 
         let mut parameters = shared_state.parameters.read();

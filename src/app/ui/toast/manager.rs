@@ -1,9 +1,6 @@
-use std::{
-    sync::LazyLock,
-    time::{Duration, SystemTime},
-};
+use std::time::{Duration, SystemTime};
 
-use egui::{Align2, Label, Shadow, Vec2, Widget, mutex::Mutex};
+use egui::{Align2, Label, Shadow, Vec2, Widget};
 
 pub struct Toast {
     closed: bool,
@@ -43,7 +40,7 @@ pub struct ToastManager {
 }
 
 impl ToastManager {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             ui_limit: 4,
             autoclose_time: Duration::from_secs(4),
@@ -108,7 +105,3 @@ impl ToastManager {
         self.toasts.retain(|n| !n.closed);
     }
 }
-
-// TODO: you stupid ass move it to App
-pub static TOAST_MANAGER: LazyLock<Mutex<ToastManager>> =
-    LazyLock::new(|| Mutex::new(ToastManager::new()));
