@@ -103,7 +103,10 @@ impl<T> SlowMutexReadResult<T> {
     pub fn get(value: Self) -> T {
         value.data
     }
-    pub fn get_cloned(value: &Self) -> T where T: Clone {
+    pub fn get_cloned(value: &Self) -> T
+    where
+        T: Clone,
+    {
         value.data.clone()
     }
     pub fn get_ref(value: &Self) -> &T {

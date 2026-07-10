@@ -26,8 +26,7 @@ impl<T: Default + Clone> Default for VersionedMutex<T> {
     }
 }
 
-impl<T: Clone> VersionedMutex<T>
-{
+impl<T: Clone> VersionedMutex<T> {
     pub fn new(data: T) -> Self {
         Self {
             last_write: get_timestamp().into(),
@@ -66,7 +65,10 @@ impl<T: Clone> VersionedMutex<T>
     }
 
     #[hotpath::measure]
-    pub fn write(&self, new_data: T) where T: PartialEq {
+    pub fn write(&self, new_data: T)
+    where
+        T: PartialEq,
+    {
         let mut data = self.data.lock().unwrap();
         if *data != new_data {
             *data = new_data;
@@ -85,7 +87,10 @@ impl<T> VersionedMutexData<T> {
     pub fn take(value: Self) -> T {
         value.data
     }
-    pub fn get_cloned(value: &Self) -> T where T: Clone {
+    pub fn get_cloned(value: &Self) -> T
+    where
+        T: Clone,
+    {
         value.data.clone()
     }
     pub fn get_ref(value: &Self) -> &T {

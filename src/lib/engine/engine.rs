@@ -5,9 +5,7 @@ use std::{
 };
 
 use super::{parameters::*, saving::*};
-use crate::{
-    evolution::*, map::MapData, utils::*,
-};
+use crate::{evolution::*, map::MapData, utils::*};
 
 pub enum EngineCommand {
     Restart,
@@ -81,10 +79,6 @@ impl EngineSharedState {
             parameters: Default::default(),
         }
     }
-
-    pub fn get_simulation_id(&self) -> String {
-        self.simulation_id.read().unwrap().clone()
-    }
 }
 
 impl Engine {
@@ -130,6 +124,7 @@ impl Engine {
         loop {
             let mut state = VersionedMutexData::take(shared_state.inner_state.read());
             shared_state.parameters.update(&mut parameters);
+
             if let Ok(command) = receiver.try_recv() {
                 match command {
                     EngineCommand::Restart => {
@@ -205,7 +200,14 @@ impl Engine {
             }
 
             if save {
-                save_maps("".into(), &parameters.saving_parameters.selection, &maps);
+                save_maps(
+                    simulation_save_folder_path(
+                        parameters.saving_parameters.path.clone(),
+                        shared_state.simulation_id.read().unwrap().clone(),
+                    ),
+                    &parameters.saving_parameters.selection,
+                    &maps,
+                );
                 last_save = SaveMark {
                     time: SystemTime::now(),
                     evolution: maps[0].evolutions,

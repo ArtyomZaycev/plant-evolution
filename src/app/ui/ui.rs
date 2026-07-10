@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use egui::{Align2, Button, Color32, FontId, Pos2, Rect, Sense, TextEdit, Vec2};
 
 use plant_evolution_lib::{engine::*, map::*, precalc::*, utils::*};
@@ -243,13 +241,14 @@ impl PlantEvolutionApp {
         }));
     }
 
-    fn get_saves_simulation_folder(&self) -> PathBuf {
-        main_save_folder_path(self.engine.state.get_simulation_id())
-    }
-
     fn save_maps(&mut self, selection: &SaveSelection) {
+        let folder = self.engine.state.parameters.read().saving_parameters.path.clone();
+        let simulation_id = self.engine.state.simulation_id.read().unwrap().clone();
         self.push_save_log(save_maps(
-            self.get_saves_simulation_folder(),
+            simulation_save_folder_path(
+                folder,
+                simulation_id,
+            ),
             &selection,
             &self.maps,
         ));
@@ -261,7 +260,10 @@ impl eframe::App for PlantEvolutionApp {
         ui.ctx().request_repaint();
 
         self.engine.state.maps.slow_update(&mut self.maps);
-        self.engine.state.inner_state.update(&mut self.engine_inner_state);
+        self.engine
+            .state
+            .inner_state
+            .update(&mut self.engine_inner_state);
 
         self.toast_manager.show(ui);
 
@@ -468,17 +470,25 @@ impl eframe::App for PlantEvolutionApp {
 
             let engine_state = VersionedMutexData::get_cloned(&self.engine_inner_state);
             ui.horizontal(|ui| {
-                if ui.radio(engine_state == InnerEngineState::Stale, "Stale").clicked() {
-                    self.engine
-                        .send_command(EngineCommand::GoStale)
-                        .unwrap();
+                if ui
+                    .radio(engine_state == InnerEngineState::Stale, "Stale")
+                    .clicked()
+                {
+                    self.engine.send_command(EngineCommand::GoStale).unwrap();
                 }
-                if ui.radio(engine_state == InnerEngineState::RunTick, "Grow").clicked() {
-                    self.engine
-                        .send_command(EngineCommand::RunTick)
-                        .unwrap();
+                if ui
+                    .radio(engine_state == InnerEngineState::RunTick, "Grow")
+                    .clicked()
+                {
+                    self.engine.send_command(EngineCommand::RunTick).unwrap();
                 }
-                if ui.radio(engine_state == InnerEngineState::RunEvolution, "Run Evolution").clicked() {
+                if ui
+                    .radio(
+                        engine_state == InnerEngineState::RunEvolution,
+                        "Run Evolution",
+                    )
+                    .clicked()
+                {
                     self.engine
                         .send_command(EngineCommand::RunEvolution)
                         .unwrap();
@@ -487,7 +497,7 @@ impl eframe::App for PlantEvolutionApp {
 
             ui.add_enabled_ui(engine_state == InnerEngineState::Stale, |ui| {
                 ui.horizontal(|ui| {
-                    if ui.button("Tick!").clicked() {
+                    if ui.button("Grow").clicked() {
                         self.engine.send_command(EngineCommand::Tick).unwrap();
                     }
                     if ui.add_enabled(true, Button::new("Evolve!")).clicked() {

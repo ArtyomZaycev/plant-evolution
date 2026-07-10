@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{path::PathBuf, time::Duration};
 
 #[derive(Debug, Clone, Copy)]
 pub enum SavingPeriod {
@@ -15,6 +15,7 @@ pub enum SaveSelection {
 
 #[derive(Debug, Clone)]
 pub struct SavingParameters {
+    pub path: PathBuf,
     pub enabled: bool,
     pub period: SavingPeriod,
     pub selection: SaveSelection,
@@ -23,6 +24,7 @@ pub struct SavingParameters {
 impl Default for SavingParameters {
     fn default() -> Self {
         Self {
+            path: "./saves/".into(),
             enabled: Default::default(),
             period: SavingPeriod::EveryDuration(Duration::from_mins(5)),
             selection: SaveSelection::Best(1),

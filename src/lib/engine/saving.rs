@@ -14,14 +14,9 @@ pub struct SaveLog {
     pub error: Option<String>,
 }
 
-pub fn get_saves_folder_path() -> PathBuf {
-    PathBuf::from("./saves/")
-}
-
-pub fn main_save_folder_path(simulation_id: String) -> PathBuf {
-    let mut path = get_saves_folder_path();
-    path.push(format!("{}/", simulation_id));
-    path
+pub fn simulation_save_folder_path(mut saves_folder: PathBuf, simulation_id: String) -> PathBuf {
+    saves_folder.push(format!("{}/", simulation_id));
+    saves_folder
 }
 
 fn next_save_folder_path(simulation_folder: &PathBuf) -> PathBuf {
@@ -35,18 +30,14 @@ struct SaveFileInfo {
     pub version: usize,
 }
 
-pub fn save_maps(
-    simulation_folder: PathBuf,
-    selection: &SaveSelection,
-    maps: &Vec<MapData>,
-) -> SaveLog {
+pub fn save_maps(folder: PathBuf, selection: &SaveSelection, maps: &Vec<MapData>) -> SaveLog {
     let mut save_log = SaveLog {
         time: SystemTime::now(),
         path: Default::default(),
         error: None,
     };
 
-    if let Err(err) = create_dir_all(&simulation_folder) {
+    if let Err(err) = create_dir_all(&folder) {
         save_log.error = Some("Can't create main save folder".to_owned());
         eprintln!("Saving failed: Can't create main save folder: {:?}", err);
         return save_log;
@@ -54,7 +45,7 @@ pub fn save_maps(
 
     let save_file_info = SaveFileInfo { version: 1 };
 
-    let folder = next_save_folder_path(&simulation_folder);
+    let folder = next_save_folder_path(&folder);
     if let Err(err) = create_dir_all(&folder) {
         save_log.error = Some("Can't create next save folder".to_owned());
         eprintln!("Saving failed: Can't create next save folder {:?}", err);

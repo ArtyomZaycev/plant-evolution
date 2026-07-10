@@ -1,9 +1,10 @@
-use std::time::Duration;
+use std::{path::PathBuf, time::Duration};
 
 use super::utils::*;
 use plant_evolution_lib::engine::*;
 
 pub struct SavingParametersEditor {
+    path: PathBuf,
     enabled: bool,
     period: SavingPeriod,
     selection: SaveSelection,
@@ -12,6 +13,7 @@ pub struct SavingParametersEditor {
 impl EditorUi<SavingParameters> for SavingParametersEditor {
     fn new(settings: SavingParameters) -> Self {
         Self {
+            path: settings.path,
             enabled: settings.enabled,
             period: settings.period,
             selection: settings.selection,
@@ -25,6 +27,7 @@ impl EditorUi<SavingParameters> for SavingParametersEditor {
     fn parse(&self) -> Option<SavingParameters> {
         if self.is_valid() {
             Some(SavingParameters {
+                path: self.path.clone(),
                 enabled: self.enabled,
                 period: self.period,
                 selection: self.selection.clone(),
