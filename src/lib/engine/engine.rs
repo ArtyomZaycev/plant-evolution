@@ -18,16 +18,15 @@ pub enum EngineCommand {
     Load(String),
 
     Tick,
-    RunTick,
-    StopRunTick,
-
     Evolve,
+
+    GoStale,
+    RunTick,
     RunEvolution,
-    StopRunEvolution,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-enum InnerEngineState {
+pub enum InnerEngineState {
     Stale,
     RunTick,
     RunEvolution,
@@ -66,6 +65,7 @@ pub struct Engine {
 #[derive(Debug, Clone)]
 pub struct EngineSharedState {
     pub simulation_id: Arc<RwLock<String>>,
+    pub inner_state: Arc<SlowMutex<InnerEngineState>>,
     pub maps: Arc<SlowMutex<Vec<MapData>>>,
     pub parameters: Arc<SlowMutex<EngineParameters>>,
 }
@@ -77,6 +77,7 @@ impl EngineSharedState {
                 "Simulation {}",
                 chrono::Local::now().format("%Y-%m-%d %H-%M-%S")
             ))),
+            inner_state: Arc::new(SlowMutex::new(InnerEngineState::Stale)),
             maps: Arc::new(maps),
             parameters: Default::default(),
         }
@@ -122,14 +123,13 @@ impl Engine {
         let mut rng = rand::rng();
 
         let mut parameters = shared_state.parameters.read();
-        let mut maps = SlowMutexReadResult::get_data(shared_state.maps.read());
+        let mut maps = SlowMutexReadResult::get(shared_state.maps.read());
 
         let mut save = false;
         let mut last_save = SaveMark::default();
 
-        let mut state = InnerEngineState::Stale;
-
         loop {
+            let mut state = SlowMutexReadResult::get(shared_state.inner_state.read());
             shared_state.parameters.update(&mut parameters);
             if let Ok(command) = receiver.try_recv() {
                 match command {
@@ -151,20 +151,14 @@ impl Engine {
                     }
 
                     EngineCommand::Tick => {
+                        state = InnerEngineState::Stale;
                         maps.iter_mut().for_each(|map| {
                             map.tick();
                         });
                         shared_state.maps.force_write(maps.clone());
                     }
-                    EngineCommand::RunTick => {
-                        state = InnerEngineState::RunTick;
-                    }
-                    EngineCommand::StopRunTick => {
-                        state = InnerEngineState::Stale;
-                        shared_state.maps.force_write(maps.clone());
-                    }
-
                     EngineCommand::Evolve => {
+                        state = InnerEngineState::Stale;
                         if parameters.evolution_parameters.parent_evolution {
                             parents_random_evolve(
                                 &mut rng,
@@ -186,12 +180,16 @@ impl Engine {
                         }
                         shared_state.maps.force_write(maps.clone());
                     }
-                    EngineCommand::RunEvolution => {
-                        state = InnerEngineState::RunEvolution;
-                    }
-                    EngineCommand::StopRunEvolution => {
+
+                    EngineCommand::GoStale => {
                         state = InnerEngineState::Stale;
                         shared_state.maps.force_write(maps.clone());
+                    }
+                    EngineCommand::RunTick => {
+                        state = InnerEngineState::RunTick;
+                    }
+                    EngineCommand::RunEvolution => {
+                        state = InnerEngineState::RunEvolution;
                     }
                 }
             }
@@ -270,6 +268,8 @@ impl Engine {
                     }
                 }
             }
+
+            shared_state.inner_state.slow_write(&state);
         }
     }
 }

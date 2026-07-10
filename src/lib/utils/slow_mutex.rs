@@ -92,7 +92,7 @@ where
 }
 
 pub struct SlowMutexReadResult<T> {
-    // Basically version in the data
+    // Basically version of the data
     write_timestamp: u128,
     // To make sure we don't read too frequently
     read_timestamp: u128,
@@ -100,8 +100,17 @@ pub struct SlowMutexReadResult<T> {
 }
 
 impl<T> SlowMutexReadResult<T> {
-    pub fn get_data(result: Self) -> T {
-        result.data
+    pub fn get(value: Self) -> T {
+        value.data
+    }
+    pub fn get_cloned(value: &Self) -> T where T: Clone {
+        value.data.clone()
+    }
+    pub fn get_ref(value: &Self) -> &T {
+        &value.data
+    }
+    pub fn get_ref_mut(value: &mut Self) -> &mut T {
+        &mut value.data
     }
 }
 

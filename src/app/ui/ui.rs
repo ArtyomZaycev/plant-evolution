@@ -19,12 +19,11 @@ pub struct PlantEvolutionApp {
 
     cell_size: f32,
 
+    engine_inner_state: SlowMutexReadResult<InnerEngineState>,
+
     selected_map_index_str: String,
     selected_maps_index: Vec<usize>,
     maps: SlowMutexReadResult<Vec<MapData>>,
-
-    run: bool,
-    run_evolution: bool,
 
     highlighted_map: Option<usize>,
     hovered_cell: Option<(usize, usize, usize)>,
@@ -37,18 +36,17 @@ impl PlantEvolutionApp {
         Self {
             toast_manager: ToastManager::new(),
             maps: engine.state.maps.read(),
-            engine,
             visual_settings: VisualSettings::default(),
             settings: None,
             cell_size: 6.,
+            engine_inner_state: engine.state.inner_state.read(),
             selected_map_index_str: "1".to_owned(),
             selected_maps_index: vec![0],
-            run: false,
-            run_evolution: false,
             highlighted_map: None,
             hovered_cell: None,
             highlighted_cell: None,
             selected_decision_tree: None,
+            engine,
         }
     }
 
@@ -263,6 +261,7 @@ impl eframe::App for PlantEvolutionApp {
         ui.ctx().request_repaint();
 
         self.engine.state.maps.slow_update(&mut self.maps);
+        self.engine.state.inner_state.slow_update(&mut self.engine_inner_state);
 
         self.toast_manager.show(ui);
 
@@ -387,7 +386,7 @@ impl eframe::App for PlantEvolutionApp {
                     if ui.button("Settings").clicked() {
                         self.settings = Some(AppSettingsEditor::new((
                             self.visual_settings.clone(),
-                            SlowMutexReadResult::get_data(self.engine.state.parameters.read()),
+                            SlowMutexReadResult::get(self.engine.state.parameters.read()),
                         )));
                     }
                 });
@@ -468,39 +467,32 @@ impl eframe::App for PlantEvolutionApp {
             ui.set_min_width(200.);
 
             ui.horizontal(|ui| {
-                if ui.add_enabled(true, Button::new("Evolve!")).clicked() {
-                    self.engine.send_command(EngineCommand::Evolve).unwrap();
+                if ui.radio(SlowMutexReadResult::get_cloned(&self.engine_inner_state) == InnerEngineState::Stale, "Stale").clicked() {
+                    self.engine
+                        .send_command(EngineCommand::GoStale)
+                        .unwrap();
                 }
-
-                if ui
-                    .toggle_value(&mut self.run_evolution, "Run Evolution")
-                    .changed()
-                {
-                    if self.run_evolution {
-                        self.engine
-                            .send_command(EngineCommand::RunEvolution)
-                            .unwrap();
-                    } else {
-                        self.engine
-                            .send_command(EngineCommand::StopRunEvolution)
-                            .unwrap();
-                    }
+                if ui.radio(SlowMutexReadResult::get_cloned(&self.engine_inner_state) == InnerEngineState::RunTick, "Grow").clicked() {
+                    self.engine
+                        .send_command(EngineCommand::RunTick)
+                        .unwrap();
+                }
+                if ui.radio(SlowMutexReadResult::get_cloned(&self.engine_inner_state) == InnerEngineState::RunEvolution, "Run Evolution").clicked() {
+                    self.engine
+                        .send_command(EngineCommand::RunEvolution)
+                        .unwrap();
                 }
             });
 
-            ui.horizontal(|ui| {
-                if ui.button("Tick!").clicked() {
-                    self.engine.send_command(EngineCommand::Tick).unwrap();
-                }
-                if ui.toggle_value(&mut self.run, "Grow").changed() {
-                    if self.run {
-                        self.engine.send_command(EngineCommand::RunTick).unwrap();
-                    } else {
-                        self.engine
-                            .send_command(EngineCommand::StopRunTick)
-                            .unwrap();
+            ui.add_enabled_ui(SlowMutexReadResult::get_cloned(&self.engine_inner_state) == InnerEngineState::Stale, |ui| {
+                ui.horizontal(|ui| {
+                    if ui.button("Tick!").clicked() {
+                        self.engine.send_command(EngineCommand::Tick).unwrap();
                     }
-                };
+                    if ui.add_enabled(true, Button::new("Evolve!")).clicked() {
+                        self.engine.send_command(EngineCommand::Evolve).unwrap();
+                    }
+                });
             });
 
             ui.separator();
@@ -523,7 +515,7 @@ impl eframe::App for PlantEvolutionApp {
 
             ui.separator();
             egui::ScrollArea::vertical().show(ui, |ui| {
-                ui.label("Nutritions:");
+                ui.label("Nutrition:");
                 ui.label(format!(
                     "Sunlight: {:.2}",
                     self.maps[map_idx].plant_nutrition.sunlight
@@ -541,7 +533,7 @@ impl eframe::App for PlantEvolutionApp {
                     self.maps[map_idx].plant_nutrition.water
                 ));
                 ui.label(format!(
-                    "Power: {:.2}",
+                    "Energy: {:.2}",
                     self.maps[map_idx].plant_nutrition.energy
                 ));
 
