@@ -19,7 +19,7 @@ pub struct PlantEvolutionApp {
 
     cell_size: f32,
 
-    engine_inner_state: SlowMutexReadResult<InnerEngineState>,
+    engine_inner_state: VersionedMutexData<InnerEngineState>,
 
     selected_map_index_str: String,
     selected_maps_index: Vec<usize>,
@@ -261,7 +261,7 @@ impl eframe::App for PlantEvolutionApp {
         ui.ctx().request_repaint();
 
         self.engine.state.maps.slow_update(&mut self.maps);
-        self.engine.state.inner_state.slow_update(&mut self.engine_inner_state);
+        self.engine.state.inner_state.update(&mut self.engine_inner_state);
 
         self.toast_manager.show(ui);
 
@@ -277,7 +277,7 @@ impl eframe::App for PlantEvolutionApp {
                     self.engine
                         .state
                         .parameters
-                        .force_write(engine_parameters.clone());
+                        .unchecked_write(engine_parameters.clone());
                     close_settings = true;
                 }
             }
@@ -386,7 +386,7 @@ impl eframe::App for PlantEvolutionApp {
                     if ui.button("Settings").clicked() {
                         self.settings = Some(AppSettingsEditor::new((
                             self.visual_settings.clone(),
-                            SlowMutexReadResult::get(self.engine.state.parameters.read()),
+                            self.engine.state.parameters.cloned(),
                         )));
                     }
                 });
@@ -466,25 +466,26 @@ impl eframe::App for PlantEvolutionApp {
         egui::Panel::right("control_menu").show_inside(ui, |ui| {
             ui.set_min_width(200.);
 
+            let engine_state = VersionedMutexData::get_cloned(&self.engine_inner_state);
             ui.horizontal(|ui| {
-                if ui.radio(SlowMutexReadResult::get_cloned(&self.engine_inner_state) == InnerEngineState::Stale, "Stale").clicked() {
+                if ui.radio(engine_state == InnerEngineState::Stale, "Stale").clicked() {
                     self.engine
                         .send_command(EngineCommand::GoStale)
                         .unwrap();
                 }
-                if ui.radio(SlowMutexReadResult::get_cloned(&self.engine_inner_state) == InnerEngineState::RunTick, "Grow").clicked() {
+                if ui.radio(engine_state == InnerEngineState::RunTick, "Grow").clicked() {
                     self.engine
                         .send_command(EngineCommand::RunTick)
                         .unwrap();
                 }
-                if ui.radio(SlowMutexReadResult::get_cloned(&self.engine_inner_state) == InnerEngineState::RunEvolution, "Run Evolution").clicked() {
+                if ui.radio(engine_state == InnerEngineState::RunEvolution, "Run Evolution").clicked() {
                     self.engine
                         .send_command(EngineCommand::RunEvolution)
                         .unwrap();
                 }
             });
 
-            ui.add_enabled_ui(SlowMutexReadResult::get_cloned(&self.engine_inner_state) == InnerEngineState::Stale, |ui| {
+            ui.add_enabled_ui(engine_state == InnerEngineState::Stale, |ui| {
                 ui.horizontal(|ui| {
                     if ui.button("Tick!").clicked() {
                         self.engine.send_command(EngineCommand::Tick).unwrap();

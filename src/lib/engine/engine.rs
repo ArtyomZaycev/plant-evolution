@@ -6,9 +6,7 @@ use std::{
 
 use super::{parameters::*, saving::*};
 use crate::{
-    evolution::*,
-    map::MapData,
-    utils::{SlowMutex, SlowMutexReadResult},
+    evolution::*, map::MapData, utils::*,
 };
 
 pub enum EngineCommand {
@@ -25,8 +23,9 @@ pub enum EngineCommand {
     RunEvolution,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum InnerEngineState {
+    #[default]
     Stale,
     RunTick,
     RunEvolution,
@@ -65,9 +64,9 @@ pub struct Engine {
 #[derive(Debug, Clone)]
 pub struct EngineSharedState {
     pub simulation_id: Arc<RwLock<String>>,
-    pub inner_state: Arc<SlowMutex<InnerEngineState>>,
+    pub inner_state: Arc<VersionedMutex<InnerEngineState>>,
     pub maps: Arc<SlowMutex<Vec<MapData>>>,
-    pub parameters: Arc<SlowMutex<EngineParameters>>,
+    pub parameters: Arc<VersionedMutex<EngineParameters>>,
 }
 
 impl EngineSharedState {
@@ -77,7 +76,7 @@ impl EngineSharedState {
                 "Simulation {}",
                 chrono::Local::now().format("%Y-%m-%d %H-%M-%S")
             ))),
-            inner_state: Arc::new(SlowMutex::new(InnerEngineState::Stale)),
+            inner_state: Default::default(),
             maps: Arc::new(maps),
             parameters: Default::default(),
         }
@@ -129,7 +128,7 @@ impl Engine {
         let mut last_save = SaveMark::default();
 
         loop {
-            let mut state = SlowMutexReadResult::get(shared_state.inner_state.read());
+            let mut state = VersionedMutexData::take(shared_state.inner_state.read());
             shared_state.parameters.update(&mut parameters);
             if let Ok(command) = receiver.try_recv() {
                 match command {
@@ -269,7 +268,7 @@ impl Engine {
                 }
             }
 
-            shared_state.inner_state.slow_write(&state);
+            shared_state.inner_state.write(state);
         }
     }
 }
