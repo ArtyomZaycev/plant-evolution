@@ -242,7 +242,9 @@ impl Engine {
                         .for_each(|_| {
                             maps.iter_mut().for_each(|map| map.tick());
                         });
-                    if maps[0].ticks >= ticks_per_evolution {
+                    if maps[0].ticks < ticks_per_evolution {
+                        shared_state.maps.slow_write(&maps);
+                    } else {
                         shared_state.maps.force_write(maps.clone());
                         if parameters.evolution_parameters.parent_evolution {
                             parents_random_evolve(

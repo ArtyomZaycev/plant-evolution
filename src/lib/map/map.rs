@@ -202,6 +202,7 @@ impl MapData {
         self.plant_nutrition.energy += produced - self.total_passive_cost;
     }
 
+    // TODO: Optimize
     #[hotpath::measure]
     fn recalc_next_cell_growth(&mut self) {
         let mut growth_w = HashMap::new();

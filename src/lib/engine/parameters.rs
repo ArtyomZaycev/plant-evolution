@@ -64,7 +64,7 @@ pub struct RunEvolutionParameters {
 impl Default for RunEvolutionParameters {
     fn default() -> Self {
         Self {
-            ticks_per_slow_write: 2000,
+            ticks_per_slow_write: 500,
         }
     }
 }
