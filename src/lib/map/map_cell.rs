@@ -35,8 +35,14 @@ pub enum MapCell {
 impl Display for MapCell {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            MapCell::Air(air_parameters) => write!(f, "Air; sunlight = {}", air_parameters.sunlight),
-            MapCell::Soil(soil_parameters) => write!(f, "Soil; water = {}, minerals = {}", soil_parameters.water, soil_parameters.minerals),
+            MapCell::Air(air_parameters) => {
+                write!(f, "Air; sunlight = {}", air_parameters.sunlight)
+            }
+            MapCell::Soil(soil_parameters) => write!(
+                f,
+                "Soil; water = {}, minerals = {}",
+                soil_parameters.water, soil_parameters.minerals
+            ),
         }
     }
 }

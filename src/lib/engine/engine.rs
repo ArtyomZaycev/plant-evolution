@@ -20,7 +20,9 @@ pub enum EngineCommand {
 pub enum InnerEngineState {
     #[default]
     Stale,
-    RunSimulation {autoevolve: Option<u32>},
+    RunSimulation {
+        autoevolve: Option<u32>,
+    },
 }
 
 #[derive(Debug, Clone, Default)]
@@ -114,7 +116,7 @@ impl Engine {
         let mut last_save = SaveMark::default();
 
         loop {
-            let mut state = VersionedMutexData::take(shared_state.inner_state.read());
+            let state = VersionedMutexData::take(shared_state.inner_state.read());
             shared_state.parameters.update(&mut parameters);
 
             if let Ok(command) = receiver.try_recv() {
@@ -129,9 +131,7 @@ impl Engine {
                         shared_state.maps.force_write(maps.clone());
                     }
 
-                    EngineCommand::Load(_) => {
-                        
-                    }
+                    EngineCommand::Load(_) => {}
 
                     EngineCommand::Tick => {
                         maps.iter_mut().for_each(|map| {
@@ -202,20 +202,18 @@ impl Engine {
                     });
                     shared_state.maps.slow_write(&maps);
                 }
-                InnerEngineState::RunSimulation { autoevolve: Some(ticks_per_evolution) } => {
+                InnerEngineState::RunSimulation {
+                    autoevolve: Some(ticks_per_evolution),
+                } => {
                     (0..(parameters
                         .evolution_parameters
                         .run_evolution_parameters
                         .ticks_per_slow_write
-                        .min(
-                            ticks_per_evolution
-                                .saturating_sub(maps[0].ticks),
-                        )))
+                        .min(ticks_per_evolution.saturating_sub(maps[0].ticks))))
                         .for_each(|_| {
                             maps.iter_mut().for_each(|map| map.tick());
                         });
-                    if maps[0].ticks >= ticks_per_evolution
-                    {
+                    if maps[0].ticks >= ticks_per_evolution {
                         shared_state.maps.force_write(maps.clone());
                         if parameters.evolution_parameters.parent_evolution {
                             parents_random_evolve(
