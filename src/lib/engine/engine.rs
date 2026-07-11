@@ -1,5 +1,11 @@
 use std::{
-    sync::{Arc, RwLock, atomic::{AtomicU32, Ordering}, mpsc}, thread::{self, JoinHandle}, time::{Duration, SystemTime},
+    sync::{
+        Arc, RwLock,
+        atomic::{AtomicU32, Ordering},
+        mpsc,
+    },
+    thread::{self, JoinHandle},
+    time::{Duration, SystemTime},
 };
 
 use super::{parameters::*, saving::*};
@@ -116,7 +122,11 @@ impl Engine {
             .unwrap()
     }
 
-    fn run(shared_state: EngineSharedState, receiver: mpsc::Receiver<EngineCommand>, logs_sender: mpsc::Sender<EngineLog>) {
+    fn run(
+        shared_state: EngineSharedState,
+        receiver: mpsc::Receiver<EngineCommand>,
+        logs_sender: mpsc::Sender<EngineLog>,
+    ) {
         let mut rng = rand::rng();
 
         let mut parameters = shared_state.parameters.read();
@@ -169,7 +179,11 @@ impl Engine {
                                 parameters.evolution_parameters.change_entropy,
                             );
                         }
-                        shared_state.total_evolutions.update(Ordering::Relaxed, Ordering::Relaxed, |v| v + 1);
+                        shared_state.total_evolutions.update(
+                            Ordering::Relaxed,
+                            Ordering::Relaxed,
+                            |v| v + 1,
+                        );
                         shared_state.maps.force_write(maps.clone());
                     }
                 }
@@ -181,7 +195,11 @@ impl Engine {
                         SystemTime::now().duration_since(last_save.time).unwrap() > duration
                     }
                     SavingPeriod::EveryEvolution(period) => {
-                        shared_state.total_evolutions.load(Ordering::Relaxed).saturating_sub(last_save.evolution) > period
+                        shared_state
+                            .total_evolutions
+                            .load(Ordering::Relaxed)
+                            .saturating_sub(last_save.evolution)
+                            > period
                     }
                 }
             } else {
@@ -246,7 +264,11 @@ impl Engine {
                                 parameters.evolution_parameters.change_entropy,
                             );
                         }
-                        shared_state.total_evolutions.update(Ordering::Relaxed, Ordering::Relaxed, |v| v + 1);
+                        shared_state.total_evolutions.update(
+                            Ordering::Relaxed,
+                            Ordering::Relaxed,
+                            |v| v + 1,
+                        );
                     }
                 }
             }

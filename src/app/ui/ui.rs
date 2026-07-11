@@ -246,7 +246,11 @@ impl PlantEvolutionApp {
     fn push_save_log(&mut self, save_log: SaveLog, is_autosave: bool) {
         self.toast_manager.add(Toast::new(match save_log.error {
             Some(err) => format!("Error saving: {err}"),
-            None => format!("{}d to {:?}", if is_autosave {"Autosave"} else {"Save"}, save_log.path),
+            None => format!(
+                "{}d to {:?}",
+                if is_autosave { "Autosave" } else { "Save" },
+                save_log.path
+            ),
         }));
     }
 
@@ -260,11 +264,14 @@ impl PlantEvolutionApp {
             .path
             .clone();
         let simulation_id = self.engine.state.simulation_id.read().unwrap().clone();
-        self.push_save_log(save_maps(
-            simulation_save_folder_path(folder, simulation_id),
-            &selection,
-            &self.maps,
-        ), false);
+        self.push_save_log(
+            save_maps(
+                simulation_save_folder_path(folder, simulation_id),
+                &selection,
+                &self.maps,
+            ),
+            false,
+        );
     }
 
     fn get_autoevolve(&self) -> Option<u32> {
@@ -297,11 +304,14 @@ impl eframe::App for PlantEvolutionApp {
             .inner_state
             .update(&mut self.engine_inner_state);
 
-        self.engine.logs_receiver.try_iter().collect::<Vec<_>>().into_iter().for_each(|log| {
-            match log {
+        self.engine
+            .logs_receiver
+            .try_iter()
+            .collect::<Vec<_>>()
+            .into_iter()
+            .for_each(|log| match log {
                 EngineLog::SaveLog(save_log) => self.push_save_log(save_log, true),
-            }
-        });
+            });
 
         self.toast_manager.show(ui);
 
@@ -599,8 +609,11 @@ impl eframe::App for PlantEvolutionApp {
                 self.highlighted_map.unwrap_or(self.selected_maps_index[0]),
                 |(map_idx, _, _)| map_idx,
             );
-            
-            ui.label(format!("Total evolutions: {}", self.engine.state.total_evolutions.load(Ordering::Relaxed)));
+
+            ui.label(format!(
+                "Total evolutions: {}",
+                self.engine.state.total_evolutions.load(Ordering::Relaxed)
+            ));
 
             ui.heading(format!("Plant {}", map_idx + 1));
 

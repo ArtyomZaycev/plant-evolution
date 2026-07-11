@@ -1,7 +1,10 @@
 use std::{
-    ops::Deref, sync::{
-        Mutex, atomic::{AtomicU128, Ordering},
-    }, time::SystemTime,
+    ops::Deref,
+    sync::{
+        Mutex,
+        atomic::{AtomicU128, Ordering},
+    },
+    time::SystemTime,
 };
 
 pub struct VersionedMutex<T> {
@@ -24,7 +27,6 @@ impl<T: Default + Clone> Default for VersionedMutex<T> {
 
 impl<T: Clone> VersionedMutex<T> {
     pub fn new(data: T) -> Self {
-        
         Self {
             last_write: get_timestamp().into(),
             data: hotpath::mutex!(Mutex::new(data), label = "VersionedMutex"),
