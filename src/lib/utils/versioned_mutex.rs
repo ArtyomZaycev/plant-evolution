@@ -1,10 +1,7 @@
 use std::{
-    ops::Deref,
-    sync::{
-        Mutex,
-        atomic::{AtomicU128, Ordering},
-    },
-    time::SystemTime,
+    ops::Deref, sync::{
+        Mutex, atomic::{AtomicU128, Ordering},
+    }, time::SystemTime,
 };
 
 #[derive(Debug)]
@@ -74,6 +71,12 @@ impl<T: Clone> VersionedMutex<T> {
             *data = new_data;
             self.last_write.store(get_timestamp(), Ordering::Relaxed);
         }
+    }
+
+    pub fn update_data<F: FnOnce(&mut T)>(&self, f: F) {
+        let mut data = self.data.lock().unwrap();
+        f(&mut data);
+        self.last_write.store(get_timestamp(), Ordering::Relaxed);
     }
 }
 

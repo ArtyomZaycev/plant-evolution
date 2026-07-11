@@ -1,7 +1,5 @@
 use std::{
-    sync::{Arc, RwLock, mpsc},
-    thread::{self, JoinHandle},
-    time::{Duration, SystemTime},
+    sync::{Arc, RwLock, atomic::{AtomicU32, Ordering}, mpsc}, thread::{self, JoinHandle}, time::{Duration, SystemTime},
 };
 
 use super::{parameters::*, saving::*};
@@ -14,6 +12,10 @@ pub enum EngineCommand {
 
     Tick,
     Evolve,
+}
+
+pub enum EngineLog {
+    SaveLog(SaveLog),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -48,14 +50,17 @@ impl Default for SaveMark {
 
 pub struct Engine {
     command_sender: mpsc::Sender<EngineCommand>,
+    pub logs_receiver: mpsc::Receiver<EngineLog>,
     #[allow(dead_code)]
     handler: JoinHandle<()>,
     pub state: EngineSharedState,
 }
 
 // Accessible by both threads
+// Needs to be reworked, doesn't give information about what should/can be updated from where
 #[derive(Debug, Clone)]
 pub struct EngineSharedState {
+    pub total_evolutions: Arc<AtomicU32>,
     pub simulation_id: Arc<RwLock<String>>,
     pub inner_state: Arc<VersionedMutex<InnerEngineState>>,
     pub maps: Arc<SlowMutex<Vec<MapData>>>,
@@ -65,6 +70,7 @@ pub struct EngineSharedState {
 impl EngineSharedState {
     fn new(maps: SlowMutex<Vec<MapData>>) -> Self {
         Self {
+            total_evolutions: Default::default(),
             simulation_id: Arc::new(RwLock::new(format!(
                 "Simulation {}",
                 chrono::Local::now().format("%Y-%m-%d %H-%M-%S")
@@ -80,10 +86,12 @@ impl Engine {
     pub fn new(maps: Vec<MapData>) -> Self {
         let maps = SlowMutex::new(maps);
         let state = EngineSharedState::new(maps);
-        let (tx, rx) = mpsc::channel();
+        let (commands_tx, commands_rx) = mpsc::channel();
+        let (logs_tx, logs_rx) = mpsc::channel();
         Self {
-            command_sender: tx,
-            handler: Self::create_run_thread(state.clone(), rx),
+            command_sender: commands_tx,
+            logs_receiver: logs_rx,
+            handler: Self::create_run_thread(state.clone(), commands_rx, logs_tx),
             state,
         }
     }
@@ -98,16 +106,17 @@ impl Engine {
     fn create_run_thread(
         state: EngineSharedState,
         rx: mpsc::Receiver<EngineCommand>,
+        tx: mpsc::Sender<EngineLog>,
     ) -> JoinHandle<()> {
         thread::Builder::new()
             .stack_size(32 * 1024 * 1024)
             .spawn(|| {
-                Self::run(state, rx);
+                Self::run(state, rx, tx);
             })
             .unwrap()
     }
 
-    fn run(shared_state: EngineSharedState, receiver: mpsc::Receiver<EngineCommand>) {
+    fn run(shared_state: EngineSharedState, receiver: mpsc::Receiver<EngineCommand>, logs_sender: mpsc::Sender<EngineLog>) {
         let mut rng = rand::rng();
 
         let mut parameters = shared_state.parameters.read();
@@ -128,6 +137,7 @@ impl Engine {
                             map.restart();
                         });
                         last_save = SaveMark::default();
+                        shared_state.total_evolutions.store(0, Ordering::Relaxed);
                         shared_state.maps.force_write(maps.clone());
                     }
 
@@ -159,6 +169,7 @@ impl Engine {
                                 parameters.evolution_parameters.change_entropy,
                             );
                         }
+                        shared_state.total_evolutions.update(Ordering::Relaxed, Ordering::Relaxed, |v| v + 1);
                         shared_state.maps.force_write(maps.clone());
                     }
                 }
@@ -170,7 +181,7 @@ impl Engine {
                         SystemTime::now().duration_since(last_save.time).unwrap() > duration
                     }
                     SavingPeriod::EveryEvolution(period) => {
-                        maps[0].evolutions.saturating_sub(last_save.evolution) > period
+                        shared_state.total_evolutions.load(Ordering::Relaxed).saturating_sub(last_save.evolution) > period
                     }
                 }
             } else {
@@ -178,7 +189,7 @@ impl Engine {
             };
 
             if save {
-                save_maps(
+                let save_log = save_maps(
                     simulation_save_folder_path(
                         parameters.saving_parameters.path.clone(),
                         shared_state.simulation_id.read().unwrap().clone(),
@@ -187,9 +198,10 @@ impl Engine {
                     &maps,
                 );
                 last_save = SaveMark {
-                    time: SystemTime::now(),
-                    evolution: maps[0].evolutions,
+                    time: save_log.time,
+                    evolution: shared_state.total_evolutions.load(Ordering::Relaxed),
                 };
+                logs_sender.send(EngineLog::SaveLog(save_log)).unwrap();
             }
 
             match state {
@@ -234,6 +246,7 @@ impl Engine {
                                 parameters.evolution_parameters.change_entropy,
                             );
                         }
+                        shared_state.total_evolutions.update(Ordering::Relaxed, Ordering::Relaxed, |v| v + 1);
                     }
                 }
             }

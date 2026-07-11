@@ -8,6 +8,7 @@ use crate::map::MapData;
 
 use super::parameters::*;
 
+#[derive(Debug, Clone)]
 pub struct SaveLog {
     pub time: SystemTime,
     pub path: PathBuf,
