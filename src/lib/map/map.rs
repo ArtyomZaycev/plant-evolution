@@ -27,6 +27,9 @@ pub struct MapData {
     pub ticks: u32,
     pub plant_nutrition: PlantNutrition,
 
+    pub total_passive_cost: f32,
+    pub nutrition_per_tick: PlantNutrition,
+
     pub cells_pos: Vec<(usize, usize)>,
     pub map: [[MapCell; MAP_SIZE.0]; MAP_SIZE.1],
     pub cells: [[PlantCell; MAP_SIZE.0]; MAP_SIZE.1],
@@ -46,7 +49,7 @@ impl MapData {
             1.
         } else {
             match &self.map[y - 1][x] {
-                MapCell::Air(air_parameters) => air_parameters.sunlight * 0.5,
+                MapCell::Air(air_parameters) => air_parameters.sunlight * 0.3,
                 MapCell::Soil(_) => 0.,
             }
         };
@@ -59,9 +62,9 @@ impl MapData {
                 MapCell::Air(air_parameters) => {
                     air_parameters.sunlight = sunlight;
                     if self.cells[i][x].is_some() {
-                        sunlight *= 0.4;
+                        sunlight *= 0.3;
                     } else {
-                        sunlight *= 0.99;
+                        sunlight *= 0.93;
                     }
                 }
                 MapCell::Soil(_) => break,
@@ -78,7 +81,7 @@ impl MapData {
 
     #[hotpath::measure]
     fn calc_nutrition(&self, x: usize, y: usize) -> (f32, f32, f32) {
-        let dxdy = &DXDY_2D.get().unwrap()[y][x];
+        let dxdy = &DXDY_2D[y][x];
 
         let mut air = 0.;
         let mut minerals = 0.;
@@ -159,43 +162,44 @@ impl MapData {
     }
 
     #[hotpath::measure]
-    fn calculate_plant_nutritions(&self) -> PlantNutrition {
-        let mut passive_cost = 0.;
-        let nutrition =
-            self.cells_pos
-                .iter()
-                .fold(PlantNutrition::default(), |nutrition, &(j, i)| {
-                    let cell = &self.cells[i][j];
-                    let abilities = &self.evolution_data.cells_abilities[cell.t];
-                    passive_cost += abilities.passive_cost;
-                    PlantNutrition {
-                        sunlight: nutrition.sunlight
-                            + cell.input.sunlight * abilities.sunlight_consumption,
-                        air: nutrition.air + cell.input.air * abilities.air_consumption,
-                        minerals: nutrition.minerals
-                            + cell.input.minerals * abilities.minerals_consumption,
-                        water: nutrition.water + cell.input.water * abilities.water_consumption,
-                        energy: nutrition.energy + abilities.energy_production_speed,
-                    }
-                });
+    fn recalc_plant_nutrition(&mut self) {
+        self.total_passive_cost = 0.;
+        self.nutrition_per_tick =
+        self.cells_pos
+            .iter()
+            .fold(PlantNutrition::default(), |nutrition, &(j, i)| {
+                let cell = &self.cells[i][j];
+                let abilities = &self.evolution_data.cells_abilities[cell.t];
+                self.total_passive_cost += abilities.passive_cost;
+                PlantNutrition {
+                    sunlight: nutrition.sunlight
+                        + cell.input.sunlight * abilities.sunlight_consumption,
+                    air: nutrition.air + cell.input.air * abilities.air_consumption,
+                    minerals: nutrition.minerals
+                        + cell.input.minerals * abilities.minerals_consumption,
+                    water: nutrition.water + cell.input.water * abilities.water_consumption,
+                    energy: nutrition.energy + abilities.energy_production_speed,
+                }
+            });
+    }
 
+    #[hotpath::measure]
+    fn update_plant_nutritions(&mut self) {
         let produced = [
-            self.plant_nutrition.sunlight + nutrition.sunlight,
-            self.plant_nutrition.air + nutrition.air,
-            self.plant_nutrition.minerals + nutrition.minerals,
-            self.plant_nutrition.water + nutrition.water,
-            nutrition.energy,
+            self.plant_nutrition.sunlight + self.nutrition_per_tick.sunlight,
+            self.plant_nutrition.air + self.nutrition_per_tick.air,
+            self.plant_nutrition.minerals + self.nutrition_per_tick.minerals,
+            self.plant_nutrition.water + self.nutrition_per_tick.water,
+            self.nutrition_per_tick.energy,
         ]
         .into_iter()
         .reduce(f32::min)
         .unwrap();
-        PlantNutrition {
-            sunlight: self.plant_nutrition.sunlight + nutrition.sunlight - produced,
-            air: self.plant_nutrition.air + nutrition.air - produced,
-            minerals: self.plant_nutrition.minerals + nutrition.minerals - produced,
-            water: self.plant_nutrition.water + nutrition.water - produced,
-            energy: self.plant_nutrition.energy + produced - passive_cost,
-        }
+        self.plant_nutrition.sunlight += self.nutrition_per_tick.sunlight - produced;
+        self.plant_nutrition.air += self.nutrition_per_tick.air - produced;
+        self.plant_nutrition.minerals += self.nutrition_per_tick.minerals - produced;
+        self.plant_nutrition.water += self.nutrition_per_tick.water - produced;
+        self.plant_nutrition.energy += produced - self.total_passive_cost;
     }
 
     #[hotpath::measure]
@@ -205,7 +209,7 @@ impl MapData {
         self.cells_pos.iter().for_each(|&(j, i)| {
             let plant_cell = &self.cells[i][j];
             let evolution = &self.evolution_data.cells_evolution_data[plant_cell.t];
-            GROWTH_DIRECTION.get().unwrap()[i][j]
+            GROWTH_DIRECTION[i][j]
                 .iter()
                 .for_each(|&(nj, ni, d)| {
                     if self.cells[ni][nj].t == usize::MAX {
@@ -292,6 +296,7 @@ impl MapData {
                     self.remove_cell(x, y);
                     self.update_sunlight_all();
                     self.populate_plant_inputs();
+                    self.recalc_plant_nutrition();
                     self.recalc_next_cell_growth();
                     self.recalc_next_cell_suicide();
                 }
@@ -309,6 +314,7 @@ impl MapData {
                     self.cells_pos.push((x, y));
                     self.update_sunlight(x, y);
                     self.populate_plant_inputs();
+                    self.recalc_plant_nutrition();
                     self.recalc_next_cell_growth();
                     self.recalc_next_cell_suicide();
                 }
@@ -371,11 +377,14 @@ impl MapData {
             next_cell_suicide: (f32::NEG_INFINITY, 0, 0),
             ticks: 0,
             plant_nutrition,
+            total_passive_cost: 0.,
+            nutrition_per_tick: PlantNutrition::default(),
             cells_pos: vec![PLANT_CENTER],
             map: Self::BASIC_MAP.clone(),
             cells: Self::BASIC_PLANTS.clone(),
         };
         s.populate_plant_inputs();
+        s.recalc_plant_nutrition();
         s.recalc_next_cell_growth();
         s.recalc_next_cell_suicide();
         s
@@ -405,7 +414,7 @@ impl MapData {
 
     #[hotpath::measure]
     pub fn tick(&mut self) {
-        self.plant_nutrition = self.calculate_plant_nutritions();
+        self.update_plant_nutritions();
         self.grow_plant();
         self.ticks += 1;
     }
