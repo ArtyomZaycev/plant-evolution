@@ -412,6 +412,7 @@ impl MapData {
         self.ticks += 1;
     }
 
+    #[hotpath::measure]
     pub fn calculate_score(&self) -> f32 {
         let mut seeds = vec![];
 

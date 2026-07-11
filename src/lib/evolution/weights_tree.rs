@@ -121,6 +121,7 @@ impl WeightsTree {
         }
     }
 
+    #[hotpath::measure]
     pub fn calculate(&self, input: &PlantCellInput, height: f32, xdist: f32) -> f32 {
         self.calc_inner(input, height, xdist, 0)
     }

@@ -58,7 +58,7 @@ pub struct Engine {
 
 // Accessible by both threads
 // Needs to be reworked, doesn't give information about what should/can be updated from where
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct EngineSharedState {
     pub total_evolutions: Arc<AtomicU32>,
     pub simulation_id: Arc<RwLock<String>>,

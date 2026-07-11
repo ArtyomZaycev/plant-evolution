@@ -1,2 +1,5 @@
 [target.'cfg(windows)']
 rustflags = ["-C", "link-args=/STACK:33554432"]
+
+[env]
+HOTPATH_REPORT="functions-timing,functions-alloc,threads"

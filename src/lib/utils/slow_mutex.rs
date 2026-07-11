@@ -7,13 +7,11 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-// TODO: Use duration
-#[derive(Debug)]
 pub struct SlowMutex<T> {
     read_update_interval: Duration,
     write_update_interval: Duration,
     last_write: AtomicU128,
-    data: Mutex<T>,
+    data: hotpath::wrap::std::sync::Mutex<T>,
 }
 
 fn get_timestamp() -> u128 {
@@ -38,11 +36,10 @@ where
             read_update_interval: Duration::from_millis(10),
             write_update_interval: Duration::from_millis(20),
             last_write: get_timestamp().into(),
-            data: Mutex::new(data),
+            data: hotpath::mutex!(Mutex::new(data), label = "SlowMutex"),
         }
     }
 
-    #[hotpath::measure]
     pub fn read(&self) -> SlowMutexReadResult<T> {
         let data = self.data.lock().unwrap();
         SlowMutexReadResult {
@@ -52,7 +49,6 @@ where
         }
     }
 
-    #[hotpath::measure]
     pub fn slow_update(&self, data: &mut SlowMutexReadResult<T>) -> bool {
         if get_timestamp() - data.read_timestamp >= self.read_update_interval.as_millis() {
             self.update(data)
@@ -61,7 +57,6 @@ where
         }
     }
 
-    #[hotpath::measure]
     pub fn update(&self, data: &mut SlowMutexReadResult<T>) -> bool {
         if data.write_timestamp != self.last_write.load(Ordering::Relaxed) {
             *data = self.read();
@@ -71,7 +66,6 @@ where
         }
     }
 
-    #[hotpath::measure]
     pub fn slow_write(&self, data: &T) -> bool {
         if get_timestamp() - self.last_write.load(Ordering::Relaxed)
             >= self.write_update_interval.as_millis()
@@ -83,7 +77,6 @@ where
         }
     }
 
-    #[hotpath::measure]
     pub fn force_write(&self, new_data: T) {
         let mut data = self.data.lock().unwrap();
         *data = new_data;
