@@ -121,16 +121,15 @@ pub fn run_evolution<F: FnMut(&mut Vec<MapData>)>(
 
 #[hotpath::measure]
 fn sample_best_maps_evolution(maps: &mut Vec<MapData>, samples: usize) -> Vec<PlantEvolutionData> {
-    maps.sort_by(|a, b| {
-        a.calculate_score()
-            .partial_cmp(&b.calculate_score())
-            .unwrap()
-            .reverse()
-    });
+    let mut best_maps_idx = maps.iter().enumerate().map(|(i, map)| {
+        (map.calculate_score(), i)
+    }).collect::<Vec<_>>();
+    best_maps_idx.sort_by(|a, b| a.partial_cmp(&b).unwrap()
+            .reverse());
 
-    maps.iter()
+    best_maps_idx.iter()
         .take(samples)
-        .map(|map| map.evolution_data.clone())
+        .map(|(_, i)| maps[*i].evolution_data.clone())
         .collect::<Vec<_>>()
 }
 
