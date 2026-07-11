@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 #[derive(Debug, Clone)]
 pub struct AirParameters {
     pub sunlight: f32,
@@ -28,4 +30,13 @@ impl Default for SoilParameters {
 pub enum MapCell {
     Air(AirParameters),
     Soil(SoilParameters),
+}
+
+impl Display for MapCell {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MapCell::Air(air_parameters) => write!(f, "Air; sunlight = {}", air_parameters.sunlight),
+            MapCell::Soil(soil_parameters) => write!(f, "Soil; water = {}, minerals = {}", soil_parameters.water, soil_parameters.minerals),
+        }
+    }
 }

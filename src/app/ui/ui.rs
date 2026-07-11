@@ -670,15 +670,13 @@ impl eframe::App for PlantEvolutionApp {
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
             egui::Panel::bottom("cell_info")
-                .min_size(100.)
+                .min_size(40.)
                 .show_inside(ui, |ui| match self.hovered_cell.or(self.highlighted_cell) {
                     Some((map_idx, x, y)) => {
-                        let cell_info = format!("cell_info {:?};", &self.maps[map_idx].map[y][x]);
-                        ui.label(format!("({}, {}) => {}", x, y, cell_info));
-
+                        ui.label(format!("({}, {}) => {}", x, y, &self.maps[map_idx].map[y][x]));
                         let plant_info = if self.maps[map_idx].cells[y][x].is_some() {
                             format!(
-                                "plant {}, sunlight: {:.2}, air: {:.2}, minerals: {:.2}, water: {:.2}",
+                                "Plant cell {}, sunlight: {:.2}, air: {:.2}, minerals: {:.2}, water: {:.2}",
                                 self.maps[map_idx].cells[y][x].t + 1,
                                 self.maps[map_idx].cells[y][x].input.sunlight,
                                 self.maps[map_idx].cells[y][x].input.air,
@@ -688,8 +686,7 @@ impl eframe::App for PlantEvolutionApp {
                         } else {
                             "".to_owned()
                         };
-                        ui.label(format!("{}", plant_info));
-                        ui.label(format!("{:?}", self.maps[map_idx].cells[y][x]));
+                        ui.label(plant_info);
                     }
                     None => {
                         ui.label("Nothing selected");
