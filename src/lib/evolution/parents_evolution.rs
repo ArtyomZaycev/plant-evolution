@@ -44,6 +44,7 @@ impl<T: ParentCombination> ParentCombination for (T, f32) {
 impl ParentCombination for PlantEvolutionData {
     fn parent_combine(&self, rng: &mut Rng, other: &Self) -> Self {
         Self {
+            evolutions: self.evolutions,
             cells_evolution_data: self
                 .cells_evolution_data
                 .parent_combine(rng, &other.cells_evolution_data),

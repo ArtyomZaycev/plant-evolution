@@ -618,7 +618,10 @@ impl eframe::App for PlantEvolutionApp {
             ui.heading(format!("Plant {}", map_idx + 1));
 
             ui.horizontal(|ui| {
-                ui.label(format!("Evolutions: {}", self.maps[map_idx].evolutions));
+                ui.label(format!(
+                    "Evolutions: {}",
+                    self.maps[map_idx].evolution_data.evolutions
+                ));
                 ui.label(format!("Step: {}", self.maps[map_idx].ticks));
             });
             ui.label(format!(

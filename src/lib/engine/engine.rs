@@ -143,7 +143,6 @@ impl Engine {
                     EngineCommand::Restart => {
                         maps.iter_mut().for_each(|map| {
                             map.evolution_data = PlantEvolutionData::generate();
-                            map.evolutions = 0;
                             map.restart();
                         });
                         last_save = SaveMark::default();

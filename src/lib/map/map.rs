@@ -24,7 +24,6 @@ pub struct MapData {
     pub next_cell_growth: (f32, usize, usize, usize),
     pub next_cell_suicide: (f32, usize, usize),
 
-    pub evolutions: u32,
     pub ticks: u32,
     pub plant_nutrition: PlantNutrition,
 
@@ -370,7 +369,6 @@ impl MapData {
             starting_plant_nutrition: plant_nutrition.clone(),
             next_cell_growth: (f32::NEG_INFINITY, 0, 0, 0),
             next_cell_suicide: (f32::NEG_INFINITY, 0, 0),
-            evolutions: 0,
             ticks: 0,
             plant_nutrition,
             cells_pos: vec![PLANT_CENTER],
@@ -482,10 +480,7 @@ pub fn get_basic_map_data() -> (PlantEvolutionData, PlantNutrition) {
 
 impl RandomEvolution for MapData {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
-        let changed = self
-            .evolution_data
-            .evolve_random(rng, change_chance, change_entropy);
-        self.evolutions += 1;
-        changed
+        self.evolution_data
+            .evolve_random(rng, change_chance, change_entropy)
     }
 }

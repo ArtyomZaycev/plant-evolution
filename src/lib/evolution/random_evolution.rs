@@ -69,6 +69,7 @@ impl<T: RandomEvolution, const N: usize> RandomEvolution for [T; N] {
 
 impl RandomEvolution for PlantEvolutionData {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
+        self.evolutions += 1;
         self.cells_evolution_data
             .evolve_random(rng, change_chance, change_entropy)
             | self

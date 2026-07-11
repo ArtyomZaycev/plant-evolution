@@ -39,6 +39,7 @@ impl CellEvolutionData {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlantEvolutionData {
+    pub evolutions: u32,
     pub cells_evolution_data: [WithVolatility<CellEvolutionData>; NUMBER_OF_CELLS],
     pub cells_abilities: [PlantCellAbilities; NUMBER_OF_CELLS],
 }
@@ -75,6 +76,7 @@ impl PlantEvolutionData {
         .with_populated_cost();
 
         Self {
+            evolutions: 0,
             cells_evolution_data: std::array::from_fn(|_| {
                 WithVolatility::new(CellEvolutionData::rand_generate(rng))
             }),
@@ -126,7 +128,7 @@ fn sample_best_maps_evolution(maps: &mut Vec<MapData>, samples: usize) -> Vec<Pl
         .enumerate()
         .map(|(i, map)| (map.calculate_score(), i))
         .collect::<Vec<_>>();
-    best_maps_idx.sort_by(|a, b| a.partial_cmp(&b).unwrap().reverse());
+    best_maps_idx.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap().reverse());
 
     best_maps_idx
         .iter()
