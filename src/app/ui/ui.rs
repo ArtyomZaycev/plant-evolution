@@ -19,6 +19,10 @@ pub struct PlantEvolutionApp {
 
     engine_inner_state: VersionedMutexData<InnerEngineState>,
 
+    autoevolve_enabled: bool,
+    autoevolve_at_str: String,
+    autoevolve_at: u32,
+
     selected_map_index_str: String,
     selected_maps_index: Vec<usize>,
     maps: SlowMutexReadResult<Vec<MapData>>,
@@ -38,6 +42,9 @@ impl PlantEvolutionApp {
             settings: None,
             cell_size: 6.,
             engine_inner_state: engine.state.inner_state.read(),
+            autoevolve_enabled: true,
+            autoevolve_at_str: 500.to_string(),
+            autoevolve_at: 500,
             selected_map_index_str: "1".to_owned(),
             selected_maps_index: vec![0],
             highlighted_map: None,
@@ -253,6 +260,24 @@ impl PlantEvolutionApp {
             &self.maps,
         ));
     }
+
+    fn get_autoevolve(&self) -> Option<u32> {
+        if self.autoevolve_enabled {
+            Some(self.autoevolve_at)
+        } else {
+            None
+        }
+    }
+
+    fn update_autoevolve_state(&self) {
+        if self.engine
+            .state
+            .inner_state.cloned() != InnerEngineState::Stale {
+                self.engine
+                    .state
+                    .inner_state.write(InnerEngineState::RunSimulation { autoevolve: self.get_autoevolve() });
+            }
+    }
 }
 
 impl eframe::App for PlantEvolutionApp {
@@ -439,7 +464,8 @@ impl eframe::App for PlantEvolutionApp {
                                 }
                             }
                         } else if ui.input(|inp| inp.modifiers.shift) {
-                            let range = *self.selected_maps_index.last().unwrap()..=i;
+                            let range_start = *self.selected_maps_index.last().unwrap();
+                            let range = if range_start <= i {range_start..=i} else {i..=range_start};
                             let mut new_idx = vec![];
                             for j in range.clone() {
                                 if !self.selected_maps_index.contains(&j) {
@@ -470,40 +496,48 @@ impl eframe::App for PlantEvolutionApp {
 
             let engine_state = VersionedMutexData::get_cloned(&self.engine_inner_state);
             ui.horizontal(|ui| {
+                ui.label("Simulation");
                 if ui
-                    .radio(engine_state == InnerEngineState::Stale, "Stale")
+                    .radio(engine_state == InnerEngineState::Stale, "Disabled")
                     .clicked()
                 {
-                    self.engine.send_command(EngineCommand::GoStale).unwrap();
+                    self.engine.state.inner_state.write(InnerEngineState::Stale);
                 }
                 if ui
-                    .radio(engine_state == InnerEngineState::RunTick, "Grow")
+                    .radio(matches!(engine_state, InnerEngineState::RunSimulation{autoevolve: None}), "Grow")
                     .clicked()
                 {
-                    self.engine.send_command(EngineCommand::RunTick).unwrap();
+                    self.autoevolve_enabled = false;
+                    self.engine.state.inner_state.write(InnerEngineState::RunSimulation { autoevolve: self.get_autoevolve() });
                 }
                 if ui
-                    .radio(
-                        engine_state == InnerEngineState::RunEvolution,
-                        "Run Evolution",
-                    )
+                    .radio(matches!(engine_state, InnerEngineState::RunSimulation{autoevolve: Some(_)}), "Evolve")
                     .clicked()
                 {
-                    self.engine
-                        .send_command(EngineCommand::RunEvolution)
-                        .unwrap();
+                    self.autoevolve_enabled = true;
+                    self.engine.state.inner_state.write(InnerEngineState::RunSimulation { autoevolve: self.get_autoevolve() });
+                }
+            });
+            
+            ui.horizontal(|ui| {
+                if ui.add_enabled(engine_state == InnerEngineState::Stale, egui::Button::new("Grow")).clicked() {
+                    self.engine.send_command(EngineCommand::Tick).unwrap();
+                }
+                if ui.add_enabled(engine_state == InnerEngineState::Stale || self.autoevolve_enabled == false, egui::Button::new("Evolve")).clicked() {
+                    self.engine.send_command(EngineCommand::Evolve).unwrap();
                 }
             });
 
-            ui.add_enabled_ui(engine_state == InnerEngineState::Stale, |ui| {
-                ui.horizontal(|ui| {
-                    if ui.button("Grow").clicked() {
-                        self.engine.send_command(EngineCommand::Tick).unwrap();
+            ui.horizontal(|ui| {
+                ui.label("Ticks per evolution");
+                let response = ui.text_edit_singleline(&mut self.autoevolve_at_str);
+                if response.lost_focus() {
+                    if let Ok(autoevolve_at) = self.autoevolve_at_str.parse() {
+                        self.autoevolve_at = autoevolve_at;
+                        self.autoevolve_at_str = autoevolve_at.to_string();
+                        self.update_autoevolve_state();
                     }
-                    if ui.add_enabled(true, Button::new("Evolve!")).clicked() {
-                        self.engine.send_command(EngineCommand::Evolve).unwrap();
-                    }
-                });
+                }
             });
 
             ui.separator();

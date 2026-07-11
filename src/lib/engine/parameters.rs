@@ -58,14 +58,12 @@ impl Default for EvolutionParameters {
 
 #[derive(Debug, Clone, Copy)]
 pub struct RunEvolutionParameters {
-    pub ticks_per_evolution: u32,
     pub ticks_per_slow_write: u32,
 }
 
 impl Default for RunEvolutionParameters {
     fn default() -> Self {
         Self {
-            ticks_per_evolution: 500,
             ticks_per_slow_write: 2000,
         }
     }

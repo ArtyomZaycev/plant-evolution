@@ -10,23 +10,17 @@ use crate::{evolution::*, map::MapData, utils::*};
 pub enum EngineCommand {
     Restart,
 
-    Save,
     Load(String),
 
     Tick,
     Evolve,
-
-    GoStale,
-    RunTick,
-    RunEvolution,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum InnerEngineState {
     #[default]
     Stale,
-    RunTick,
-    RunEvolution,
+    RunSimulation {autoevolve: Option<u32>},
 }
 
 #[derive(Debug, Clone, Default)]
@@ -50,7 +44,6 @@ impl Default for SaveMark {
     }
 }
 
-// TODO: Rename
 pub struct Engine {
     command_sender: mpsc::Sender<EngineCommand>,
     #[allow(dead_code)]
@@ -118,7 +111,6 @@ impl Engine {
         let mut parameters = shared_state.parameters.read();
         let mut maps = SlowMutexReadResult::get(shared_state.maps.read());
 
-        let mut save = false;
         let mut last_save = SaveMark::default();
 
         loop {
@@ -137,22 +129,17 @@ impl Engine {
                         shared_state.maps.force_write(maps.clone());
                     }
 
-                    EngineCommand::Save => {
-                        save = true;
-                    }
                     EngineCommand::Load(_) => {
-                        state = InnerEngineState::Stale;
+                        
                     }
 
                     EngineCommand::Tick => {
-                        state = InnerEngineState::Stale;
                         maps.iter_mut().for_each(|map| {
                             map.tick();
                         });
                         shared_state.maps.force_write(maps.clone());
                     }
                     EngineCommand::Evolve => {
-                        state = InnerEngineState::Stale;
                         if parameters.evolution_parameters.parent_evolution {
                             parents_random_evolve(
                                 &mut rng,
@@ -174,30 +161,21 @@ impl Engine {
                         }
                         shared_state.maps.force_write(maps.clone());
                     }
-
-                    EngineCommand::GoStale => {
-                        state = InnerEngineState::Stale;
-                        shared_state.maps.force_write(maps.clone());
-                    }
-                    EngineCommand::RunTick => {
-                        state = InnerEngineState::RunTick;
-                    }
-                    EngineCommand::RunEvolution => {
-                        state = InnerEngineState::RunEvolution;
-                    }
                 }
             }
 
-            if !save && parameters.saving_parameters.enabled {
+            let save = if parameters.saving_parameters.enabled {
                 match parameters.saving_parameters.period {
                     SavingPeriod::EveryDuration(duration) => {
-                        save = SystemTime::now().duration_since(last_save.time).unwrap() > duration;
+                        SystemTime::now().duration_since(last_save.time).unwrap() > duration
                     }
                     SavingPeriod::EveryEvolution(period) => {
-                        save = maps[0].evolutions.saturating_sub(last_save.evolution) > period;
+                        maps[0].evolutions.saturating_sub(last_save.evolution) > period
                     }
                 }
-            }
+            } else {
+                false
+            };
 
             if save {
                 save_maps(
@@ -212,39 +190,31 @@ impl Engine {
                     time: SystemTime::now(),
                     evolution: maps[0].evolutions,
                 };
-                save = false;
             }
 
             match state {
                 InnerEngineState::Stale => {
                     thread::sleep(Duration::from_millis(20));
                 }
-                InnerEngineState::RunTick => {
+                InnerEngineState::RunSimulation { autoevolve: None } => {
                     maps.iter_mut().for_each(|map| {
                         map.tick();
                     });
                     shared_state.maps.slow_write(&maps);
                 }
-                InnerEngineState::RunEvolution => {
+                InnerEngineState::RunSimulation { autoevolve: Some(ticks_per_evolution) } => {
                     (0..(parameters
                         .evolution_parameters
                         .run_evolution_parameters
                         .ticks_per_slow_write
                         .min(
-                            parameters
-                                .evolution_parameters
-                                .run_evolution_parameters
-                                .ticks_per_evolution
+                            ticks_per_evolution
                                 .saturating_sub(maps[0].ticks),
                         )))
                         .for_each(|_| {
                             maps.iter_mut().for_each(|map| map.tick());
                         });
-                    if maps[0].ticks
-                        >= parameters
-                            .evolution_parameters
-                            .run_evolution_parameters
-                            .ticks_per_evolution
+                    if maps[0].ticks >= ticks_per_evolution
                     {
                         shared_state.maps.force_write(maps.clone());
                         if parameters.evolution_parameters.parent_evolution {
@@ -269,8 +239,6 @@ impl Engine {
                     }
                 }
             }
-
-            shared_state.inner_state.write(state);
         }
     }
 }
