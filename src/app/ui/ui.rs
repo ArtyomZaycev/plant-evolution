@@ -27,6 +27,8 @@ pub struct PlantEvolutionApp {
 
     selected_map_index_str: String,
     selected_maps_index: Vec<usize>,
+    last_selected_index: usize,
+
     maps: SlowMutexReadResult<Vec<MapData>>,
 
     highlighted_map: Option<usize>,
@@ -49,6 +51,7 @@ impl PlantEvolutionApp {
             autoevolve_at: 500,
             selected_map_index_str: "1".to_owned(),
             selected_maps_index: vec![0],
+            last_selected_index: 0,
             highlighted_map: None,
             hovered_cell: None,
             highlighted_cell: None,
@@ -231,6 +234,7 @@ impl PlantEvolutionApp {
     fn update_selected_maps(&mut self) {
         if self.selected_maps_index.len() == 0 {
             self.selected_maps_index = vec![0];
+            self.last_selected_index = 0;
         }
         self.selected_maps_index.sort();
         self.selected_map_index_str =
@@ -446,20 +450,21 @@ impl eframe::App for PlantEvolutionApp {
         egui::Panel::left("plants_list").show_inside(ui, |ui| {
             let response =
                 ui.add(TextEdit::singleline(&mut self.selected_map_index_str).desired_width(150.));
-            let new_selected_map_index_str = Self::get_selected_map_index_from_str(
+            let new_selected_map_index = Self::get_selected_map_index_from_str(
                 &self.selected_map_index_str,
                 self.maps.len(),
             );
 
             if ui
                 .add_enabled(
-                    new_selected_map_index_str.is_some(),
+                    new_selected_map_index.is_some(),
                     egui::Button::new("Select"),
                 )
                 .clicked()
                 || (response.lost_focus() && ui.input(|inp| inp.key_pressed(egui::Key::Enter)))
             {
-                self.selected_maps_index = new_selected_map_index_str.unwrap();
+                self.selected_maps_index = new_selected_map_index.unwrap();
+                self.last_selected_index = *self.selected_maps_index.last().unwrap();
                 self.update_selected_maps();
             }
             if response.lost_focus() {
@@ -486,12 +491,12 @@ impl eframe::App for PlantEvolutionApp {
                                     self.selected_maps_index.push(i);
                                 }
                             }
+                            self.last_selected_index = i;
                         } else if ui.input(|inp| inp.modifiers.shift) {
-                            let range_start = *self.selected_maps_index.last().unwrap();
-                            let range = if range_start <= i {
-                                range_start..=i
+                            let range = if self.last_selected_index <= i {
+                                self.last_selected_index..=i
                             } else {
-                                i..=range_start
+                                i..=self.last_selected_index
                             };
                             let mut new_idx = vec![];
                             for j in range.clone() {
@@ -511,6 +516,7 @@ impl eframe::App for PlantEvolutionApp {
                             }
                         } else {
                             self.selected_maps_index = vec![i];
+                            self.last_selected_index = i;
                         }
                         self.update_selected_maps();
                     }
