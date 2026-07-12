@@ -22,6 +22,7 @@ serde = { version = "1.0.228", features = ["derive"] }
 chrono = "0.4.45"
 
 [features]
+stable_rng = []
 hotpath = ["hotpath/hotpath"]
 hotpath-cpu = ["hotpath/hotpath-cpu"]
 hotpath-alloc = ["hotpath/hotpath-alloc"]
@@ -35,8 +36,9 @@ criterion = { version = "0.8", features = ["html_reports"] }
 [[bench]]
 name = "growth"
 harness = false
+features = ["stable_rng"]
 
 [[bench]]
 name = "evolution"
 harness = false
-
+features = ["stable_rng"]

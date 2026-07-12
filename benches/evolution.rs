@@ -12,7 +12,7 @@ extern crate plant_evolution_lib;
 fn evolution_benchmark() {
     let number_of_plants: usize = 200;
     let mut maps = Vec::from_fn(number_of_plants, |_| MapData::default());
-    let mut rng = SmallRng::seed_from_u64(DEFAULT_SEED);
+    let mut rng = get_rng();
     run_evolution_random(None, &mut maps, &mut rng, 1000, 1000, 0.9, 0.1);
     black_box(maps);
 }
