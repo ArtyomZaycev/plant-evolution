@@ -43,7 +43,7 @@ impl<T: RandomEvolution> RandomEvolution for WithVolatility<T> {
             (change_chance * self.volatility).clamp(0.05, 0.9),
             change_entropy,
         );
-        self.volatility *= if changed { 1.1 } else { 0.999 };
+        self.volatility *= if changed { 1.2 } else { 0.992 };
         self.volatility = self.volatility.clamp(0.1, 2.);
         changed
     }

@@ -165,22 +165,22 @@ impl MapData {
     fn recalc_plant_nutrition(&mut self) {
         self.total_passive_cost = 0.;
         self.nutrition_per_tick =
-        self.cells_pos
-            .iter()
-            .fold(PlantNutrition::default(), |nutrition, &(j, i)| {
-                let cell = &self.cells[i][j];
-                let abilities = &self.evolution_data.cells_abilities[cell.t];
-                self.total_passive_cost += abilities.passive_cost;
-                PlantNutrition {
-                    sunlight: nutrition.sunlight
-                        + cell.input.sunlight * abilities.sunlight_consumption,
-                    air: nutrition.air + cell.input.air * abilities.air_consumption,
-                    minerals: nutrition.minerals
-                        + cell.input.minerals * abilities.minerals_consumption,
-                    water: nutrition.water + cell.input.water * abilities.water_consumption,
-                    energy: nutrition.energy + abilities.energy_production_speed,
-                }
-            });
+            self.cells_pos
+                .iter()
+                .fold(PlantNutrition::default(), |nutrition, &(j, i)| {
+                    let cell = &self.cells[i][j];
+                    let abilities = &self.evolution_data.cells_abilities[cell.t];
+                    self.total_passive_cost += abilities.passive_cost;
+                    PlantNutrition {
+                        sunlight: nutrition.sunlight
+                            + cell.input.sunlight * *abilities.sunlight_consumption,
+                        air: nutrition.air + cell.input.air * *abilities.air_consumption,
+                        minerals: nutrition.minerals
+                            + cell.input.minerals * *abilities.minerals_consumption,
+                        water: nutrition.water + cell.input.water * *abilities.water_consumption,
+                        energy: nutrition.energy + *abilities.energy_production_speed,
+                    }
+                });
     }
 
     #[hotpath::measure]
@@ -210,25 +210,23 @@ impl MapData {
         self.cells_pos.iter().for_each(|&(j, i)| {
             let plant_cell = &self.cells[i][j];
             let evolution = &self.evolution_data.cells_evolution_data[plant_cell.t];
-            GROWTH_DIRECTION[i][j]
-                .iter()
-                .for_each(|&(nj, ni, d)| {
-                    if self.cells[ni][nj].t == usize::MAX {
-                        let weights = &evolution.weights[d];
-                        for c in 0..NUMBER_OF_CELLS {
-                            let score = weights[c].calculate(
-                                &plant_cell.input,
-                                (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
-                                (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
-                            );
-                            let cw = growth_w.entry((ni, nj, c)).or_default();
-                            *cw += score;
-                            if *cw >= self.next_cell_growth.0 {
-                                self.next_cell_growth = (*cw, nj, ni, c);
-                            }
+            GROWTH_DIRECTION[i][j].iter().for_each(|&(nj, ni, d)| {
+                if self.cells[ni][nj].t == usize::MAX {
+                    let weights = &evolution.weights[d];
+                    for c in 0..NUMBER_OF_CELLS {
+                        let score = weights[c].calculate(
+                            &plant_cell.input,
+                            (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
+                            (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
+                        );
+                        let cw = growth_w.entry((ni, nj, c)).or_default();
+                        *cw += score;
+                        if *cw >= self.next_cell_growth.0 {
+                            self.next_cell_growth = (*cw, nj, ni, c);
                         }
                     }
-                });
+                }
+            });
         });
     }
 
@@ -435,13 +433,13 @@ impl MapData {
                     }
                     PlantNutrition {
                         sunlight: nutrition.sunlight
-                            + cell.input.sunlight * cell_abilities.sunlight_consumption,
-                        air: nutrition.air + cell.input.air * cell_abilities.air_consumption,
+                            + cell.input.sunlight * *cell_abilities.sunlight_consumption,
+                        air: nutrition.air + cell.input.air * *cell_abilities.air_consumption,
                         minerals: nutrition.minerals
-                            + cell.input.minerals * cell_abilities.minerals_consumption,
+                            + cell.input.minerals * *cell_abilities.minerals_consumption,
                         water: nutrition.water
-                            + cell.input.water * cell_abilities.water_consumption,
-                        energy: nutrition.energy + cell_abilities.energy_production_speed,
+                            + cell.input.water * *cell_abilities.water_consumption,
+                        energy: nutrition.energy + *cell_abilities.energy_production_speed,
                     }
                 });
 

@@ -1,6 +1,6 @@
 use std::sync::atomic::Ordering;
 
-use egui::{Align2, Button, Color32, FontId, Pos2, Rect, Sense, TextEdit, Vec2};
+use egui::{Align2, Button, CollapsingHeader, Color32, FontId, Pos2, Rect, Sense, TextEdit, Vec2};
 
 use plant_evolution_lib::{engine::*, map::*, precalc::*, utils::*};
 
@@ -662,7 +662,14 @@ impl eframe::App for PlantEvolutionApp {
                     .enumerate()
                     .for_each(|(i, cell)| {
                         ui.horizontal_top(|ui| {
-                            ui.collapsing(format!("Cell {}", i + 1), |ui| {
+                            CollapsingHeader::new(format!(
+                                "Cell {} (v={:.2})",
+                                i + 1,
+                                self.maps[map_idx].evolution_data.cells_evolution_data[i]
+                                    .volatility
+                            ))
+                            .id_salt(format!("cell {}", i))
+                            .show(ui, |ui| {
                                 ui.label(format!(
                                     "Volatility: {:.2}",
                                     self.maps[map_idx].evolution_data.cells_evolution_data[i]
@@ -677,11 +684,29 @@ impl eframe::App for PlantEvolutionApp {
                                 {
                                     new_desision_tree = Some((map_idx, i));
                                 }
-                                ui.label(format!("Sunlight: {:.2}", cell.sunlight_consumption));
-                                ui.label(format!("Air: {:.2}", cell.air_consumption));
-                                ui.label(format!("Minerals: {:.2}", cell.minerals_consumption));
-                                ui.label(format!("Water: {:.2}", cell.water_consumption));
-                                ui.label(format!("Power: {:.2}", cell.energy_production_speed));
+                                ui.label(format!(
+                                    "Sunlight (v={:.2}): {:.2}",
+                                    cell.sunlight_consumption.volatility,
+                                    *cell.sunlight_consumption
+                                ));
+                                ui.label(format!(
+                                    "Air (v={:.2}): {:.2}",
+                                    cell.air_consumption.volatility, *cell.air_consumption
+                                ));
+                                ui.label(format!(
+                                    "Minerals (v={:.2}): {:.2}",
+                                    cell.minerals_consumption.volatility,
+                                    *cell.minerals_consumption
+                                ));
+                                ui.label(format!(
+                                    "Water (v={:.2}): {:.2}",
+                                    cell.water_consumption.volatility, *cell.water_consumption
+                                ));
+                                ui.label(format!(
+                                    "Power (v={:.2}): {:.2}",
+                                    cell.energy_production_speed.volatility,
+                                    *cell.energy_production_speed
+                                ));
                                 ui.label(format!("Seed: {}", cell.seed));
                                 ui.label(format!("Grow cost: {:.2}", cell.grow_cost));
                                 ui.label(format!("Passive cost: {:.2}", cell.passive_cost));
@@ -700,7 +725,7 @@ impl eframe::App for PlantEvolutionApp {
                     .label(format!(
                         "Next growth {:.2} cell {} at {:?}",
                         self.maps[map_idx].next_cell_growth.0,
-                        self.maps[map_idx].next_cell_growth.3,
+                        self.maps[map_idx].next_cell_growth.3 + 1,
                         (
                             self.maps[map_idx].next_cell_growth.1,
                             self.maps[map_idx].next_cell_growth.2

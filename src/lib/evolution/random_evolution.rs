@@ -5,7 +5,7 @@ use rand::RngExt;
 use super::{
     CellEvolutionData, PlantEvolutionData, RunningEvolutionData, run_evolution, weights_tree::*,
 };
-use crate::{map::*, utils::*};
+use crate::{evolution::WithVolatility, map::*, utils::*};
 
 fn apply_change_chance_and<F: FnOnce() -> bool>(change_chance: f32, random: f32, f: F) -> bool {
     if random < change_chance { f() } else { false }
@@ -39,6 +39,24 @@ fn randomize_value_change_chance(
     })
 }
 
+fn randomize_value_change_chance_volatile(
+    value: &mut WithVolatility<f32>,
+    rng: &mut Rng,
+    change_chance: f32,
+    change_entropy: f32,
+    min: f32,
+    max: f32,
+) -> bool {
+    let old_value = value.value;
+    let changed = value.evolve_random(rng, change_chance, change_entropy);
+    if changed {
+        value.value = value.clamp(min, max);
+        old_value != value.value
+    } else {
+        false
+    }
+}
+
 fn randomize_bool_value_change_chance(value: &mut bool, rng: &mut Rng, change_chance: f32) -> bool {
     apply_change_chance(change_chance, rng.random(), || {
         if rng.random::<f32>() > 0.5 {
@@ -63,6 +81,14 @@ impl<T: RandomEvolution, const N: usize> RandomEvolution for [T; N] {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
         self.iter_mut().fold(false, |acc, v| {
             acc | v.evolve_random(rng, change_chance, change_entropy)
+        })
+    }
+}
+
+impl RandomEvolution for f32 {
+    fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
+        apply_change_chance(change_chance, rng.random(), || {
+            randomize_value(self, rng.random(), change_entropy);
         })
     }
 }
@@ -92,35 +118,35 @@ impl RandomEvolution for CellEvolutionData {
 
 impl RandomEvolution for PlantCellAbilities {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
-        let changed = randomize_value_change_chance(
+        let changed = randomize_value_change_chance_volatile(
             &mut self.sunlight_consumption,
             rng,
             change_chance,
             change_entropy,
             0.,
             1.,
-        ) | randomize_value_change_chance(
+        ) | randomize_value_change_chance_volatile(
             &mut self.air_consumption,
             rng,
             change_chance,
             change_entropy,
             0.,
             1.,
-        ) | randomize_value_change_chance(
+        ) | randomize_value_change_chance_volatile(
             &mut self.minerals_consumption,
             rng,
             change_chance,
             change_entropy,
             0.,
             1.,
-        ) | randomize_value_change_chance(
+        ) | randomize_value_change_chance_volatile(
             &mut self.water_consumption,
             rng,
             change_chance,
             change_entropy,
             0.,
             1.,
-        ) | randomize_value_change_chance(
+        ) | randomize_value_change_chance_volatile(
             &mut self.energy_production_speed,
             rng,
             change_chance,

@@ -51,11 +51,11 @@ impl PlantEvolutionData {
 
     fn rand_generate(rng: &mut Rng) -> Self {
         let basic_cell = PlantCellAbilities {
-            sunlight_consumption: 0.1,
-            air_consumption: 0.1,
-            minerals_consumption: 0.1,
-            water_consumption: 0.1,
-            energy_production_speed: 0.1,
+            sunlight_consumption: WithVolatility::new(0.1),
+            air_consumption: WithVolatility::new(0.1),
+            minerals_consumption: WithVolatility::new(0.1),
+            water_consumption: WithVolatility::new(0.1),
+            energy_production_speed: WithVolatility::new(0.1),
             seed: false,
             grow_cost: 0.,
             passive_cost: 0.,
@@ -64,11 +64,11 @@ impl PlantEvolutionData {
 
         let mut cells = std::array::repeat(basic_cell);
         cells[0] = PlantCellAbilities {
-            sunlight_consumption: 0.,
-            air_consumption: 0.,
-            minerals_consumption: 1.,
-            water_consumption: 1.,
-            energy_production_speed: 0.4,
+            sunlight_consumption: WithVolatility::new(0.),
+            air_consumption: WithVolatility::new(0.),
+            minerals_consumption: WithVolatility::new(1.),
+            water_consumption: WithVolatility::new(1.),
+            energy_production_speed: WithVolatility::new(0.4),
             seed: false,
             grow_cost: 0.,
             passive_cost: 0.,

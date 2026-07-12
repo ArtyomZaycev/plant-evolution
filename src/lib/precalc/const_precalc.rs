@@ -8,12 +8,10 @@ pub const PLANT_CENTER: (usize, usize) = (MAP_SIZE.0 / 2, MAP_SIZE.1 / 2 + 2);
 
 pub type DxDy2d = (usize, usize, f32);
 pub type GrowthDir = (usize, usize, usize);
-pub static DXDY_2D: LazyLock<[[Vec<DxDy2d>; MAP_SIZE.0]; MAP_SIZE.1]> = LazyLock::new(|| {
-    generate_dxdy()
-});
-pub static GROWTH_DIRECTION: LazyLock<[[Vec<GrowthDir>; MAP_SIZE.0]; MAP_SIZE.1]> = LazyLock::new(|| {
-    generate_growth_direction()
-});
+pub static DXDY_2D: LazyLock<[[Vec<DxDy2d>; MAP_SIZE.0]; MAP_SIZE.1]> =
+    LazyLock::new(|| generate_dxdy());
+pub static GROWTH_DIRECTION: LazyLock<[[Vec<GrowthDir>; MAP_SIZE.0]; MAP_SIZE.1]> =
+    LazyLock::new(|| generate_growth_direction());
 
 pub fn populate_consts() {
     LazyLock::force(&DXDY_2D);
