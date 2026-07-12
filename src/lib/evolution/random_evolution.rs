@@ -58,9 +58,12 @@ fn randomize_value_change_chance_volatile(
 }
 
 fn randomize_bool_value_change_chance(value: &mut bool, rng: &mut Rng, change_chance: f32) -> bool {
-    apply_change_chance(change_chance, rng.random(), || {
+    apply_change_chance_and(change_chance, rng.random(), || {
         if rng.random::<f32>() > 0.5 {
-            *value = !*value
+            *value = !*value;
+            true
+        } else {
+            false
         }
     })
 }
