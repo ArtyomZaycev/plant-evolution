@@ -234,14 +234,12 @@ impl Engine {
                 InnerEngineState::RunSimulation {
                     autoevolve: Some(ticks_per_evolution),
                 } => {
-                    (0..(parameters
+                    let number_of_ticks = parameters
                         .evolution_parameters
                         .run_evolution_parameters
                         .ticks_per_slow_write
-                        .min(ticks_per_evolution.saturating_sub(maps[0].ticks))))
-                        .for_each(|_| {
-                            maps.iter_mut().for_each(|map| map.tick());
-                        });
+                        .min(ticks_per_evolution.saturating_sub(maps[0].ticks));
+                    maps.iter_mut().for_each(|map| (0..number_of_ticks).for_each(|_| map.tick()));
                     if maps[0].ticks < ticks_per_evolution {
                         shared_state.maps.slow_write(&maps);
                     } else {
