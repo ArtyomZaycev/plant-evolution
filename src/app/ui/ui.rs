@@ -785,7 +785,7 @@ impl eframe::App for PlantEvolutionApp {
                         ui.label(plant_info);
                     }
                     None => {
-                        ui.label("Nothing selected");
+                        ui.label("Nothing highlighted");
                     }
                 });
 
