@@ -26,9 +26,9 @@ scoped_threadpool = { version = "0.1.9", optional = true }
 default = []
 stable_rng = []
 thread_evolution = ["dep:scoped_threadpool"]
-hotpath = ["hotpath/hotpath"]
-hotpath-cpu = ["hotpath/hotpath-cpu"]
-hotpath-alloc = ["hotpath/hotpath-alloc"]
+hotpath = ["hotpath/hotpath", "stable_rng"]
+hotpath-cpu = ["hotpath/hotpath-cpu", "stable_rng"]
+hotpath-alloc = ["hotpath/hotpath-alloc", "stable_rng"]
 
 [profile.bench]
 debug = true
