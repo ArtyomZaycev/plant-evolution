@@ -127,7 +127,7 @@ impl Engine {
         receiver: mpsc::Receiver<EngineCommand>,
         logs_sender: mpsc::Sender<EngineLog>,
     ) {
-        let mut rng = rand::rng();
+        let mut rng = SmallRng::seed_from_u64(DEFAULT_SEED);
 
         let mut parameters = shared_state.parameters.read();
         let mut maps = SlowMutexReadResult::get(shared_state.maps.read());
@@ -142,7 +142,7 @@ impl Engine {
                 match command {
                     EngineCommand::Restart => {
                         maps.iter_mut().for_each(|map| {
-                            map.evolution_data = PlantEvolutionData::generate();
+                            map.evolution_data = PlantEvolutionData::generate(&mut rng);
                             map.restart();
                         });
                         last_save = SaveMark::default();

@@ -462,7 +462,8 @@ impl MapData {
 }
 
 pub fn get_basic_map_data() -> (PlantEvolutionData, PlantNutrition) {
-    let evolution_data = PlantEvolutionData::generate();
+    let mut rng = SmallRng::seed_from_u64(DEFAULT_SEED);
+    let evolution_data = PlantEvolutionData::generate(&mut rng);
 
     let plant_nutrition = PlantNutrition {
         sunlight: 20.,

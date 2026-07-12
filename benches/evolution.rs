@@ -3,7 +3,7 @@
 use std::{hint::black_box, thread, time::Duration};
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use plant_evolution_lib::{evolution::run_evolution_random, map::*, precalc::*};
+use plant_evolution_lib::{evolution::run_evolution_random, map::*, precalc::*, utils::*};
 
 extern crate plant_evolution_lib;
 
@@ -12,7 +12,8 @@ extern crate plant_evolution_lib;
 fn evolution_benchmark() {
     let number_of_plants: usize = 200;
     let mut maps = Vec::from_fn(number_of_plants, |_| MapData::default());
-    run_evolution_random(None, &mut maps, 1000, 1000, 0.9, 0.1);
+    let mut rng = SmallRng::seed_from_u64(DEFAULT_SEED);
+    run_evolution_random(None, &mut maps, &mut rng, 1000, 1000, 0.9, 0.1);
     black_box(maps);
 }
 

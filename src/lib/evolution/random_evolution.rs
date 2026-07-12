@@ -239,17 +239,17 @@ impl RandomEvolution for WeightsTree {
 pub fn run_evolution_random(
     sender: Option<mpsc::Sender<RunningEvolutionData>>,
     maps: &mut Vec<MapData>,
+    rng: &mut Rng,
     evolutions: usize,
     evolve_steps: usize,
     change_chance: f32,
     change_entropy: f32,
 ) {
-    let mut rng = rand::rng();
     run_evolution(
         sender,
         maps,
         |maps| {
-            maps.evolve_random(&mut rng, change_chance, change_entropy);
+            maps.evolve_random(rng, change_chance, change_entropy);
         },
         evolutions,
         evolve_steps,

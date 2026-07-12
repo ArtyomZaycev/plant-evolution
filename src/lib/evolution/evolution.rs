@@ -45,8 +45,8 @@ pub struct PlantEvolutionData {
 }
 
 impl PlantEvolutionData {
-    pub fn generate() -> Self {
-        Self::rand_generate(&mut rand::rng())
+    pub fn generate(rng: &mut Rng) -> Self {
+        Self::rand_generate(rng)
     }
 
     fn rand_generate(rng: &mut Rng) -> Self {
