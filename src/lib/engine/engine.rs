@@ -90,7 +90,7 @@ impl EngineSharedState {
 
 impl Engine {
     #[cfg(feature = "thread_evolution")]
-    const DEFAULT_THREAD_COUNT: u32 = 4;
+    const DEFAULT_THREAD_COUNT: u32 = 8;
 
     pub fn new(maps: Vec<MapData>) -> Self {
         let maps = SlowMutex::new(maps);
