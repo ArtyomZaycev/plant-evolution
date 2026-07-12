@@ -25,20 +25,6 @@ fn randomize_value(value: &mut f32, random: f32, entropy: f32) {
     *value = *value + (random - 0.5) * entropy;
 }
 
-fn randomize_value_change_chance(
-    value: &mut f32,
-    rng: &mut Rng,
-    change_chance: f32,
-    change_entropy: f32,
-    min: f32,
-    max: f32,
-) -> bool {
-    apply_change_chance(change_chance, rng.random(), || {
-        randomize_value(value, rng.random(), change_entropy);
-        *value = value.clamp(min, max);
-    })
-}
-
 fn randomize_value_change_chance_volatile(
     value: &mut WithVolatility<f32>,
     rng: &mut Rng,
