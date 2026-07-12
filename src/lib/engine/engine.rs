@@ -89,6 +89,9 @@ impl EngineSharedState {
 }
 
 impl Engine {
+    #[cfg(feature = "thread_evolution")]
+    const DEFAULT_THREAD_COUNT: u32 = 4;
+
     pub fn new(maps: Vec<MapData>) -> Self {
         let maps = SlowMutex::new(maps);
         let state = EngineSharedState::new(maps);
@@ -128,6 +131,15 @@ impl Engine {
         logs_sender: mpsc::Sender<EngineLog>,
     ) {
         let mut rng = get_rng();
+
+        #[cfg(feature = "thread_evolution")]
+        let mut threadpool = {
+            let thread_count = std::env::var("threadpool_size")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(Self::DEFAULT_THREAD_COUNT);
+            scoped_threadpool::Pool::new(thread_count)
+        };
 
         let mut parameters = shared_state.parameters.read();
         let mut maps = SlowMutexReadResult::get(shared_state.maps.read());
@@ -239,7 +251,27 @@ impl Engine {
                         .run_evolution_parameters
                         .ticks_per_slow_write
                         .min(ticks_per_evolution.saturating_sub(maps[0].ticks));
-                    maps.iter_mut().for_each(|map| (0..number_of_ticks).for_each(|_| map.tick()));
+
+                    #[cfg(feature = "thread_evolution")]
+                    hotpath::measure_block!("thread_evolution", {
+                        let chunk_size = maps.len().div_ceil(threadpool.thread_count() as usize);
+                        threadpool.scoped(|scope| {
+                            for chunk in maps.chunks_mut(chunk_size) {
+                                scope.execute(|| {
+                                    chunk.iter_mut().for_each(|map| {
+                                        (0..number_of_ticks).for_each(|_| map.tick())
+                                    });
+                                });
+                            }
+                        });
+                    });
+
+                    #[cfg(not(feature = "thread_evolution"))]
+                    hotpath::measure_block!("not thread_evolution", {
+                        maps.iter_mut()
+                            .for_each(|map| (0..number_of_ticks).for_each(|_| map.tick()));
+                    });
+
                     if maps[0].ticks < ticks_per_evolution {
                         shared_state.maps.slow_write(&maps);
                     } else {

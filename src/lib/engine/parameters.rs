@@ -64,6 +64,9 @@ pub struct RunEvolutionParameters {
 impl Default for RunEvolutionParameters {
     fn default() -> Self {
         Self {
+            #[cfg(feature = "thread_evolution")]
+            ticks_per_slow_write: 5000,
+            #[cfg(not(feature = "thread_evolution"))]
             ticks_per_slow_write: 500,
         }
     }

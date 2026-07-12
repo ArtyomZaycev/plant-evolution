@@ -422,15 +422,13 @@ impl MapData {
     pub fn calculate_score(&self) -> f32 {
         let mut seeds = vec![];
 
-        self.cells_pos
-            .iter()
-            .for_each(|&(j, i)| {
-                let cell = &self.cells[i][j];
-                let abilities = &self.evolution_data.cells_abilities[cell.t];
-                if abilities.seed && matches!(self.map[i][j], MapCell::Air(_)) {
-                    seeds.push((j, i));
-                }
-            });
+        self.cells_pos.iter().for_each(|&(j, i)| {
+            let cell = &self.cells[i][j];
+            let abilities = &self.evolution_data.cells_abilities[cell.t];
+            if abilities.seed && matches!(self.map[i][j], MapCell::Air(_)) {
+                seeds.push((j, i));
+            }
+        });
 
         let mut seeds_score: f32 = 0.;
         for &(x, y) in &seeds {

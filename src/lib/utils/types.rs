@@ -1,6 +1,6 @@
 #[cfg(feature = "stable_rng")]
 mod stable_rng {
-    use rand::{rngs::SmallRng, SeedableRng};
+    use rand::{SeedableRng, rngs::SmallRng};
 
     pub type Rng = SmallRng;
     pub const DEFAULT_SEED: u64 = 123;

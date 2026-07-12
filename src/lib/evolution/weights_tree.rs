@@ -124,11 +124,7 @@ impl WeightsTree {
     #[hotpath::measure]
     pub fn calculate(&self, input: &PlantCellInput, height: f32, xdist: f32) -> f32 {
         let value = self.calc_inner(input, height, xdist, 0);
-        if !value.is_normal() {
-            0.
-        } else {
-            value
-        }
+        if !value.is_normal() { 0. } else { value }
     }
 }
 
