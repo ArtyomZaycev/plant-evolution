@@ -422,26 +422,15 @@ impl MapData {
     pub fn calculate_score(&self) -> f32 {
         let mut seeds = vec![];
 
-        let nutrition =
-            self.cells_pos
-                .iter()
-                .fold(PlantNutrition::default(), |nutrition, &(j, i)| {
-                    let cell = &self.cells[i][j];
-                    let cell_abilities = &self.evolution_data.cells_abilities[cell.t];
-                    if cell_abilities.seed && matches!(self.map[i][j], MapCell::Air(_)) {
-                        seeds.push((j, i));
-                    }
-                    PlantNutrition {
-                        sunlight: nutrition.sunlight
-                            + cell.input.sunlight * *cell_abilities.sunlight_consumption,
-                        air: nutrition.air + cell.input.air * *cell_abilities.air_consumption,
-                        minerals: nutrition.minerals
-                            + cell.input.minerals * *cell_abilities.minerals_consumption,
-                        water: nutrition.water
-                            + cell.input.water * *cell_abilities.water_consumption,
-                        energy: nutrition.energy + *cell_abilities.energy_production_speed,
-                    }
-                });
+        self.cells_pos
+            .iter()
+            .for_each(|&(j, i)| {
+                let cell = &self.cells[i][j];
+                let abilities = &self.evolution_data.cells_abilities[cell.t];
+                if abilities.seed && matches!(self.map[i][j], MapCell::Air(_)) {
+                    seeds.push((j, i));
+                }
+            });
 
         let mut seeds_score: f32 = 0.;
         for &(x, y) in &seeds {
@@ -458,11 +447,11 @@ impl MapData {
 
         (seeds_score * 10.)
             + ([
-                nutrition.sunlight,
-                nutrition.air,
-                nutrition.minerals,
-                nutrition.water,
-                nutrition.energy,
+                self.nutrition_per_tick.sunlight,
+                self.nutrition_per_tick.air,
+                self.nutrition_per_tick.minerals,
+                self.nutrition_per_tick.water,
+                self.nutrition_per_tick.energy,
             ]
             .into_iter()
             .reduce(f32::min)
