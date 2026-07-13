@@ -210,7 +210,7 @@ impl MapData {
             let plant_cell = &self.cells[i][j];
             let evolution = &self.evolution_data.cells_evolution_data[plant_cell.t];
             GROWTH_DIRECTION[i][j].iter().for_each(|&(nj, ni, d)| {
-                if self.cells[ni][nj].t == usize::MAX {
+                if self.cells[ni][nj].is_none() {
                     let weights = &evolution.weights[d];
                     for c in 0..NUMBER_OF_CELLS {
                         let score = weights[c].calculate(

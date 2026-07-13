@@ -3,4 +3,3 @@ rustflags = ["-C", "link-args=/STACK:33554432"]
 
 [env]
 HOTPATH_REPORT="functions-timing,functions-alloc,threads"
-HOTPATH_FOCUS="next_cell_growth"
