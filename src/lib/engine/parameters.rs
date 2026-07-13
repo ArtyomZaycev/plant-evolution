@@ -79,6 +79,7 @@ pub struct PerformanceParameters {
     pub number_of_threads: u32,
 
     pub use_local_growth: bool,
+    pub slow_updates: bool,
 }
 
 impl Default for PerformanceParameters {
@@ -90,6 +91,7 @@ impl Default for PerformanceParameters {
             multithreading_enabled: false,
             number_of_threads: 4,
             use_local_growth: false,
+            slow_updates: true,
         }
     }
 }

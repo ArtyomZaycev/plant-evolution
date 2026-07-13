@@ -312,7 +312,12 @@ impl Engine {
                     if maps[0].ticks < ticks_per_evolution {
                         shared_state.maps.slow_write(&maps);
                     } else {
-                        shared_state.maps.force_write(maps.clone());
+                        //
+                        if parameters.performance_parameters.slow_updates {
+                            shared_state.maps.slow_write(&maps);
+                        } else {
+                            shared_state.maps.force_write(maps.clone());
+                        }
                         Self::do_evolution(&mut rng, &parameters.evolution_parameters, &mut maps);
                         shared_state.total_evolutions.update(
                             Ordering::Relaxed,

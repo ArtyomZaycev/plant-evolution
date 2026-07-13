@@ -9,6 +9,7 @@ pub struct PerformanceParametersEditor {
     pub number_of_threads: u32,
 
     pub use_local_growth: bool,
+    pub slow_updates: bool,
 }
 
 impl EditorUi<PerformanceParameters> for PerformanceParametersEditor {
@@ -17,6 +18,7 @@ impl EditorUi<PerformanceParameters> for PerformanceParametersEditor {
             multithreading_enabled: settings.multithreading_enabled,
             number_of_threads: settings.number_of_threads,
             use_local_growth: settings.use_local_growth,
+            slow_updates: settings.slow_updates,
         }
     }
 
@@ -30,6 +32,7 @@ impl EditorUi<PerformanceParameters> for PerformanceParametersEditor {
                 multithreading_enabled: self.multithreading_enabled,
                 number_of_threads: self.number_of_threads,
                 use_local_growth: self.use_local_growth,
+                slow_updates: self.slow_updates,
             })
         } else {
             None
@@ -63,6 +66,13 @@ impl egui::Widget for &mut PerformanceParametersEditor {
                 });
                 ui.radio_value(&mut self.use_local_growth, true, "Enabled");
                 ui.radio_value(&mut self.use_local_growth, false, "Disabled");
+            });
+            ui.horizontal(|ui| {
+                ui.allocate_ui_with_layout(desired_size, layout, |ui| {
+                    ui.label("Slow updates")
+                });
+                ui.radio_value(&mut self.slow_updates, true, "Enabled");
+                ui.radio_value(&mut self.slow_updates, false, "Disabled");
             });
         })
         .response
