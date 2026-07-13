@@ -292,7 +292,9 @@ impl Engine {
                     maps.iter_mut().for_each(|map| {
                         map.tick();
                     });
-                    shared_state.maps.slow_write(&maps);
+                    if parameters.performance_parameters.enable_updates {
+                        shared_state.maps.slow_write(&maps);
+                    }
                 }
                 InnerEngineState::RunSimulation {
                     autoevolve: Some(ticks_per_evolution),
@@ -310,13 +312,16 @@ impl Engine {
                     Self::run_ticks(&mut maps, number_of_ticks);
 
                     if maps[0].ticks < ticks_per_evolution {
-                        shared_state.maps.slow_write(&maps);
-                    } else {
-                        //
-                        if parameters.performance_parameters.slow_updates {
+                        if parameters.performance_parameters.enable_updates {
                             shared_state.maps.slow_write(&maps);
-                        } else {
-                            shared_state.maps.force_write(maps.clone());
+                        }
+                    } else {
+                        if parameters.performance_parameters.enable_updates {
+                            if parameters.performance_parameters.slow_updates {
+                                shared_state.maps.slow_write(&maps);
+                            } else {
+                                shared_state.maps.force_write(maps.clone());
+                            }
                         }
                         Self::do_evolution(&mut rng, &parameters.evolution_parameters, &mut maps);
                         shared_state.total_evolutions.update(

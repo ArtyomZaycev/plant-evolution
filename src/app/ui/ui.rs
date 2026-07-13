@@ -628,10 +628,11 @@ impl eframe::App for PlantEvolutionApp {
                         if total_evolutions - evolutions >= 10 {
                             let time_per_evolution = SystemTime::now().duration_since(time).unwrap().div_f32((total_evolutions - evolutions) as f32);
                             self.evolutions_per_minute = Duration::from_mins(1).div_duration_f32(time_per_evolution);
+                            self.last_evolutions_measurement = Some((total_evolutions, SystemTime::now()));
                         }
                     },
                     None => {
-                        self.last_evolutions_measurement = Some((total_evolutions, SystemTime::now()))
+                        self.last_evolutions_measurement = Some((total_evolutions, SystemTime::now()));
                     },
                 }
             } else {
