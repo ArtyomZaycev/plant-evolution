@@ -1,5 +1,6 @@
 #![feature(vec_from_fn)]
 #![feature(iter_intersperse)]
+#![feature(integer_atomics)]
 
 mod ui;
 

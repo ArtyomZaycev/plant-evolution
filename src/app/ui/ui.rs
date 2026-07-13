@@ -337,6 +337,9 @@ impl eframe::App for PlantEvolutionApp {
                         .state
                         .parameters
                         .unchecked_write(engine_parameters.clone());
+                    let interval = engine_parameters.performance_parameters.slow_update_interval.as_millis();
+                    self.engine.state.maps.read_update_interval.store(interval, Ordering::Relaxed);
+                    self.engine.state.maps.write_update_interval.store(interval, Ordering::Relaxed);
                     close_settings = true;
                 }
             }
@@ -798,6 +801,33 @@ impl eframe::App for PlantEvolutionApp {
         });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
+            // TODO: Optimize read
+            if !self.engine.state.parameters.read().performance_parameters.enable_updates {
+                let width = 200.;
+                let pos = ui.clip_rect().center_top() + Vec2::new(0., 24.);
+                egui::Window::new("updates_disabled")
+                    .max_width(width)
+                    .min_width(width)
+                    .default_width(width)
+                    .fixed_pos(pos)
+                    .pivot(Align2::CENTER_TOP)
+                    .resizable(false)
+                    .title_bar(false)
+                    .show(ui.ctx(), |ui| {
+                        ui.vertical_centered_justified(|ui| {
+                            ui.label("Updates are disabled");
+                            if ui.button("Enable").clicked() {
+                                self.engine
+                                    .state
+                                    .parameters
+                                    .update_data(|parameters| {
+                                        parameters.performance_parameters.enable_updates = true;
+                                    });
+                            }
+                        });
+                    });
+            }
+
             egui::Panel::bottom("cell_info")
                 .min_size(40.)
                 .show_inside(ui, |ui| match self.hovered_cell.or(self.highlighted_cell) {

@@ -82,6 +82,7 @@ pub struct PerformanceParameters {
 
     pub enable_updates: bool,
     pub slow_updates: bool,
+    pub slow_update_interval: Duration,
 }
 
 impl Default for PerformanceParameters {
@@ -97,6 +98,7 @@ impl Default for PerformanceParameters {
 
             enable_updates: true,
             slow_updates: true,
+            slow_update_interval: Duration::from_millis(20),
         }
     }
 }

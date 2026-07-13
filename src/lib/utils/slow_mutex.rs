@@ -4,12 +4,12 @@ use std::{
         Mutex,
         atomic::{AtomicU128, Ordering},
     },
-    time::{Duration, SystemTime},
+    time::SystemTime,
 };
 
 pub struct SlowMutex<T> {
-    read_update_interval: Duration,
-    write_update_interval: Duration,
+    pub read_update_interval: AtomicU128,
+    pub write_update_interval: AtomicU128,
     last_write: AtomicU128,
     data: hotpath::wrap::std::sync::Mutex<T>,
 }
@@ -33,8 +33,8 @@ where
 {
     pub fn new(data: T) -> Self {
         Self {
-            read_update_interval: Duration::from_millis(10),
-            write_update_interval: Duration::from_millis(20),
+            read_update_interval: 20.into(),
+            write_update_interval: 20.into(),
             last_write: get_timestamp().into(),
             data: hotpath::mutex!(Mutex::new(data), label = "SlowMutex"),
         }
@@ -50,7 +50,7 @@ where
     }
 
     pub fn slow_update(&self, data: &mut SlowMutexReadResult<T>) -> bool {
-        if get_timestamp() - data.read_timestamp >= self.read_update_interval.as_millis() {
+        if get_timestamp() - data.read_timestamp >= self.read_update_interval.load(Ordering::Relaxed) {
             self.update(data)
         } else {
             false
@@ -68,7 +68,7 @@ where
 
     pub fn slow_write(&self, data: &T) -> bool {
         if get_timestamp() - self.last_write.load(Ordering::Relaxed)
-            >= self.write_update_interval.as_millis()
+            >= self.write_update_interval.load(Ordering::Relaxed)
         {
             self.force_write(data.clone());
             true

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use egui::{Align, Layout, Slider, Vec2};
 
 use super::utils::*;
@@ -12,6 +14,7 @@ pub struct PerformanceParametersEditor {
 
     pub enable_updates: bool,
     pub slow_updates: bool,
+    pub slow_update_interval: u32,
 }
 
 impl EditorUi<PerformanceParameters> for PerformanceParametersEditor {
@@ -22,6 +25,7 @@ impl EditorUi<PerformanceParameters> for PerformanceParametersEditor {
             use_local_growth: settings.use_local_growth,
             enable_updates: settings.enable_updates,
             slow_updates: settings.slow_updates,
+            slow_update_interval: settings.slow_update_interval.as_millis() as u32,
         }
     }
 
@@ -37,6 +41,7 @@ impl EditorUi<PerformanceParameters> for PerformanceParametersEditor {
                 use_local_growth: self.use_local_growth,
                 enable_updates: self.enable_updates,
                 slow_updates: self.slow_updates,
+                slow_update_interval: Duration::from_millis(self.slow_update_interval as u64),
             })
         } else {
             None
@@ -78,12 +83,23 @@ impl egui::Widget for &mut PerformanceParametersEditor {
                 ui.radio_value(&mut self.enable_updates, true, "Enabled");
                 ui.radio_value(&mut self.enable_updates, false, "Disabled");
             });
-            ui.horizontal(|ui| {
-                ui.allocate_ui_with_layout(desired_size, layout, |ui| {
-                    ui.label("Slow updates")
+            ui.add_enabled_ui(self.enable_updates, |ui| {
+                ui.horizontal(|ui| {
+                    ui.allocate_ui_with_layout(desired_size, layout, |ui| {
+                        ui.label("Slow updates")
+                    });
+                    ui.radio_value(&mut self.slow_updates, true, "Enabled");
+                    ui.radio_value(&mut self.slow_updates, false, "Disabled");
                 });
-                ui.radio_value(&mut self.slow_updates, true, "Enabled");
-                ui.radio_value(&mut self.slow_updates, false, "Disabled");
+            });
+            ui.add_enabled_ui(self.enable_updates && self.slow_updates, |ui| {
+                ui.horizontal(|ui| {
+                    ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Slow updates interval"));
+                    ui.horizontal(|ui| {
+                        ui.add(Slider::new(&mut self.slow_update_interval, 20..=5000));
+                        ui.label("milliseconds");
+                    });
+                });
             });
         })
         .response
