@@ -1,5 +1,5 @@
 #[cfg(feature = "stable_rng")]
-mod stable_rng {
+mod rng {
     use rand::{SeedableRng, rngs::SmallRng};
 
     pub type Rng = SmallRng;
@@ -11,18 +11,14 @@ mod stable_rng {
 }
 
 #[cfg(not(feature = "stable_rng"))]
-mod unstable_rng {
+mod rng {
     use rand::rngs::ThreadRng;
 
     pub type Rng = ThreadRng;
-    pub const DEFAULT_SEED: u64 = 123;
 
     pub fn get_rng() -> Rng {
         rand::rng()
     }
 }
 
-#[cfg(feature = "stable_rng")]
-pub use stable_rng::*;
-#[cfg(not(feature = "stable_rng"))]
-pub use unstable_rng::*;
+pub use rng::*;
