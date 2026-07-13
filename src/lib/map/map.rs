@@ -232,65 +232,7 @@ impl MapData {
     // Assumes new cells has grown at (x, y)
     // Would require updating everything around DXDY^2, since input for DXDY would change
     // Doesn't seem that the overhead of calculating each that that needs to be updated is worth it
-    #[hotpath::measure]
-    fn recalc_next_cell_growth(&mut self, x: usize, y: usize) {
-        let mut input_updated_at = Vec::new();
-        input_updated_at.extend((y + 3..GROUND_LEVEL).map(|ny| (x, ny)));
-        input_updated_at.extend(DXDY_2D[y][x].iter().map(|&(nx, ny, _)| (nx, ny)));
-
-        for c in 0..NUMBER_OF_CELLS {
-            // Remove this cell
-            self.all_next_cell_growth.remove(&(x, y, c));
-
-            input_updated_at.iter().for_each(|&(nx, ny)| {
-                if let Some(value) = self.all_next_cell_growth.get_mut(&(nx, ny, c)) {
-                    *value = 0.;
-                }
-            });
-        }
-
-        let mut to_update_cells = input_updated_at.into_iter().flat_map(|(nx, ny)| {
-            let mut res = Vec::new();
-            if nx > 0 && self.cells[ny][nx - 1].is_some() {
-                res.push((nx - 1, ny));
-            }
-            if nx + 1 < MAP_SIZE.0 && self.cells[ny][nx + 1].is_some() {
-                res.push((nx + 1, ny));
-            }
-            if ny > 0 && self.cells[ny - 1][nx].is_some() {
-                res.push((nx, ny - 1));
-            }
-            if ny + 1 < MAP_SIZE.1 && self.cells[ny + 1][nx].is_some() {
-                res.push((nx, ny + 1));
-            }
-            res
-        }).collect::<Vec<_>>();
-        to_update_cells.sort_unstable();
-        to_update_cells.dedup();
-
-        self.next_cell_growth = (f32::NEG_INFINITY, 0, 0, 0);
-        to_update_cells.into_iter().for_each(|(j, i)| {
-            let plant_cell = &self.cells[i][j];
-            let evolution = &self.evolution_data.cells_evolution_data[plant_cell.t];
-            GROWTH_DIRECTION[i][j].iter().for_each(|&(nj, ni, d)| {
-                if self.cells[ni][nj].t == usize::MAX {
-                    let weights = &evolution.weights[d];
-                    for c in 0..NUMBER_OF_CELLS {
-                        let score = weights[c].calculate(
-                            &plant_cell.input,
-                            (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
-                            (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
-                        );
-                        let cw = self.all_next_cell_growth.entry((ni, nj, c)).or_default();
-                        *cw += score;
-                        if *cw >= self.next_cell_growth.0 {
-                            self.next_cell_growth = (*cw, nj, ni, c);
-                        }
-                    }
-                }
-            });
-        });
-    }
+    //fn recalc_next_cell_growth(&mut self, x: usize, y: usize) {
 
     #[hotpath::measure]
     fn recalc_next_cell_suicide(&mut self) {
