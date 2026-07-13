@@ -4,12 +4,17 @@ pub const NUMBER_OF_CELLS: usize = 8;
 
 // (X, Y)
 pub const MAP_SIZE: (usize, usize) = (81, 81);
-pub const PLANT_CENTER: (usize, usize) = (MAP_SIZE.0 / 2, MAP_SIZE.1 / 2 + 2);
+// at map[GROUND_LEVEL..][..] will be SoilCell
+pub const GROUND_LEVEL: usize = MAP_SIZE.1 / 2 + 1;
+pub const PLANT_CENTER: (usize, usize) = (MAP_SIZE.0 / 2, GROUND_LEVEL + 1);
 
 pub type DxDy2d = (usize, usize, f32);
 pub type GrowthDir = (usize, usize, usize);
+// Every adjacent cell with distance 2
 pub static DXDY_2D: LazyLock<[[Vec<DxDy2d>; MAP_SIZE.0]; MAP_SIZE.1]> =
     LazyLock::new(|| generate_dxdy());
+// Where this cell can grow
+// For now it's [up, down, outwards..]
 pub static GROWTH_DIRECTION: LazyLock<[[Vec<GrowthDir>; MAP_SIZE.0]; MAP_SIZE.1]> =
     LazyLock::new(|| generate_growth_direction());
 
@@ -38,6 +43,7 @@ fn generate_dxdy() -> [[Vec<DxDy2d>; MAP_SIZE.0]; MAP_SIZE.1] {
     })
 }
 
+// TODO: plants should be able to grow towards the center
 fn generate_growth_direction() -> [[Vec<GrowthDir>; MAP_SIZE.0]; MAP_SIZE.1] {
     core::array::from_fn(|i| {
         core::array::from_fn(|j| {

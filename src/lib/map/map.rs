@@ -30,6 +30,7 @@ pub struct MapData {
     pub total_passive_cost: f32,
     pub nutrition_per_tick: PlantNutrition,
 
+    pub all_next_cell_growth: HashMap<(usize, usize, usize), f32>,
     pub cells_pos: Vec<(usize, usize)>,
     pub map: [[MapCell; MAP_SIZE.0]; MAP_SIZE.1],
     pub cells: [[PlantCell; MAP_SIZE.0]; MAP_SIZE.1],
@@ -183,7 +184,6 @@ impl MapData {
                 });
     }
 
-    #[hotpath::measure]
     fn update_plant_nutritions(&mut self) {
         let produced = [
             self.plant_nutrition.sunlight + self.nutrition_per_tick.sunlight,
@@ -202,10 +202,9 @@ impl MapData {
         self.plant_nutrition.energy += produced - self.total_passive_cost;
     }
 
-    // TODO: Optimize
     #[hotpath::measure]
-    fn recalc_next_cell_growth(&mut self) {
-        let mut growth_w = HashMap::new();
+    fn recalc_all_next_cell_growth(&mut self) {
+        self.all_next_cell_growth.clear();
         self.next_cell_growth = (f32::NEG_INFINITY, 0, 0, 0);
         self.cells_pos.iter().for_each(|&(j, i)| {
             let plant_cell = &self.cells[i][j];
@@ -219,7 +218,70 @@ impl MapData {
                             (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
                             (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
                         );
-                        let cw = growth_w.entry((ni, nj, c)).or_default();
+                        let cw = self.all_next_cell_growth.entry((nj, ni, c)).or_default();
+                        *cw += score;
+                        if *cw >= self.next_cell_growth.0 {
+                            self.next_cell_growth = (*cw, nj, ni, c);
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    // Assumes new cells has grown at (x, y)
+    // Would require updating everything around DXDY^2, since input for DXDY would change
+    // Doesn't seem that the overhead of calculating each that that needs to be updated is worth it
+    #[hotpath::measure]
+    fn recalc_next_cell_growth(&mut self, x: usize, y: usize) {
+        let mut input_updated_at = Vec::new();
+        input_updated_at.extend((y + 3..GROUND_LEVEL).map(|ny| (x, ny)));
+        input_updated_at.extend(DXDY_2D[y][x].iter().map(|&(nx, ny, _)| (nx, ny)));
+
+        for c in 0..NUMBER_OF_CELLS {
+            // Remove this cell
+            self.all_next_cell_growth.remove(&(x, y, c));
+
+            input_updated_at.iter().for_each(|&(nx, ny)| {
+                if let Some(value) = self.all_next_cell_growth.get_mut(&(nx, ny, c)) {
+                    *value = 0.;
+                }
+            });
+        }
+
+        let mut to_update_cells = input_updated_at.into_iter().flat_map(|(nx, ny)| {
+            let mut res = Vec::new();
+            if nx > 0 && self.cells[ny][nx - 1].is_some() {
+                res.push((nx - 1, ny));
+            }
+            if nx + 1 < MAP_SIZE.0 && self.cells[ny][nx + 1].is_some() {
+                res.push((nx + 1, ny));
+            }
+            if ny > 0 && self.cells[ny - 1][nx].is_some() {
+                res.push((nx, ny - 1));
+            }
+            if ny + 1 < MAP_SIZE.1 && self.cells[ny + 1][nx].is_some() {
+                res.push((nx, ny + 1));
+            }
+            res
+        }).collect::<Vec<_>>();
+        to_update_cells.sort_unstable();
+        to_update_cells.dedup();
+
+        self.next_cell_growth = (f32::NEG_INFINITY, 0, 0, 0);
+        to_update_cells.into_iter().for_each(|(j, i)| {
+            let plant_cell = &self.cells[i][j];
+            let evolution = &self.evolution_data.cells_evolution_data[plant_cell.t];
+            GROWTH_DIRECTION[i][j].iter().for_each(|&(nj, ni, d)| {
+                if self.cells[ni][nj].t == usize::MAX {
+                    let weights = &evolution.weights[d];
+                    for c in 0..NUMBER_OF_CELLS {
+                        let score = weights[c].calculate(
+                            &plant_cell.input,
+                            (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
+                            (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
+                        );
+                        let cw = self.all_next_cell_growth.entry((ni, nj, c)).or_default();
                         *cw += score;
                         if *cw >= self.next_cell_growth.0 {
                             self.next_cell_growth = (*cw, nj, ni, c);
@@ -286,7 +348,21 @@ impl MapData {
         }
     }
 
-    #[hotpath::measure]
+    fn do_grow_plant_cell(&mut self, x: usize, y: usize, cell_type: usize) {
+        self.plant_nutrition.energy -=
+            self.evolution_data.cells_abilities[cell_type].grow_cost;
+        self.cells[y][x] = PlantCell {
+            t: cell_type,
+            input: PlantCellInput::default(),
+        };
+        self.cells_pos.push((x, y));
+        self.update_sunlight(x, y);
+        self.populate_plant_inputs();
+        self.recalc_plant_nutrition();
+        self.recalc_all_next_cell_growth();
+        self.recalc_next_cell_suicide();
+    }
+
     fn grow_plant(&mut self) {
         if self.next_cell_growth.0 >= 0. || self.next_cell_suicide.0 >= 0. {
             if self.next_cell_suicide.0 > self.next_cell_growth.0 {
@@ -296,7 +372,7 @@ impl MapData {
                     self.update_sunlight_all();
                     self.populate_plant_inputs();
                     self.recalc_plant_nutrition();
-                    self.recalc_next_cell_growth();
+                    self.recalc_all_next_cell_growth();
                     self.recalc_next_cell_suicide();
                 }
             } else {
@@ -304,18 +380,7 @@ impl MapData {
                 if self.plant_nutrition.energy
                     >= self.evolution_data.cells_abilities[cell_type].grow_cost
                 {
-                    self.plant_nutrition.energy -=
-                        self.evolution_data.cells_abilities[cell_type].grow_cost;
-                    self.cells[y][x] = PlantCell {
-                        t: cell_type,
-                        input: PlantCellInput::default(),
-                    };
-                    self.cells_pos.push((x, y));
-                    self.update_sunlight(x, y);
-                    self.populate_plant_inputs();
-                    self.recalc_plant_nutrition();
-                    self.recalc_next_cell_growth();
-                    self.recalc_next_cell_suicide();
+                    self.do_grow_plant_cell(x, y, cell_type);
                 }
             }
         }
@@ -333,13 +398,14 @@ impl MapData {
         core::array::from_fn(|i| {
             sunlight *= 0.99;
             core::array::from_fn(|_| {
-                if i <= MAP_SIZE.1 / 2 {
+                if i < GROUND_LEVEL {
                     MapCell::Air(AirParameters { sunlight })
                 } else {
                     const LOW_DEPTH_MINERALS: f32 = 0.1;
                     const LOW_DEPTH_WATER: f32 = 0.2;
                     const HIGH_DEPTH_MINERALS: f32 = 0.3;
                     const HIGH_DEPTH_WATER: f32 = 0.01;
+                    // TODO: Use GROUND_LEVEL
                     let depth = i - MAP_SIZE.1 / 2;
                     let depth = depth as f32 / (MAP_SIZE.1 / 2) as f32;
                     MapCell::Soil(SoilParameters {
@@ -378,13 +444,14 @@ impl MapData {
             plant_nutrition,
             total_passive_cost: 0.,
             nutrition_per_tick: PlantNutrition::default(),
+            all_next_cell_growth: HashMap::new(),
             cells_pos: vec![PLANT_CENTER],
             map: Self::BASIC_MAP.clone(),
             cells: Self::BASIC_PLANTS.clone(),
         };
         s.populate_plant_inputs();
         s.recalc_plant_nutrition();
-        s.recalc_next_cell_growth();
+        s.recalc_all_next_cell_growth();
         s.recalc_next_cell_suicide();
         s
     }
@@ -414,10 +481,11 @@ impl MapData {
         });
         self.cells_pos = vec![PLANT_CENTER];
         self.populate_plant_inputs();
-        self.recalc_next_cell_growth();
+        self.recalc_all_next_cell_growth();
     }
 
-    #[hotpath::measure]
+    // Don't measure each call, better to measure in bulk
+    //#[hotpath::measure]
     pub fn tick(&mut self) {
         self.update_plant_nutritions();
         self.grow_plant();

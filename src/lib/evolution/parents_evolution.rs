@@ -94,6 +94,7 @@ impl ParentCombination for PlantCellAbilities {
     }
 }
 
+#[hotpath::measure]
 pub fn parent_combine(
     rng: &mut Rng,
     data: &[PlantEvolutionData],

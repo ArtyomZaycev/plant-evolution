@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct AirParameters {
     pub sunlight: f32,
 }
@@ -11,7 +11,7 @@ impl Default for AirParameters {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SoilParameters {
     pub minerals: f32,
     pub water: f32,
@@ -26,7 +26,7 @@ impl Default for SoilParameters {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum MapCell {
     Air(AirParameters),
     Soil(SoilParameters),
