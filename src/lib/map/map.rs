@@ -291,8 +291,7 @@ impl MapData {
     }
 
     fn do_grow_plant_cell(&mut self, x: usize, y: usize, cell_type: usize) {
-        self.plant_nutrition.energy -=
-            self.evolution_data.cells_abilities[cell_type].grow_cost;
+        self.plant_nutrition.energy -= self.evolution_data.cells_abilities[cell_type].grow_cost;
         self.cells[y][x] = PlantCell {
             t: cell_type,
             input: PlantCellInput::default(),
@@ -414,7 +413,7 @@ impl MapData {
                 std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, MAP_SIZE.1);
             }*/
             //self.map.copy_from_slice(&*Self::BASIC_MAP);
-            
+
             self.cells_pos.iter().for_each(|&(x, y)| {
                 self.cells[y][x].t = usize::MAX;
             });
