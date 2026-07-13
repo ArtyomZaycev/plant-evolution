@@ -393,20 +393,26 @@ impl MapData {
     pub fn restart(&mut self) {
         self.ticks = 0;
         self.plant_nutrition = self.starting_plant_nutrition.clone();
+        hotpath::measure_block!("restart: map&plants clone", {
+            // Time is literally the same as clone
+            /*unsafe {
+                // Do not inline, it breaks somehow
+                let rf = &Self::BASIC_MAP;
+                let basic_map = LazyCell::force(rf);
+                let src_ptr = basic_map.as_ptr();
+                let dst_ptr = self.map.as_mut_ptr();
+                // Size of the outer array, as inner is accounted for in T
+                std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, MAP_SIZE.1);
+            }*/
+            //self.map.copy_from_slice(&*Self::BASIC_MAP);
+            
+            self.cells_pos.iter().for_each(|&(x, y)| {
+                self.cells[y][x].t = usize::MAX;
+            });
+            self.cells[PLANT_CENTER.1][PLANT_CENTER.0].t = 0;
+            self.map = Self::BASIC_MAP.clone();
+        });
         self.cells_pos = vec![PLANT_CENTER];
-        /*
-        unsafe {
-            let src_ptr = Self::BASIC_MAP.as_ptr();
-            let dst_ptr = self.map.as_mut_ptr();
-            std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, MAP_SIZE.0 * MAP_SIZE.1);
-        }
-        unsafe {
-            let src_ptr = Self::BASIC_PLANTS.as_ptr();
-            let dst_ptr = self.plants.as_mut_ptr();
-            std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, MAP_SIZE.0 * MAP_SIZE.1);
-        } */
-        self.map = Self::BASIC_MAP.clone();
-        self.cells = Self::BASIC_PLANTS.clone();
         self.populate_plant_inputs();
         self.recalc_next_cell_growth();
     }
