@@ -57,16 +57,16 @@ impl egui::Widget for &mut PerformanceParametersEditor {
             .with_main_align(Align::LEFT);
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
-                ui.allocate_ui_with_layout(desired_size, layout, |ui| {
-                    ui.label("Multithreading")
-                });
+                ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Multithreading"));
                 ui.add_enabled_ui(false, |ui| {
                     ui.radio_value(&mut self.multithreading_enabled, true, "Enabled");
                     ui.radio_value(&mut self.multithreading_enabled, false, "Disabled");
                 });
             });
             ui.horizontal(|ui| {
-                ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Number of threads"));
+                ui.allocate_ui_with_layout(desired_size, layout, |ui| {
+                    ui.label("Number of threads")
+                });
                 ui.add_enabled(false, Slider::new(&mut self.number_of_threads, 2..=64));
             });
             ui.horizontal(|ui| {
@@ -77,24 +77,22 @@ impl egui::Widget for &mut PerformanceParametersEditor {
                 ui.radio_value(&mut self.use_local_growth, false, "Disabled");
             });
             ui.horizontal(|ui| {
-                ui.allocate_ui_with_layout(desired_size, layout, |ui| {
-                    ui.label("Updates")
-                });
+                ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Updates"));
                 ui.radio_value(&mut self.enable_updates, true, "Enabled");
                 ui.radio_value(&mut self.enable_updates, false, "Disabled");
             });
             ui.add_enabled_ui(self.enable_updates, |ui| {
                 ui.horizontal(|ui| {
-                    ui.allocate_ui_with_layout(desired_size, layout, |ui| {
-                        ui.label("Slow updates")
-                    });
+                    ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Slow updates"));
                     ui.radio_value(&mut self.slow_updates, true, "Enabled");
                     ui.radio_value(&mut self.slow_updates, false, "Disabled");
                 });
             });
             ui.add_enabled_ui(self.enable_updates && self.slow_updates, |ui| {
                 ui.horizontal(|ui| {
-                    ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Slow updates interval"));
+                    ui.allocate_ui_with_layout(desired_size, layout, |ui| {
+                        ui.label("Slow updates interval")
+                    });
                     ui.horizontal(|ui| {
                         ui.add(Slider::new(&mut self.slow_update_interval, 20..=5000));
                         ui.label("milliseconds");

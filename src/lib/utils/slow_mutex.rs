@@ -50,7 +50,9 @@ where
     }
 
     pub fn slow_update(&self, data: &mut SlowMutexReadResult<T>) -> bool {
-        if get_timestamp() - data.read_timestamp >= self.read_update_interval.load(Ordering::Relaxed) {
+        if get_timestamp() - data.read_timestamp
+            >= self.read_update_interval.load(Ordering::Relaxed)
+        {
             self.update(data)
         } else {
             false

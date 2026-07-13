@@ -93,7 +93,7 @@ impl Default for PerformanceParameters {
             #[cfg(not(feature = "thread_evolution"))]
             multithreading_enabled: false,
             number_of_threads: 4,
-            
+
             use_local_growth: false,
 
             enable_updates: true,

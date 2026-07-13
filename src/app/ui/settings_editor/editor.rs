@@ -7,7 +7,8 @@ use crate::ui::settings::VisualSettings;
 use super::utils::*;
 
 use super::{
-    evolution_parameters_editor::*, saving_parameters_editor::*, visual_settings_editor::*, performance_parameters_editor::*,
+    evolution_parameters_editor::*, performance_parameters_editor::*, saving_parameters_editor::*,
+    visual_settings_editor::*,
 };
 
 pub enum SettingsRawState {
@@ -40,7 +41,9 @@ impl EditorUi<(VisualSettings, EngineParameters)> for AppSettingsEditor {
             visual_settings: VisualSettingsEditor::new(settings.0),
             saving_parameters: SavingParametersEditor::new(settings.1.saving_parameters),
             evolution_parameters: EvolutionParametersEditor::new(settings.1.evolution_parameters),
-            performance_parameters: PerformanceParametersEditor::new(settings.1.performance_parameters),
+            performance_parameters: PerformanceParametersEditor::new(
+                settings.1.performance_parameters,
+            ),
         }
     }
 

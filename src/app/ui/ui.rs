@@ -1,4 +1,7 @@
-use std::{sync::atomic::Ordering, time::{Duration, SystemTime}};
+use std::{
+    sync::atomic::Ordering,
+    time::{Duration, SystemTime},
+};
 
 use egui::{Align2, Button, CollapsingHeader, Color32, FontId, Pos2, Rect, Sense, TextEdit, Vec2};
 
@@ -337,9 +340,20 @@ impl eframe::App for PlantEvolutionApp {
                         .state
                         .parameters
                         .unchecked_write(engine_parameters.clone());
-                    let interval = engine_parameters.performance_parameters.slow_update_interval.as_millis();
-                    self.engine.state.maps.read_update_interval.store(interval, Ordering::Relaxed);
-                    self.engine.state.maps.write_update_interval.store(interval, Ordering::Relaxed);
+                    let interval = engine_parameters
+                        .performance_parameters
+                        .slow_update_interval
+                        .as_millis();
+                    self.engine
+                        .state
+                        .maps
+                        .read_update_interval
+                        .store(interval, Ordering::Relaxed);
+                    self.engine
+                        .state
+                        .maps
+                        .write_update_interval
+                        .store(interval, Ordering::Relaxed);
                     close_settings = true;
                 }
             }
@@ -625,18 +639,29 @@ impl eframe::App for PlantEvolutionApp {
             );
 
             let total_evolutions = self.engine.state.total_evolutions.load(Ordering::Relaxed);
-            if matches!(VersionedMutexData::get_cloned(&self.engine_inner_state), InnerEngineState::RunSimulation { autoevolve: Some(_) }) {
+            if matches!(
+                VersionedMutexData::get_cloned(&self.engine_inner_state),
+                InnerEngineState::RunSimulation {
+                    autoevolve: Some(_)
+                }
+            ) {
                 match self.last_evolutions_measurement {
                     Some((evolutions, time)) => {
                         if total_evolutions - evolutions >= 10 {
-                            let time_per_evolution = SystemTime::now().duration_since(time).unwrap().div_f32((total_evolutions - evolutions) as f32);
-                            self.evolutions_per_minute = Duration::from_mins(1).div_duration_f32(time_per_evolution);
-                            self.last_evolutions_measurement = Some((total_evolutions, SystemTime::now()));
+                            let time_per_evolution = SystemTime::now()
+                                .duration_since(time)
+                                .unwrap()
+                                .div_f32((total_evolutions - evolutions) as f32);
+                            self.evolutions_per_minute =
+                                Duration::from_mins(1).div_duration_f32(time_per_evolution);
+                            self.last_evolutions_measurement =
+                                Some((total_evolutions, SystemTime::now()));
                         }
-                    },
+                    }
                     None => {
-                        self.last_evolutions_measurement = Some((total_evolutions, SystemTime::now()));
-                    },
+                        self.last_evolutions_measurement =
+                            Some((total_evolutions, SystemTime::now()));
+                    }
                 }
             } else {
                 self.evolutions_per_minute = f32::NAN;
@@ -647,7 +672,11 @@ impl eframe::App for PlantEvolutionApp {
                 total_evolutions,
                 format!(
                     " ({:.1}/minute)",
-                    if self.evolutions_per_minute.is_normal() {self.evolutions_per_minute} else {0.},
+                    if self.evolutions_per_minute.is_normal() {
+                        self.evolutions_per_minute
+                    } else {
+                        0.
+                    },
                 )
             ));
 
