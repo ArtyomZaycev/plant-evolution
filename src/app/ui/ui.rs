@@ -412,7 +412,7 @@ impl eframe::App for PlantEvolutionApp {
             });
         }
 
-        egui::Panel::top("settings").show_inside(ui, |ui| {
+        egui::Panel::top("top_panel").show_inside(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.menu_button("File", |ui| {
                     ui.set_min_width(100.);
@@ -438,6 +438,7 @@ impl eframe::App for PlantEvolutionApp {
                     }
                     ui.separator();
                     if ui.button("Settings").clicked() {
+                        self.engine.state.inner_state.write(InnerEngineState::Stale);
                         self.settings = Some(AppSettingsEditor::new((
                             self.visual_settings.clone(),
                             self.engine.state.parameters.cloned(),

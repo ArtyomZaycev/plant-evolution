@@ -7,7 +7,7 @@ use crate::ui::settings::VisualSettings;
 use super::utils::*;
 
 use super::{
-    evolution_parameters_editor::*, saving_parameters_editor::*, visual_settings_editor::*,
+    evolution_parameters_editor::*, saving_parameters_editor::*, visual_settings_editor::*, performance_parameters_editor::*,
 };
 
 pub enum SettingsRawState {
@@ -23,6 +23,7 @@ pub struct AppSettingsEditor {
     visual_settings: VisualSettingsEditor,
     saving_parameters: SavingParametersEditor,
     evolution_parameters: EvolutionParametersEditor,
+    performance_parameters: PerformanceParametersEditor,
 }
 
 impl AppSettingsEditor {
@@ -39,6 +40,7 @@ impl EditorUi<(VisualSettings, EngineParameters)> for AppSettingsEditor {
             visual_settings: VisualSettingsEditor::new(settings.0),
             saving_parameters: SavingParametersEditor::new(settings.1.saving_parameters),
             evolution_parameters: EvolutionParametersEditor::new(settings.1.evolution_parameters),
+            performance_parameters: PerformanceParametersEditor::new(settings.1.performance_parameters),
         }
     }
 
@@ -54,6 +56,7 @@ impl EditorUi<(VisualSettings, EngineParameters)> for AppSettingsEditor {
             EngineParameters {
                 saving_parameters: self.saving_parameters.parse()?,
                 evolution_parameters: self.evolution_parameters.parse()?,
+                performance_parameters: self.performance_parameters.parse()?,
             },
         ))
     }
@@ -71,12 +74,14 @@ impl egui::Widget for &mut AppSettingsEditor {
                 ui.selectable_value(&mut self.tab, 0, "Visual");
                 ui.selectable_value(&mut self.tab, 1, "Autosaving");
                 ui.selectable_value(&mut self.tab, 2, "Evolution");
+                ui.selectable_value(&mut self.tab, 3, "Performance");
             });
             ui.separator();
             match self.tab {
                 0 => ui.add(&mut self.visual_settings),
                 1 => ui.add(&mut self.saving_parameters),
                 2 => ui.add(&mut self.evolution_parameters),
+                3 => ui.add(&mut self.performance_parameters),
                 _ => panic!("Unknown tab"),
             };
             ui.separator();

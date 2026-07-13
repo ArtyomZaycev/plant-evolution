@@ -37,6 +37,7 @@ pub enum InnerEngineState {
 pub struct EngineParameters {
     pub saving_parameters: SavingParameters,
     pub evolution_parameters: EvolutionParameters,
+    pub performance_parameters: PerformanceParameters,
 }
 
 #[derive(Debug, Clone, Copy)]

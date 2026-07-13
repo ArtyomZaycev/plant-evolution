@@ -71,3 +71,25 @@ impl Default for RunEvolutionParameters {
         }
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct PerformanceParameters {
+    // Can't be changed as of now
+    pub multithreading_enabled: bool,
+    pub number_of_threads: u32,
+
+    pub use_local_growth: bool,
+}
+
+impl Default for PerformanceParameters {
+    fn default() -> Self {
+        Self {
+            #[cfg(feature = "thread_evolution")]
+            multithreading_enabled: true,
+            #[cfg(not(feature = "thread_evolution"))]
+            multithreading_enabled: false,
+            number_of_threads: 4,
+            use_local_growth: false,
+        }
+    }
+}
