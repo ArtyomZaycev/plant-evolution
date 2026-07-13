@@ -1,4 +1,4 @@
-use std::sync::atomic::Ordering;
+use std::{sync::atomic::Ordering, time::{Duration, SystemTime}};
 
 use egui::{Align2, Button, CollapsingHeader, Color32, FontId, Pos2, Rect, Sense, TextEdit, Vec2};
 
@@ -25,6 +25,9 @@ pub struct PlantEvolutionApp {
     autoevolve_at_str: String,
     autoevolve_at: u32,
 
+    last_evolutions_measurement: Option<(u32, SystemTime)>,
+    evolutions_per_minute: f32,
+
     selected_map_index_str: String,
     selected_maps_index: Vec<usize>,
     last_selected_index: usize,
@@ -49,6 +52,8 @@ impl PlantEvolutionApp {
             autoevolve_enabled: true,
             autoevolve_at_str: 500.to_string(),
             autoevolve_at: 500,
+            last_evolutions_measurement: None,
+            evolutions_per_minute: f32::NAN,
             selected_map_index_str: "1".to_owned(),
             selected_maps_index: vec![0],
             last_selected_index: 0,
@@ -438,7 +443,6 @@ impl eframe::App for PlantEvolutionApp {
                     }
                     ui.separator();
                     if ui.button("Settings").clicked() {
-                        self.engine.state.inner_state.write(InnerEngineState::Stale);
                         self.settings = Some(AppSettingsEditor::new((
                             self.visual_settings.clone(),
                             self.engine.state.parameters.cloned(),
@@ -617,9 +621,30 @@ impl eframe::App for PlantEvolutionApp {
                 |(map_idx, _, _)| map_idx,
             );
 
+            let total_evolutions = self.engine.state.total_evolutions.load(Ordering::Relaxed);
+            if matches!(VersionedMutexData::get_cloned(&self.engine_inner_state), InnerEngineState::RunSimulation { autoevolve: Some(_) }) {
+                match self.last_evolutions_measurement {
+                    Some((evolutions, time)) => {
+                        if total_evolutions - evolutions >= 10 {
+                            let time_per_evolution = SystemTime::now().duration_since(time).unwrap().div_f32((total_evolutions - evolutions) as f32);
+                            self.evolutions_per_minute = Duration::from_mins(1).div_duration_f32(time_per_evolution);
+                        }
+                    },
+                    None => {
+                        self.last_evolutions_measurement = Some((total_evolutions, SystemTime::now()))
+                    },
+                }
+            } else {
+                self.evolutions_per_minute = f32::NAN;
+            }
+
             ui.label(format!(
-                "Total evolutions: {}",
-                self.engine.state.total_evolutions.load(Ordering::Relaxed)
+                "Total evolutions: {}{}",
+                total_evolutions,
+                format!(
+                    " ({:.1}/minute)",
+                    if self.evolutions_per_minute.is_normal() {self.evolutions_per_minute} else {0.},
+                )
             ));
 
             ui.heading(format!("Plant {}", map_idx + 1));
