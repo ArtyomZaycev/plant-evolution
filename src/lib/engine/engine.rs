@@ -125,6 +125,56 @@ impl Engine {
             .unwrap()
     }
 
+    #[cfg(feature = "thread_evolution")]
+    fn run_ticks_threaded(
+        threadpool: &mut scoped_threadpool::Pool,
+        maps: &mut Vec<MapData>,
+        number_of_ticks: u32,
+    ) {
+        hotpath::measure_block!("thread_evolution", {
+            let chunk_size = maps.len().div_ceil(threadpool.thread_count() as usize);
+            threadpool.scoped(|scope| {
+                for chunk in maps.chunks_mut(chunk_size) {
+                    scope.execute(|| {
+                        chunk
+                            .iter_mut()
+                            .for_each(|map| (0..number_of_ticks).for_each(|_| map.tick()));
+                    });
+                }
+            });
+        });
+    }
+
+    #[cfg(not(feature = "thread_evolution"))]
+    fn run_ticks(maps: &mut Vec<MapData>, number_of_ticks: u32) {
+        hotpath::measure_block!("not thread_evolution", {
+            maps.iter_mut()
+                .for_each(|map| (0..number_of_ticks).for_each(|_| map.tick()));
+        });
+    }
+
+    fn do_evolution(rng: &mut Rng, parameters: &EvolutionParameters, maps: &mut Vec<MapData>) {
+        if parameters.parent_evolution {
+            parents_random_evolve(
+                rng,
+                maps,
+                parameters.plants,
+                parameters.samples,
+                parameters.change_chance,
+                parameters.change_entropy,
+            );
+        } else {
+            random_evolve(
+                rng,
+                maps,
+                parameters.plants,
+                parameters.samples,
+                parameters.change_chance,
+                parameters.change_entropy,
+            );
+        }
+    }
+
     fn run(
         shared_state: EngineSharedState,
         receiver: mpsc::Receiver<EngineCommand>,
@@ -253,48 +303,16 @@ impl Engine {
                         .min(ticks_per_evolution.saturating_sub(maps[0].ticks));
 
                     #[cfg(feature = "thread_evolution")]
-                    hotpath::measure_block!("thread_evolution", {
-                        let chunk_size = maps.len().div_ceil(threadpool.thread_count() as usize);
-                        threadpool.scoped(|scope| {
-                            for chunk in maps.chunks_mut(chunk_size) {
-                                scope.execute(|| {
-                                    chunk.iter_mut().for_each(|map| {
-                                        (0..number_of_ticks).for_each(|_| map.tick())
-                                    });
-                                });
-                            }
-                        });
-                    });
+                    Self::run_ticks_threaded(&mut threadpool, &mut maps, number_of_ticks);
 
                     #[cfg(not(feature = "thread_evolution"))]
-                    hotpath::measure_block!("not thread_evolution", {
-                        maps.iter_mut()
-                            .for_each(|map| (0..number_of_ticks).for_each(|_| map.tick()));
-                    });
+                    Self::run_ticks(&mut maps, number_of_ticks);
 
                     if maps[0].ticks < ticks_per_evolution {
                         shared_state.maps.slow_write(&maps);
                     } else {
                         shared_state.maps.force_write(maps.clone());
-                        if parameters.evolution_parameters.parent_evolution {
-                            parents_random_evolve(
-                                &mut rng,
-                                &mut maps,
-                                parameters.evolution_parameters.plants,
-                                parameters.evolution_parameters.samples,
-                                parameters.evolution_parameters.change_chance,
-                                parameters.evolution_parameters.change_entropy,
-                            );
-                        } else {
-                            random_evolve(
-                                &mut rng,
-                                &mut maps,
-                                parameters.evolution_parameters.plants,
-                                parameters.evolution_parameters.samples,
-                                parameters.evolution_parameters.change_chance,
-                                parameters.evolution_parameters.change_entropy,
-                            );
-                        }
+                        Self::do_evolution(&mut rng, &parameters.evolution_parameters, &mut maps);
                         shared_state.total_evolutions.update(
                             Ordering::Relaxed,
                             Ordering::Relaxed,
