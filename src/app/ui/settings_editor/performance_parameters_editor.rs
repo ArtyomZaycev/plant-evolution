@@ -3,10 +3,10 @@ use std::time::Duration;
 use egui::{Align, Layout, Slider, Vec2};
 
 use super::utils::*;
-use plant_evolution_lib::engine::*;
+use plant_evolution_lib::{engine::*, utils::DEFAULT_THREAD_COUNT};
 
 pub struct PerformanceParametersEditor {
-    // Can't be changed as of now
+    // Can be changed only if thread_evolution in enabled
     pub multithreading_enabled: bool,
     pub number_of_threads: u32,
 
@@ -58,7 +58,7 @@ impl egui::Widget for &mut PerformanceParametersEditor {
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
                 ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Multithreading"));
-                ui.add_enabled_ui(false, |ui| {
+                ui.add_enabled_ui(cfg!(feature = "thread_evolution"), |ui| {
                     ui.radio_value(&mut self.multithreading_enabled, true, "Enabled");
                     ui.radio_value(&mut self.multithreading_enabled, false, "Disabled");
                 });
@@ -67,7 +67,7 @@ impl egui::Widget for &mut PerformanceParametersEditor {
                 ui.allocate_ui_with_layout(desired_size, layout, |ui| {
                     ui.label("Number of threads")
                 });
-                ui.add_enabled(false, Slider::new(&mut self.number_of_threads, 2..=64));
+                ui.add_enabled(cfg!(feature = "thread_evolution"), Slider::new(&mut self.number_of_threads, 2..=DEFAULT_THREAD_COUNT));
             });
             ui.horizontal(|ui| {
                 ui.allocate_ui_with_layout(desired_size, layout, |ui| {

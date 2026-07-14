@@ -1,5 +1,7 @@
 use std::{path::PathBuf, time::Duration};
 
+use crate::utils::DEFAULT_THREAD_COUNT;
+
 #[derive(Debug, Clone, Copy)]
 pub enum SavingPeriod {
     EveryDuration(Duration),
@@ -88,11 +90,8 @@ pub struct PerformanceParameters {
 impl Default for PerformanceParameters {
     fn default() -> Self {
         Self {
-            #[cfg(feature = "thread_evolution")]
-            multithreading_enabled: true,
-            #[cfg(not(feature = "thread_evolution"))]
-            multithreading_enabled: false,
-            number_of_threads: 4,
+            multithreading_enabled: cfg!(feature = "thread_evolution"),
+            number_of_threads: DEFAULT_THREAD_COUNT,
 
             use_local_growth: false,
 

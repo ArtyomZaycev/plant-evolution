@@ -90,9 +90,6 @@ impl EngineSharedState {
 }
 
 impl Engine {
-    #[cfg(feature = "thread_evolution")]
-    const DEFAULT_THREAD_COUNT: u32 = 8;
-
     pub fn new(maps: Vec<MapData>) -> Self {
         let maps = SlowMutex::new(maps);
         let state = EngineSharedState::new(maps);
@@ -130,10 +127,11 @@ impl Engine {
     fn run_ticks_threaded(
         threadpool: &mut scoped_threadpool::Pool,
         maps: &mut Vec<MapData>,
+        thread_count: u32,
         number_of_ticks: u32,
     ) {
         hotpath::measure_block!("thread_evolution", {
-            let chunk_size = maps.len().div_ceil(threadpool.thread_count() as usize);
+            let chunk_size = maps.len().div_ceil(threadpool.thread_count().min(thread_count) as usize);
             threadpool.scoped(|scope| {
                 for chunk in maps.chunks_mut(chunk_size) {
                     scope.execute(|| {
@@ -146,7 +144,6 @@ impl Engine {
         });
     }
 
-    #[cfg(not(feature = "thread_evolution"))]
     fn run_ticks(maps: &mut Vec<MapData>, number_of_ticks: u32) {
         hotpath::measure_block!("not thread_evolution", {
             maps.iter_mut()
@@ -185,10 +182,7 @@ impl Engine {
 
         #[cfg(feature = "thread_evolution")]
         let mut threadpool = {
-            let thread_count = std::env::var("threadpool_size")
-                .ok()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(Self::DEFAULT_THREAD_COUNT);
+            let thread_count = DEFAULT_THREAD_COUNT;
             scoped_threadpool::Pool::new(thread_count)
         };
 
@@ -306,7 +300,11 @@ impl Engine {
                         .min(ticks_per_evolution.saturating_sub(maps[0].ticks));
 
                     #[cfg(feature = "thread_evolution")]
-                    Self::run_ticks_threaded(&mut threadpool, &mut maps, number_of_ticks);
+                    if parameters.performance_parameters.multithreading_enabled {
+                        Self::run_ticks_threaded(&mut threadpool, &mut maps, parameters.performance_parameters.number_of_threads, number_of_ticks);
+                    } else {
+                        Self::run_ticks(&mut maps, number_of_ticks);
+                    }
 
                     #[cfg(not(feature = "thread_evolution"))]
                     Self::run_ticks(&mut maps, number_of_ticks);
