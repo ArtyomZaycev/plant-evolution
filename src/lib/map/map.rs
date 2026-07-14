@@ -13,13 +13,20 @@ pub struct PlantNutrition {
     pub energy: f32,
 }
 
+impl PlantNutrition {
+    pub const STARTING: Self = Self {
+        sunlight: 20.,
+        air: 20.,
+        minerals: 1.,
+        water: 1.,
+        energy: 20.,
+    };
+}
+
 // TODO: Separate for into MapData (for ui) and FullMapData (for engine)
 #[derive(Debug, Clone)]
 pub struct MapData {
     pub evolution_data: PlantEvolutionData,
-
-    // TODO: Move outside
-    pub starting_plant_nutrition: PlantNutrition,
 
     pub next_cell_growth: (f32, usize, usize, usize),
     pub next_cell_suicide: (f32, usize, usize),
@@ -38,8 +45,8 @@ pub struct MapData {
 
 impl Default for MapData {
     fn default() -> Self {
-        let (a, b) = get_basic_map_data();
-        Self::generate(a, b)
+        let mut rng: rand::prelude::ThreadRng = get_rng();
+        Self::generate(PlantEvolutionData::generate(&mut rng), PlantNutrition::STARTING)
     }
 }
 
@@ -378,7 +385,6 @@ impl MapData {
     pub fn generate(evolution_data: PlantEvolutionData, plant_nutrition: PlantNutrition) -> Self {
         let mut s = Self {
             evolution_data,
-            starting_plant_nutrition: plant_nutrition.clone(),
             next_cell_growth: (f32::NEG_INFINITY, 0, 0, 0),
             next_cell_suicide: (f32::NEG_INFINITY, 0, 0),
             ticks: 0,
@@ -400,7 +406,7 @@ impl MapData {
     #[hotpath::measure]
     pub fn restart(&mut self) {
         self.ticks = 0;
-        self.plant_nutrition = self.starting_plant_nutrition.clone();
+        self.plant_nutrition = PlantNutrition::STARTING;
         hotpath::measure_block!("restart: map&plants clone", {
             // Time is literally the same as clone
             /*unsafe {
@@ -472,21 +478,6 @@ impl MapData {
                 * 100.)
                 .sqrt()
     }
-}
-
-pub fn get_basic_map_data() -> (PlantEvolutionData, PlantNutrition) {
-    let mut rng = get_rng();
-    let evolution_data = PlantEvolutionData::generate(&mut rng);
-
-    let plant_nutrition = PlantNutrition {
-        sunlight: 20.,
-        air: 20.,
-        minerals: 1.,
-        water: 1.,
-        energy: 20.,
-    };
-
-    (evolution_data, plant_nutrition)
 }
 
 impl RandomEvolution for MapData {
