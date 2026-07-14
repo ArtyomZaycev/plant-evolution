@@ -23,7 +23,7 @@ chrono = "0.4.45"
 scoped_threadpool = { version = "0.1.9", optional = true }
 
 [features]
-default = []
+default = ["thread_evolution"]
 stable_rng = []
 thread_evolution = ["dep:scoped_threadpool"]
 hotpath = ["hotpath/hotpath", "stable_rng"]
