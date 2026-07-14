@@ -56,6 +56,7 @@ impl egui::Widget for &mut PerformanceParametersEditor {
             .with_main_justify(true)
             .with_main_align(Align::LEFT);
         ui.vertical(|ui| {
+            // Multithreading
             ui.horizontal(|ui| {
                 ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Multithreading"));
                 ui.add_enabled_ui(cfg!(feature = "thread_evolution"), |ui| {
@@ -72,6 +73,9 @@ impl egui::Widget for &mut PerformanceParametersEditor {
                     Slider::new(&mut self.number_of_threads, 2..=DEFAULT_THREAD_COUNT),
                 );
             });
+            ui.separator();
+
+            // Algorithmic optimizations
             ui.horizontal(|ui| {
                 ui.allocate_ui_with_layout(desired_size, layout, |ui| {
                     ui.label("Local growth recalculation")
@@ -79,6 +83,9 @@ impl egui::Widget for &mut PerformanceParametersEditor {
                 ui.radio_value(&mut self.use_local_growth, true, "Enabled");
                 ui.radio_value(&mut self.use_local_growth, false, "Disabled");
             });
+            ui.separator();
+            
+            // Slow updates settings
             ui.horizontal(|ui| {
                 ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Updates"));
                 ui.radio_value(&mut self.enable_updates, true, "Enabled");

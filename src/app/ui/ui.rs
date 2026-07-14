@@ -916,7 +916,7 @@ impl PlantEvolutionApp {
                     self.cell_size = self
                         .visual_settings
                         .min_cell_size
-                        .max({ map_width / MAP_SIZE.0 as f32 });
+                        .max(map_width / MAP_SIZE.0 as f32);
                 }
                 let map_width = self.cell_size * MAP_SIZE.0 as f32;
                 let map_height = self.cell_size * MAP_SIZE.1 as f32;
