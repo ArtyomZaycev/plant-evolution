@@ -92,7 +92,7 @@ impl MapData {
 
     #[hotpath::measure]
     fn calc_nutrition(&self, x: usize, y: usize) -> (f32, f32, f32) {
-        let dxdy = &DXDY_2D[y][x];
+        let dxdy = &DXDY2_2D[y][x];
 
         let mut air = 0.;
         let mut minerals = 0.;
@@ -245,6 +245,15 @@ impl MapData {
     fn recalc_next_cell_growth(&mut self, x: usize, y: usize) {
         self.all_next_cell_growth.clear();
 
+        for c in 0..NUMBER_OF_CELLS {
+            self.all_next_cell_growth.remove(&(x, y, c));
+            DXDY3_2D[y][x].iter().for_each(|&(nx, ny, _)| {
+                if let Some(value) = self.all_next_cell_growth.get_mut(&(nx, ny, c)) {
+                    *value = f32::NEG_INFINITY;
+                }
+            });
+        }
+
         self.next_cell_growth = self
             .all_next_cell_growth
             .iter()
@@ -253,26 +262,28 @@ impl MapData {
                 (value, x, y, c)
             });
 
-        self.cells_pos.iter().for_each(|&(j, i)| {
+        DXDY2_2D[y][x].iter().for_each(|&(j, i, _)| {
             let plant_cell = &self.cells[i][j];
-            let evolution = &self.evolution_data.cells_evolution_data[plant_cell.t];
-            GROWTH_DIRECTION[i][j].iter().for_each(|&(nj, ni, d)| {
-                if self.cells[ni][nj].is_none() {
-                    let weights = &evolution.weights[d];
-                    for c in 0..NUMBER_OF_CELLS {
-                        let score = weights[c].calculate(
-                            &plant_cell.input,
-                            (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
-                            (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
-                        );
-                        let cw = self.all_next_cell_growth.entry((nj, ni, c)).or_default();
-                        *cw += score;
-                        if *cw >= self.next_cell_growth.0 {
-                            self.next_cell_growth = (*cw, nj, ni, c);
+            if plant_cell.is_some() {
+                let evolution = &self.evolution_data.cells_evolution_data[plant_cell.t];
+                GROWTH_DIRECTION[i][j].iter().for_each(|&(nj, ni, d)| {
+                    if self.cells[ni][nj].is_none() {
+                        let weights = &evolution.weights[d];
+                        for c in 0..NUMBER_OF_CELLS {
+                            let score = weights[c].calculate(
+                                &plant_cell.input,
+                                (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
+                                (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
+                            );
+                            let cw = self.all_next_cell_growth.entry((nj, ni, c)).or_default();
+                            *cw += score;
+                            if *cw >= self.next_cell_growth.0 {
+                                self.next_cell_growth = (*cw, nj, ni, c);
+                            }
                         }
                     }
-                }
-            });
+                });
+            }
         });
     }
 

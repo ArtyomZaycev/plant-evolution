@@ -10,31 +10,41 @@ pub const PLANT_CENTER: (usize, usize) = (MAP_SIZE.0 / 2, GROUND_LEVEL + 1);
 
 pub type DxDy2d = (usize, usize, f32);
 pub type GrowthDir = (usize, usize, usize);
+// Every adjacent cell with distance 1
+pub static DXDY1_2D: LazyLock<[[Vec<DxDy2d>; MAP_SIZE.0]; MAP_SIZE.1]> =
+    LazyLock::new(|| generate_dxdy(1));
 // Every adjacent cell with distance 2
-pub static DXDY_2D: LazyLock<[[Vec<DxDy2d>; MAP_SIZE.0]; MAP_SIZE.1]> =
-    LazyLock::new(|| generate_dxdy());
+pub static DXDY2_2D: LazyLock<[[Vec<DxDy2d>; MAP_SIZE.0]; MAP_SIZE.1]> =
+    LazyLock::new(|| generate_dxdy(2));
+// Every adjacent cell with distance 3
+pub static DXDY3_2D: LazyLock<[[Vec<DxDy2d>; MAP_SIZE.0]; MAP_SIZE.1]> =
+    LazyLock::new(|| generate_dxdy(3));
 // Where this cell can grow
 // For now it's [up, down, outwards..]
 pub static GROWTH_DIRECTION: LazyLock<[[Vec<GrowthDir>; MAP_SIZE.0]; MAP_SIZE.1]> =
     LazyLock::new(|| generate_growth_direction());
 
 pub fn populate_consts() {
-    LazyLock::force(&DXDY_2D);
+    LazyLock::force(&DXDY1_2D);
+    LazyLock::force(&DXDY2_2D);
+    LazyLock::force(&DXDY3_2D);
     LazyLock::force(&GROWTH_DIRECTION);
 }
 
-fn generate_dxdy() -> [[Vec<DxDy2d>; MAP_SIZE.0]; MAP_SIZE.1] {
+fn generate_dxdy(max_distance: i32) -> [[Vec<DxDy2d>; MAP_SIZE.0]; MAP_SIZE.1] {
+    let max_distance_square = max_distance.pow(2);
+    let max_distance_square_f32 = max_distance_square as f32;
     core::array::from_fn(|i| {
         core::array::from_fn(|j| {
             let mut dxdy = Vec::new();
-            (-2..=2).for_each(|dx: i32| {
-                (-2..=2).for_each(|dy: i32| {
+            (-max_distance..=max_distance).for_each(|dx: i32| {
+                (-max_distance..=max_distance).for_each(|dy: i32| {
                     let distance = dx * dx + dy * dy;
-                    if distance > 0 && distance <= 4 {
+                    if distance > 0 && distance <= max_distance_square {
                         let new_x = (j as i32 + dx).clamp(0, MAP_SIZE.0 as i32 - 1) as usize;
                         let new_y = (i as i32 + dy).clamp(0, MAP_SIZE.1 as i32 - 1) as usize;
 
-                        dxdy.push((new_x, new_y, (4. - distance as f32).sqrt()));
+                        dxdy.push((new_x, new_y, (max_distance_square_f32 - distance as f32).sqrt()));
                     }
                 })
             });
