@@ -97,7 +97,7 @@ impl Default for PerformanceParameters {
 
             enable_updates: true,
             slow_updates: true,
-            slow_update_interval: Duration::from_millis(20),
+            slow_update_interval: Duration::from_millis(100),
         }
     }
 }

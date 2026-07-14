@@ -310,7 +310,12 @@ impl eframe::App for PlantEvolutionApp {
     fn ui(&mut self, ui: &mut egui::Ui, _: &mut eframe::Frame) {
         ui.ctx().request_repaint();
 
-        self.engine.state.maps.slow_update(&mut self.maps);
+        if self.engine.state.parameters.read().performance_parameters.slow_updates {
+            self.engine.state.maps.slow_update(&mut self.maps);
+        } else {
+            self.engine.state.maps.update(&mut self.maps);
+        }
+
         self.engine
             .state
             .inner_state
@@ -830,7 +835,6 @@ impl eframe::App for PlantEvolutionApp {
         });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
-            // TODO: Optimize read
             if !self.engine.state.parameters.read().performance_parameters.enable_updates {
                 let width = 200.;
                 let pos = ui.clip_rect().center_top() + Vec2::new(0., 24.);

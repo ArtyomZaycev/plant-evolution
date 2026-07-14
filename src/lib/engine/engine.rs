@@ -69,8 +69,9 @@ pub struct Engine {
 pub struct EngineSharedState {
     pub total_evolutions: Arc<AtomicU32>,
     pub simulation_id: Arc<RwLock<String>>,
-    pub inner_state: Arc<VersionedMutex<InnerEngineState>>,
     pub maps: Arc<SlowMutex<Vec<MapData>>>,
+    
+    pub inner_state: Arc<VersionedMutex<InnerEngineState>>,
     pub parameters: Arc<VersionedMutex<EngineParameters>>,
 }
 
@@ -82,8 +83,9 @@ impl EngineSharedState {
                 "Simulation {}",
                 chrono::Local::now().format("%Y-%m-%d %H-%M-%S")
             ))),
-            inner_state: Default::default(),
             maps: Arc::new(maps),
+            
+            inner_state: Default::default(),
             parameters: Default::default(),
         }
     }

@@ -31,8 +31,8 @@ where
 {
     pub fn new(data: T) -> Self {
         Self {
-            read_update_interval: 20.into(),
-            write_update_interval: 20.into(),
+            read_update_interval: 100.into(),
+            write_update_interval: 100.into(),
             last_write: get_timestamp().into(),
             data: hotpath::mutex!(Mutex::new(data), label = "SlowMutex"),
         }
