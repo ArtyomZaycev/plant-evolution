@@ -1,10 +1,8 @@
 use std::{
-    ops::Deref,
-    sync::{
+    borrow::Borrow, ops::Deref, sync::{
         Mutex,
         atomic::{AtomicU128, Ordering},
-    },
-    time::SystemTime,
+    }, time::SystemTime,
 };
 
 pub struct SlowMutex<T> {
@@ -98,17 +96,18 @@ impl<T> SlowMutexReadResult<T> {
     pub fn get(value: Self) -> T {
         value.data
     }
+
     pub fn get_cloned(value: &Self) -> T
     where
         T: Clone,
     {
         value.data.clone()
     }
-    pub fn get_ref(value: &Self) -> &T {
-        &value.data
-    }
-    pub fn get_ref_mut(value: &mut Self) -> &mut T {
-        &mut value.data
+}
+
+impl<T> Borrow<T> for SlowMutexReadResult<T> {
+    fn borrow(&self) -> &T {
+        &self.data
     }
 }
 

@@ -1,5 +1,5 @@
 use std::{
-    ops::Deref, sync::{
+    borrow::Borrow, ops::Deref, sync::{
         RwLock, atomic::{AtomicU128, Ordering},
     }, time::SystemTime,
 };
@@ -85,14 +85,18 @@ impl<T> VersionedMutexData<T> {
     pub fn take(value: Self) -> T {
         value.data
     }
+
     pub fn get_cloned(value: &Self) -> T
     where
         T: Clone,
     {
         value.data.clone()
     }
-    pub fn get_ref(value: &Self) -> &T {
-        &value.data
+}
+
+impl<T> Borrow<T> for VersionedMutexData<T> {
+    fn borrow(&self) -> &T {
+        &self.data
     }
 }
 
