@@ -1,15 +1,12 @@
 use std::{
-    ops::Deref,
-    sync::{
-        Mutex,
-        atomic::{AtomicU128, Ordering},
-    },
-    time::SystemTime,
+    ops::Deref, sync::{
+        RwLock, atomic::{AtomicU128, Ordering},
+    }, time::SystemTime,
 };
 
 pub struct VersionedMutex<T> {
     last_write: AtomicU128,
-    data: hotpath::mutexes::Mutex<T>,
+    data: hotpath::wrap::std::sync::RwLock<T>,
 }
 
 fn get_timestamp() -> u128 {
@@ -29,16 +26,16 @@ impl<T: Clone> VersionedMutex<T> {
     pub fn new(data: T) -> Self {
         Self {
             last_write: get_timestamp().into(),
-            data: hotpath::mutex!(Mutex::new(data), label = "VersionedMutex"),
+            data: hotpath::rw_lock!(RwLock::new(data), label = "VersionedMutex"),
         }
     }
 
     pub fn cloned(&self) -> T {
-        self.data.lock().unwrap().clone()
+        self.data.get_cloned().unwrap()
     }
 
     pub fn read(&self) -> VersionedMutexData<T> {
-        let data = self.data.lock().unwrap();
+        let data = self.data.read().unwrap();
         VersionedMutexData {
             write_timestamp: self.last_write.load(Ordering::Relaxed),
             data: data.clone(),
@@ -55,7 +52,7 @@ impl<T: Clone> VersionedMutex<T> {
     }
 
     pub fn unchecked_write(&self, new_data: T) {
-        let mut data = self.data.lock().unwrap();
+        let mut data = self.data.write().unwrap();
         *data = new_data;
         self.last_write.store(get_timestamp(), Ordering::Relaxed);
     }
@@ -64,7 +61,7 @@ impl<T: Clone> VersionedMutex<T> {
     where
         T: PartialEq,
     {
-        let mut data = self.data.lock().unwrap();
+        let mut data = self.data.write().unwrap();
         if *data != new_data {
             *data = new_data;
             self.last_write.store(get_timestamp(), Ordering::Relaxed);
@@ -72,7 +69,7 @@ impl<T: Clone> VersionedMutex<T> {
     }
 
     pub fn update_data<F: FnOnce(&mut T)>(&self, f: F) {
-        let mut data = self.data.lock().unwrap();
+        let mut data = self.data.write().unwrap();
         f(&mut data);
         self.last_write.store(get_timestamp(), Ordering::Relaxed);
     }
