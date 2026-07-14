@@ -46,7 +46,10 @@ pub struct MapData {
 impl Default for MapData {
     fn default() -> Self {
         let mut rng: rand::prelude::ThreadRng = get_rng();
-        Self::generate(PlantEvolutionData::generate(&mut rng), PlantNutrition::STARTING)
+        Self::generate(
+            PlantEvolutionData::generate(&mut rng),
+            PlantNutrition::STARTING,
+        )
     }
 }
 

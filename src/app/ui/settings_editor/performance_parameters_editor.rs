@@ -84,7 +84,7 @@ impl egui::Widget for &mut PerformanceParametersEditor {
                 ui.radio_value(&mut self.use_local_growth, false, "Disabled");
             });
             ui.separator();
-            
+
             // Slow updates settings
             ui.horizontal(|ui| {
                 ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Updates"));
