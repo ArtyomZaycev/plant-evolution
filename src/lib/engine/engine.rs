@@ -70,7 +70,7 @@ pub struct EngineSharedState {
     pub total_evolutions: Arc<AtomicU32>,
     pub simulation_id: Arc<RwLock<String>>,
     pub maps: Arc<SlowMutex<Vec<MapData>>>,
-    
+
     pub inner_state: Arc<VersionedMutex<InnerEngineState>>,
     pub parameters: Arc<VersionedMutex<EngineParameters>>,
 }
@@ -84,7 +84,7 @@ impl EngineSharedState {
                 chrono::Local::now().format("%Y-%m-%d %H-%M-%S")
             ))),
             maps: Arc::new(maps),
-            
+
             inner_state: Default::default(),
             parameters: Default::default(),
         }
@@ -133,7 +133,9 @@ impl Engine {
         number_of_ticks: u32,
     ) {
         hotpath::measure_block!("thread_evolution", {
-            let chunk_size = maps.len().div_ceil(threadpool.thread_count().min(thread_count) as usize);
+            let chunk_size = maps
+                .len()
+                .div_ceil(threadpool.thread_count().min(thread_count) as usize);
             threadpool.scoped(|scope| {
                 for chunk in maps.chunks_mut(chunk_size) {
                     scope.execute(|| {
@@ -303,7 +305,12 @@ impl Engine {
 
                     #[cfg(feature = "thread_evolution")]
                     if parameters.performance_parameters.multithreading_enabled {
-                        Self::run_ticks_threaded(&mut threadpool, &mut maps, parameters.performance_parameters.number_of_threads, number_of_ticks);
+                        Self::run_ticks_threaded(
+                            &mut threadpool,
+                            &mut maps,
+                            parameters.performance_parameters.number_of_threads,
+                            number_of_ticks,
+                        );
                     } else {
                         Self::run_ticks(&mut maps, number_of_ticks);
                     }

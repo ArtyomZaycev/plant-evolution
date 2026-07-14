@@ -1,8 +1,11 @@
 use std::{
-    borrow::Borrow, ops::Deref, sync::{
+    borrow::Borrow,
+    ops::Deref,
+    sync::{
         Mutex,
         atomic::{AtomicU128, Ordering},
-    }, time::SystemTime,
+    },
+    time::SystemTime,
 };
 
 pub struct SlowMutex<T> {

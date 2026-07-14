@@ -1,7 +1,11 @@
 use std::{
-    borrow::Borrow, ops::Deref, sync::{
-        RwLock, atomic::{AtomicU128, Ordering},
-    }, time::SystemTime,
+    borrow::Borrow,
+    ops::Deref,
+    sync::{
+        RwLock,
+        atomic::{AtomicU128, Ordering},
+    },
+    time::SystemTime,
 };
 
 pub struct VersionedMutex<T> {

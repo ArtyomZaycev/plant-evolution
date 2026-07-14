@@ -67,7 +67,10 @@ impl egui::Widget for &mut PerformanceParametersEditor {
                 ui.allocate_ui_with_layout(desired_size, layout, |ui| {
                     ui.label("Number of threads")
                 });
-                ui.add_enabled(cfg!(feature = "thread_evolution"), Slider::new(&mut self.number_of_threads, 2..=DEFAULT_THREAD_COUNT));
+                ui.add_enabled(
+                    cfg!(feature = "thread_evolution"),
+                    Slider::new(&mut self.number_of_threads, 2..=DEFAULT_THREAD_COUNT),
+                );
             });
             ui.horizontal(|ui| {
                 ui.allocate_ui_with_layout(desired_size, layout, |ui| {
