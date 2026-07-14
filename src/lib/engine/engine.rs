@@ -131,6 +131,7 @@ impl Engine {
         maps: &mut Vec<MapData>,
         thread_count: u32,
         number_of_ticks: u32,
+        use_local_growth: bool,
     ) {
         hotpath::measure_block!("thread_evolution", {
             let chunk_size = maps
@@ -139,19 +140,19 @@ impl Engine {
             threadpool.scoped(|scope| {
                 for chunk in maps.chunks_mut(chunk_size) {
                     scope.execute(|| {
-                        chunk
-                            .iter_mut()
-                            .for_each(|map| (0..number_of_ticks).for_each(|_| map.tick()));
+                        chunk.iter_mut().for_each(|map| {
+                            (0..number_of_ticks).for_each(|_| map.tick(use_local_growth))
+                        });
                     });
                 }
             });
         });
     }
 
-    fn run_ticks(maps: &mut Vec<MapData>, number_of_ticks: u32) {
+    fn run_ticks(maps: &mut Vec<MapData>, number_of_ticks: u32, use_local_growth: bool) {
         hotpath::measure_block!("not thread_evolution", {
             maps.iter_mut()
-                .for_each(|map| (0..number_of_ticks).for_each(|_| map.tick()));
+                .for_each(|map| (0..number_of_ticks).for_each(|_| map.tick(use_local_growth)));
         });
     }
 
@@ -214,8 +215,9 @@ impl Engine {
                     EngineCommand::Load(_) => {}
 
                     EngineCommand::Tick => {
+                        let use_local_growth = parameters.performance_parameters.use_local_growth;
                         maps.iter_mut().for_each(|map| {
-                            map.tick();
+                            map.tick(use_local_growth);
                         });
                         shared_state.maps.force_write(maps.clone());
                     }
@@ -287,8 +289,9 @@ impl Engine {
                     thread::sleep(Duration::from_millis(20));
                 }
                 InnerEngineState::RunSimulation { autoevolve: None } => {
+                    let use_local_growth = parameters.performance_parameters.use_local_growth;
                     maps.iter_mut().for_each(|map| {
-                        map.tick();
+                        map.tick(use_local_growth);
                     });
                     if parameters.performance_parameters.enable_updates {
                         shared_state.maps.slow_write(&maps);
@@ -303,6 +306,8 @@ impl Engine {
                         .ticks_per_slow_write
                         .min(ticks_per_evolution.saturating_sub(maps[0].ticks));
 
+                    let use_local_growth = parameters.performance_parameters.use_local_growth;
+
                     #[cfg(feature = "thread_evolution")]
                     if parameters.performance_parameters.multithreading_enabled {
                         Self::run_ticks_threaded(
@@ -310,13 +315,14 @@ impl Engine {
                             &mut maps,
                             parameters.performance_parameters.number_of_threads,
                             number_of_ticks,
+                            use_local_growth,
                         );
                     } else {
-                        Self::run_ticks(&mut maps, number_of_ticks);
+                        Self::run_ticks(&mut maps, number_of_ticks, use_local_growth);
                     }
 
                     #[cfg(not(feature = "thread_evolution"))]
-                    Self::run_ticks(&mut maps, number_of_ticks);
+                    Self::run_ticks(&mut maps, number_of_ticks, use_local_growth);
 
                     if maps[0].ticks < ticks_per_evolution {
                         if parameters.performance_parameters.enable_updates {

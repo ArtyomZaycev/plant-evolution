@@ -103,7 +103,7 @@ pub fn run_evolution<F: FnMut(&mut Vec<MapData>)>(
 ) {
     (0..evolutions).for_each(|evolution: usize| {
         (0..evolve_steps).for_each(|tick| {
-            maps.iter_mut().for_each(|map| map.tick());
+            maps.iter_mut().for_each(|map| map.tick(false));
             if tick % 100 == 0 {
                 let data = RunningEvolutionData {
                     evolution_total: evolutions,

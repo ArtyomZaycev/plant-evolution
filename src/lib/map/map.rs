@@ -242,7 +242,39 @@ impl MapData {
     // Assumes new cells has grown at (x, y)
     // Would require updating everything around DXDY^2, since input for DXDY would change
     // Doesn't seem that the overhead of calculating each that that needs to be updated is worth it
-    //fn recalc_next_cell_growth(&mut self, x: usize, y: usize) {
+    fn recalc_next_cell_growth(&mut self, x: usize, y: usize) {
+        self.all_next_cell_growth.clear();
+
+        self.next_cell_growth = self
+            .all_next_cell_growth
+            .iter()
+            .max_by(|(_, key1), (_, key2)| key1.partial_cmp(key2).unwrap())
+            .map_or((f32::NEG_INFINITY, 0, 0, 0), |(&(x, y, c), &value)| {
+                (value, x, y, c)
+            });
+
+        self.cells_pos.iter().for_each(|&(j, i)| {
+            let plant_cell = &self.cells[i][j];
+            let evolution = &self.evolution_data.cells_evolution_data[plant_cell.t];
+            GROWTH_DIRECTION[i][j].iter().for_each(|&(nj, ni, d)| {
+                if self.cells[ni][nj].is_none() {
+                    let weights = &evolution.weights[d];
+                    for c in 0..NUMBER_OF_CELLS {
+                        let score = weights[c].calculate(
+                            &plant_cell.input,
+                            (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
+                            (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
+                        );
+                        let cw = self.all_next_cell_growth.entry((nj, ni, c)).or_default();
+                        *cw += score;
+                        if *cw >= self.next_cell_growth.0 {
+                            self.next_cell_growth = (*cw, nj, ni, c);
+                        }
+                    }
+                }
+            });
+        });
+    }
 
     #[hotpath::measure]
     fn recalc_next_cell_suicide(&mut self) {
@@ -300,7 +332,13 @@ impl MapData {
         }
     }
 
-    fn do_grow_plant_cell(&mut self, x: usize, y: usize, cell_type: usize) {
+    fn do_grow_plant_cell(
+        &mut self,
+        use_local_growth_recalculation: bool,
+        x: usize,
+        y: usize,
+        cell_type: usize,
+    ) {
         self.plant_nutrition.energy -= self.evolution_data.cells_abilities[cell_type].grow_cost;
         self.cells[y][x] = PlantCell {
             t: cell_type,
@@ -310,11 +348,15 @@ impl MapData {
         self.update_sunlight(x, y);
         self.populate_plant_inputs();
         self.recalc_plant_nutrition();
-        self.recalc_all_next_cell_growth();
+        if use_local_growth_recalculation {
+            self.recalc_next_cell_growth(x, y);
+        } else {
+            self.recalc_all_next_cell_growth();
+        }
         self.recalc_next_cell_suicide();
     }
 
-    fn grow_plant(&mut self) {
+    fn grow_plant(&mut self, use_local_growth_recalculation: bool) {
         if self.next_cell_growth.0 >= 0. || self.next_cell_suicide.0 >= 0. {
             if self.next_cell_suicide.0 > self.next_cell_growth.0 {
                 let (_, x, y) = self.next_cell_suicide;
@@ -331,7 +373,7 @@ impl MapData {
                 if self.plant_nutrition.energy
                     >= self.evolution_data.cells_abilities[cell_type].grow_cost
                 {
-                    self.do_grow_plant_cell(x, y, cell_type);
+                    self.do_grow_plant_cell(use_local_growth_recalculation, x, y, cell_type);
                 }
             }
         }
@@ -436,9 +478,9 @@ impl MapData {
 
     // Don't measure each call, better to measure in bulk
     //#[hotpath::measure]
-    pub fn tick(&mut self) {
+    pub fn tick(&mut self, use_local_growth_recalculation: bool) {
         self.update_plant_nutritions();
-        self.grow_plant();
+        self.grow_plant(use_local_growth_recalculation);
         self.ticks += 1;
     }
 
