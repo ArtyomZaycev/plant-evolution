@@ -3,7 +3,7 @@ mod rng {
     use rand::{SeedableRng, rngs::SmallRng};
 
     pub type Rng = SmallRng;
-    pub const DEFAULT_SEED: u64 = 555;
+    pub const DEFAULT_SEED: u64 = 8867;
 
     pub fn get_rng() -> Rng {
         SmallRng::seed_from_u64(DEFAULT_SEED)
