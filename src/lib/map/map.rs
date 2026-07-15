@@ -37,8 +37,7 @@ pub struct MapData {
     pub total_passive_cost: f32,
     pub nutrition_per_tick: PlantNutrition,
 
-    // TODO: Change to HashMap<(usize, usize), [f32; NUMBER_OF_CELLS]>,
-    pub all_next_cell_growth: HashMap<(usize, usize, usize), f32>,
+    pub all_next_cell_growth: HashMap<(usize, usize), [f32; NUMBER_OF_CELLS]>,
     pub cells_pos: Vec<(usize, usize)>,
     pub map: [[MapCell; MAP_SIZE.0]; MAP_SIZE.1],
     pub cells: [[PlantCell; MAP_SIZE.0]; MAP_SIZE.1],
@@ -214,9 +213,9 @@ impl MapData {
 
     // TODO: Measure performance agains simpler comparisons
     /// Determenistic way of choosing next cell growth
-    fn compare_next_cell_growth(a: ((usize, usize, usize), f32), b: ((usize, usize, usize), f32)) -> std::cmp::Ordering {
-        (a.1, -((a.0.0.abs_diff(PLANT_CENTER.0) + a.0.1.abs_diff(PLANT_CENTER.1)) as i32), -(a.0.2 as i32), a.0.0, a.0.1).partial_cmp(
-            &(b.1, -((b.0.0.abs_diff(PLANT_CENTER.0) + b.0.1.abs_diff(PLANT_CENTER.1)) as i32), -(b.0.2 as i32), b.0.0, b.0.1)
+    fn compare_next_cell_growth(x1: usize, y1: usize, c1: usize, w1: f32, x2: usize, y2: usize, c2: usize, w2: f32) -> std::cmp::Ordering {
+        (w1, -((x1.abs_diff(PLANT_CENTER.0) + y1.abs_diff(PLANT_CENTER.1)) as i32), -(c1 as i32), x1, y1).partial_cmp(
+            &(w2, -((x2.abs_diff(PLANT_CENTER.0) + y2.abs_diff(PLANT_CENTER.1)) as i32), -(c2 as i32), x2, y2)
         ).unwrap()
     }
 
@@ -229,6 +228,7 @@ impl MapData {
             GROWTH_DIRECTION[i][j].iter().for_each(|&(nj, ni, d)| {
                 if self.cells[ni][nj].is_none() {
                     let weights = &evolution.weights[d];
+                    let next_cell_growth = self.all_next_cell_growth.entry((nj, ni)).or_default();
                     for c in 0..NUMBER_OF_CELLS {
                         let score = weights[c].calculate(
                             &plant_cell.input,
@@ -237,34 +237,32 @@ impl MapData {
                         );
                         // Can't update self.next_cell_growth here
                         // That would not account for negative results later
-                        *self.all_next_cell_growth.entry((nj, ni, c)).or_default() += score;
+                        next_cell_growth[c] += score;
                     }
                 }
             });
         });
 
-        self.next_cell_growth = self
-            .all_next_cell_growth
-            .iter()
-            .max_by(|&v1, &v2| Self::compare_next_cell_growth((*v1.0, *v1.1), (*v2.0, *v2.1)))
-            .map_or((f32::NEG_INFINITY, 0, 0, 0), |(&(x, y, c), &value)| {
-                (value, x, y, c)
-            });
+        self.next_cell_growth = (f32::NEG_INFINITY, 0, 0, 0);
+        for (&(x, y), carr) in &self.all_next_cell_growth {
+            for (c, &w) in carr.iter().enumerate() {
+                if Self::compare_next_cell_growth(x, y, c, w, self.next_cell_growth.1, self.next_cell_growth.2, self.next_cell_growth.3, self.next_cell_growth.0).is_gt() {
+                    self.next_cell_growth = (w, x, y, c);
+                }
+            }
+        }
     }
 
     // Assumes new cells has grown at (x, y)
     fn recalc_next_cell_growth(&mut self, x: usize, y: usize) {
         let recalc_needed = &GROWTH_RECALC_NEEDED_FOR[y][x];
 
-        for c in 0..NUMBER_OF_CELLS {
-            self.all_next_cell_growth.remove(&(x, y, c));
-            recalc_needed.iter().for_each(|&(nx, ny)| {
-                // TODO: Set to 0
-                if let Some(value) = self.all_next_cell_growth.get_mut(&(nx, ny, c)) {
-                    *value = 0.;
-                }
-            });
-        }
+        self.all_next_cell_growth.remove(&(x, y));
+        recalc_needed.iter().for_each(|&(nx, ny)| {
+            if let Some(value) = self.all_next_cell_growth.get_mut(&(nx, ny)) {
+                *value = Default::default();
+            }
+        });
 
         // TODO: only check adjacent to recalc_needed cells
         self.cells_pos.iter().for_each(|&(j, i)| {
@@ -274,26 +272,29 @@ impl MapData {
                 if self.cells[ni][nj].is_none() && recalc_needed.contains(&(nj, ni)) 
                 {
                     let weights = &evolution.weights[d];
+                    let next_cell_growth = self.all_next_cell_growth.entry((nj, ni)).or_default();
                     for c in 0..NUMBER_OF_CELLS {
                         let score = weights[c].calculate(
                             &plant_cell.input,
                             (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
                             (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
                         );
-                        let cw = self.all_next_cell_growth.entry((nj, ni, c)).or_default();
-                        *cw += score;
+                        // Can't update self.next_cell_growth here
+                        // That would not account for negative results later
+                        next_cell_growth[c] += score;
                     }
                 }
             });
         });
-        
-        self.next_cell_growth = self
-            .all_next_cell_growth
-            .iter()
-            .max_by(|&v1, &v2| Self::compare_next_cell_growth((*v1.0, *v1.1), (*v2.0, *v2.1)))
-            .map_or((f32::NEG_INFINITY, 0, 0, 0), |(&(x, y, c), &value)| {
-                (value, x, y, c)
-            });
+
+        self.next_cell_growth = (f32::NEG_INFINITY, 0, 0, 0);
+        for (&(x, y), carr) in &self.all_next_cell_growth {
+            for (c, &w) in carr.iter().enumerate() {
+                if Self::compare_next_cell_growth(x, y, c, w, self.next_cell_growth.1, self.next_cell_growth.2, self.next_cell_growth.3, self.next_cell_growth.0).is_gt() {
+                    self.next_cell_growth = (w, x, y, c);
+                }
+            }
+        }
     }
 
     #[hotpath::measure]
