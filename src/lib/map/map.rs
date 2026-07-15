@@ -193,22 +193,23 @@ impl MapData {
                 });
     }
 
-    fn update_plant_nutritions(&mut self) {
+    fn update_plant_nutritions(&mut self, ticks: u32) {
+        let ticks = ticks as f32;
         let produced = [
-            self.plant_nutrition.sunlight + self.nutrition_per_tick.sunlight,
-            self.plant_nutrition.air + self.nutrition_per_tick.air,
-            self.plant_nutrition.minerals + self.nutrition_per_tick.minerals,
-            self.plant_nutrition.water + self.nutrition_per_tick.water,
-            self.nutrition_per_tick.energy,
+            self.plant_nutrition.sunlight + self.nutrition_per_tick.sunlight * ticks,
+            self.plant_nutrition.air + self.nutrition_per_tick.air * ticks,
+            self.plant_nutrition.minerals + self.nutrition_per_tick.minerals * ticks,
+            self.plant_nutrition.water + self.nutrition_per_tick.water * ticks,
+            self.nutrition_per_tick.energy * ticks,
         ]
         .into_iter()
         .reduce(f32::min)
         .unwrap();
-        self.plant_nutrition.sunlight += self.nutrition_per_tick.sunlight - produced;
-        self.plant_nutrition.air += self.nutrition_per_tick.air - produced;
-        self.plant_nutrition.minerals += self.nutrition_per_tick.minerals - produced;
-        self.plant_nutrition.water += self.nutrition_per_tick.water - produced;
-        self.plant_nutrition.energy += produced - self.total_passive_cost;
+        self.plant_nutrition.sunlight += self.nutrition_per_tick.sunlight * ticks - produced;
+        self.plant_nutrition.air += self.nutrition_per_tick.air * ticks - produced;
+        self.plant_nutrition.minerals += self.nutrition_per_tick.minerals * ticks - produced;
+        self.plant_nutrition.water += self.nutrition_per_tick.water * ticks - produced;
+        self.plant_nutrition.energy += produced - self.total_passive_cost * ticks;
     }
 
     // TODO: Measure performance agains simpler comparisons
@@ -381,7 +382,7 @@ impl MapData {
 
     fn grow_plant(&mut self, use_local_growth_recalculation: bool) {
         if self.next_cell_growth.0 >= 0. || self.next_cell_suicide.0 >= 0. {
-            if self.next_cell_suicide.0 > self.next_cell_growth.0 {
+            if self.next_cell_suicide.0 >= self.next_cell_growth.0 {
                 let (_, x, y) = self.next_cell_suicide;
                 if x != PLANT_CENTER.0 || y != PLANT_CENTER.1 {
                     self.remove_cell(x, y);
@@ -499,12 +500,117 @@ impl MapData {
         self.recalc_all_next_cell_growth();
     }
 
-    // Don't measure each call, better to measure in bulk
-    //#[hotpath::measure]
     pub fn tick(&mut self, use_local_growth_recalculation: bool) {
-        self.update_plant_nutritions();
+        self.update_plant_nutritions(1);
         self.grow_plant(use_local_growth_recalculation);
         self.ticks += 1;
+    }
+
+    pub fn tick_many(&mut self, ticks: u32, use_local_growth_recalculation: bool) {
+        if ticks == 0 {
+            return;
+        } else if ticks == 1 {
+            self.tick(use_local_growth_recalculation);
+            return;
+        }
+
+        assert!(ticks < 10000);
+
+        if self.next_cell_growth.0 >= 0. || self.next_cell_suicide.0 >= 0. {
+            if self.next_cell_suicide.0 >= self.next_cell_growth.0 {
+                // Next action is cell suicide
+                self.tick(use_local_growth_recalculation);
+                self.tick_many(ticks - 1, use_local_growth_recalculation);
+            } else if self.next_cell_growth.0 >= self.plant_nutrition.energy {
+                // Plant has enough energy for growth
+                self.tick(use_local_growth_recalculation);
+                self.tick_many(ticks - 1, use_local_growth_recalculation);
+            } else if self.total_passive_cost >= self.nutrition_per_tick.energy {
+                // There will never be enough energy for next growth
+                self.update_plant_nutritions(ticks);
+                self.ticks += ticks;
+            } else {
+                let required_energy = self.next_cell_growth.0 - self.plant_nutrition.energy;
+                let energy_per_tick = self.nutrition_per_tick.energy - self.total_passive_cost;
+                let till_enough_energy = required_energy / energy_per_tick;
+                assert!(till_enough_energy > 0.);
+                // In best case scenario
+                let till_enough_energy = till_enough_energy.ceil() as u32;
+                assert!(till_enough_energy > 0);
+
+                if till_enough_energy > ticks {
+                    // Will not have enough ticks
+                    self.update_plant_nutritions(ticks);
+                    self.ticks += ticks;
+                } else {
+                    let till_depleted_fn = |r: f32, rpt: f32| {
+                        if rpt >= self.nutrition_per_tick.energy {
+                            u32::MAX
+                        } else {
+                            (r / (self.nutrition_per_tick.energy - rpt)).floor() as u32
+                        }
+                    };
+
+                    let till_sunlight_depleted = till_depleted_fn(self.plant_nutrition.sunlight, self.nutrition_per_tick.sunlight);
+                    let till_air_depleted = till_depleted_fn(self.plant_nutrition.air, self.nutrition_per_tick.air);
+                    let till_minerals_depleted = till_depleted_fn(self.plant_nutrition.minerals, self.nutrition_per_tick.minerals);
+                    let till_water_depleted = till_depleted_fn(self.plant_nutrition.water, self.nutrition_per_tick.water);
+
+                    let till_depleted = [till_sunlight_depleted, till_air_depleted, till_minerals_depleted, till_water_depleted].into_iter().min().unwrap();
+                    
+                    if till_depleted == 0 {
+                        // We are already depleted (or almost depleted)
+                        let energy_per_tick = [
+                            self.nutrition_per_tick.sunlight,
+                            self.nutrition_per_tick.air,
+                            self.nutrition_per_tick.minerals,
+                            self.nutrition_per_tick.water,
+                            self.nutrition_per_tick.energy,
+                        ].into_iter().min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap() - self.total_passive_cost;
+
+                        if energy_per_tick <= 0. {
+                            // There will never be enough energy for next growth
+                            self.update_plant_nutritions(ticks);
+                            self.ticks += ticks;
+                        } else {
+                            let till_enough_energy = (required_energy / energy_per_tick).ceil() as u32;
+                            if till_enough_energy > ticks {
+                                // Will not have enough ticks
+                                self.update_plant_nutritions(ticks);
+                                self.ticks += ticks;
+                            } else {
+                                // There will be enough energy eventually
+                                assert!(till_enough_energy > 0);
+                                self.update_plant_nutritions(till_enough_energy - 1);
+                                self.ticks += till_enough_energy - 1;
+                                self.tick(use_local_growth_recalculation);
+                                self.tick_many(ticks - till_enough_energy, use_local_growth_recalculation);
+                            }
+                        }
+                    } else if till_depleted >= till_enough_energy {
+                        // Not enough energy will be produced for the next growth
+                        if till_depleted >= ticks {
+                            // Don't have enough time to collect energy
+                            self.update_plant_nutritions(ticks);
+                            self.ticks += ticks;
+                        } else {
+                            // We deplete before can grow anything, but there's still ticks left
+                            self.update_plant_nutritions(till_depleted);
+                            self.ticks += till_depleted;
+                            self.tick_many(ticks - till_depleted, use_local_growth_recalculation);
+                        }
+                    } else {
+                        // There will be enough energy eventually
+                        assert!(till_enough_energy > 0);
+
+                        self.update_plant_nutritions(till_enough_energy - 1);
+                        self.ticks += till_enough_energy - 1;
+                        self.tick(use_local_growth_recalculation);
+                        self.tick_many(ticks - till_enough_energy, use_local_growth_recalculation);
+                    }
+                }
+            }
+        }
     }
 
     #[hotpath::measure]
