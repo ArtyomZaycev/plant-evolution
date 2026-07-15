@@ -219,30 +219,20 @@ impl MapData {
         ).unwrap()
     }
 
-    #[hotpath::measure]
-    fn recalc_all_next_cell_growth(&mut self) {
-        self.all_next_cell_growth.clear();
-        self.cells_pos.iter().for_each(|&(j, i)| {
-            let plant_cell = &self.cells[i][j];
-            let evolution = &self.evolution_data.cells_evolution_data[plant_cell.t];
-            GROWTH_DIRECTION[i][j].iter().for_each(|&(nj, ni, d)| {
-                if self.cells[ni][nj].is_none() {
-                    let weights = &evolution.weights[d];
-                    let next_cell_growth = self.all_next_cell_growth.entry((nj, ni)).or_default();
-                    for c in 0..NUMBER_OF_CELLS {
-                        let score = weights[c].calculate(
-                            &plant_cell.input,
-                            (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
-                            (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
-                        );
-                        // Can't update self.next_cell_growth here
-                        // That would not account for negative results later
-                        next_cell_growth[c] += score;
-                    }
-                }
-            });
-        });
+    fn update_next_cell_growth_array(from: &PlantCell, height: f32, xdist: f32, weights: &[WithVolatility<WeightsTree>; NUMBER_OF_CELLS], next_cell_growth: &mut [f32; NUMBER_OF_CELLS]) {
+        for c in 0..NUMBER_OF_CELLS {
+            let score = weights[c].calculate(
+                &from.input,
+                height,
+                xdist,
+            );
+            // Can't update self.next_cell_growth here
+            // That would not account for negative results later
+            next_cell_growth[c] += score;
+        }
+    }
 
+    fn update_next_cell_growth_from_calc(&mut self) {
         self.next_cell_growth = (f32::NEG_INFINITY, 0, 0, 0);
         for (&(x, y), carr) in &self.all_next_cell_growth {
             for (c, &w) in carr.iter().enumerate() {
@@ -253,7 +243,30 @@ impl MapData {
         }
     }
 
-    // Assumes new cells has grown at (x, y)
+    #[hotpath::measure]
+    fn recalc_all_next_cell_growth(&mut self) {
+        self.all_next_cell_growth.clear();
+        self.cells_pos.iter().for_each(|&(j, i)| {
+            let plant_cell = &self.cells[i][j];
+            let evolution = &self.evolution_data.cells_evolution_data[plant_cell.t];
+            GROWTH_DIRECTION[i][j].iter().for_each(|&(nj, ni, d)| {
+                if self.cells[ni][nj].is_none() {
+                    let weights = &evolution.weights[d];
+                    let next_cell_growth = self.all_next_cell_growth.entry((nj, ni)).or_default();
+                    Self::update_next_cell_growth_array(
+                        plant_cell,
+                        (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
+                        (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
+                        weights,
+                        next_cell_growth
+                    );
+                }
+            });
+        });
+        self.update_next_cell_growth_from_calc();
+    }
+
+    /// Assumes new cells has grown at (x, y)
     fn recalc_next_cell_growth(&mut self, x: usize, y: usize) {
         let recalc_needed = &GROWTH_RECALC_NEEDED_FOR[y][x];
 
@@ -273,28 +286,17 @@ impl MapData {
                 {
                     let weights = &evolution.weights[d];
                     let next_cell_growth = self.all_next_cell_growth.entry((nj, ni)).or_default();
-                    for c in 0..NUMBER_OF_CELLS {
-                        let score = weights[c].calculate(
-                            &plant_cell.input,
-                            (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
-                            (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
-                        );
-                        // Can't update self.next_cell_growth here
-                        // That would not account for negative results later
-                        next_cell_growth[c] += score;
-                    }
+                    Self::update_next_cell_growth_array(
+                        plant_cell,
+                        (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
+                        (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
+                        weights,
+                        next_cell_growth
+                    );
                 }
             });
         });
-
-        self.next_cell_growth = (f32::NEG_INFINITY, 0, 0, 0);
-        for (&(x, y), carr) in &self.all_next_cell_growth {
-            for (c, &w) in carr.iter().enumerate() {
-                if Self::compare_next_cell_growth(x, y, c, w, self.next_cell_growth.1, self.next_cell_growth.2, self.next_cell_growth.3, self.next_cell_growth.0).is_gt() {
-                    self.next_cell_growth = (w, x, y, c);
-                }
-            }
-        }
+        self.update_next_cell_growth_from_calc();
     }
 
     #[hotpath::measure]
