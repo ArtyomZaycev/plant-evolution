@@ -744,7 +744,7 @@ impl PlantEvolutionApp {
                 self.maps[map_idx].plant_nutrition.air
             ));
             ui.label(format!(
-                "Minerals: {}",
+                "Minerals: {:.2}",
                 self.maps[map_idx].plant_nutrition.minerals
             ));
             ui.label(format!(

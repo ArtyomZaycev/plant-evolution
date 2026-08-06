@@ -11,6 +11,7 @@ pub struct PerformanceParametersEditor {
     pub number_of_threads: u32,
 
     pub use_local_growth: bool,
+    pub use_tick_many: bool,
 
     pub enable_updates: bool,
     pub slow_updates: bool,
@@ -23,6 +24,7 @@ impl EditorUi<PerformanceParameters> for PerformanceParametersEditor {
             multithreading_enabled: settings.multithreading_enabled,
             number_of_threads: settings.number_of_threads,
             use_local_growth: settings.use_local_growth,
+            use_tick_many: settings.use_tick_many,
             enable_updates: settings.enable_updates,
             slow_updates: settings.slow_updates,
             slow_update_interval: settings.slow_update_interval.as_millis() as u32,
@@ -39,6 +41,7 @@ impl EditorUi<PerformanceParameters> for PerformanceParametersEditor {
                 multithreading_enabled: self.multithreading_enabled,
                 number_of_threads: self.number_of_threads,
                 use_local_growth: self.use_local_growth,
+                use_tick_many: self.use_tick_many,
                 enable_updates: self.enable_updates,
                 slow_updates: self.slow_updates,
                 slow_update_interval: Duration::from_millis(self.slow_update_interval as u64),
@@ -82,6 +85,13 @@ impl egui::Widget for &mut PerformanceParametersEditor {
                 });
                 ui.radio_value(&mut self.use_local_growth, true, "Enabled");
                 ui.radio_value(&mut self.use_local_growth, false, "Disabled");
+            });
+            ui.horizontal(|ui| {
+                ui.allocate_ui_with_layout(desired_size, layout, |ui| {
+                    ui.label("Skip empty ticks (not recommended)")
+                });
+                ui.radio_value(&mut self.use_tick_many, true, "Enabled");
+                ui.radio_value(&mut self.use_tick_many, false, "Disabled");
             });
             ui.separator();
 
