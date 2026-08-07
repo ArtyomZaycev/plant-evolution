@@ -601,7 +601,9 @@ impl PlantEvolutionApp {
                 .radio(
                     matches!(
                         engine_state,
-                        InnerEngineState::RunSimulation { autoevolve: None }
+                        InnerEngineState::RunSimulation {
+                            autoevolve: None,
+                        }
                     ),
                     "Grow",
                 )
@@ -620,7 +622,7 @@ impl PlantEvolutionApp {
                     matches!(
                         engine_state,
                         InnerEngineState::RunSimulation {
-                            autoevolve: Some(_)
+                            autoevolve: Some(_),
                         }
                     ),
                     "Evolve",
@@ -681,7 +683,7 @@ impl PlantEvolutionApp {
         if matches!(
             VersionedMutexData::get_cloned(&self.engine_inner_state),
             InnerEngineState::RunSimulation {
-                autoevolve: Some(_)
+                autoevolve: Some(_),
             }
         ) {
             match self.last_evolutions_measurement {

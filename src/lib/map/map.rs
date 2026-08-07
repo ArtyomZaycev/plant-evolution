@@ -214,19 +214,42 @@ impl MapData {
 
     // TODO: Measure performance agains simpler comparisons
     /// Determenistic way of choosing next cell growth
-    fn compare_next_cell_growth(x1: usize, y1: usize, c1: usize, w1: f32, x2: usize, y2: usize, c2: usize, w2: f32) -> std::cmp::Ordering {
-        (w1, -((x1.abs_diff(PLANT_CENTER.0) + y1.abs_diff(PLANT_CENTER.1)) as i32), -(c1 as i32), x1, y1).partial_cmp(
-            &(w2, -((x2.abs_diff(PLANT_CENTER.0) + y2.abs_diff(PLANT_CENTER.1)) as i32), -(c2 as i32), x2, y2)
-        ).unwrap()
+    fn compare_next_cell_growth(
+        x1: usize,
+        y1: usize,
+        c1: usize,
+        w1: f32,
+        x2: usize,
+        y2: usize,
+        c2: usize,
+        w2: f32,
+    ) -> std::cmp::Ordering {
+        (
+            w1,
+            -((x1.abs_diff(PLANT_CENTER.0) + y1.abs_diff(PLANT_CENTER.1)) as i32),
+            -(c1 as i32),
+            x1,
+            y1,
+        )
+            .partial_cmp(&(
+                w2,
+                -((x2.abs_diff(PLANT_CENTER.0) + y2.abs_diff(PLANT_CENTER.1)) as i32),
+                -(c2 as i32),
+                x2,
+                y2,
+            ))
+            .unwrap()
     }
 
-    fn update_next_cell_growth_array(from: &PlantCell, height: f32, xdist: f32, weights: &[WithVolatility<WeightsTree>; NUMBER_OF_CELLS], next_cell_growth: &mut [f32; NUMBER_OF_CELLS]) {
+    fn update_next_cell_growth_array(
+        from: &PlantCell,
+        height: f32,
+        xdist: f32,
+        weights: &[WithVolatility<WeightsTree>; NUMBER_OF_CELLS],
+        next_cell_growth: &mut [f32; NUMBER_OF_CELLS],
+    ) {
         for c in 0..NUMBER_OF_CELLS {
-            let score = weights[c].calculate(
-                &from.input,
-                height,
-                xdist,
-            );
+            let score = weights[c].calculate(&from.input, height, xdist);
             // Can't update self.next_cell_growth here
             // That would not account for negative results later
             next_cell_growth[c] += score;
@@ -237,7 +260,18 @@ impl MapData {
         self.next_cell_growth = (f32::NEG_INFINITY, 0, 0, 0);
         for (&(x, y), carr) in &self.all_next_cell_growth {
             for (c, &w) in carr.iter().enumerate() {
-                if Self::compare_next_cell_growth(x, y, c, w, self.next_cell_growth.1, self.next_cell_growth.2, self.next_cell_growth.3, self.next_cell_growth.0).is_gt() {
+                if Self::compare_next_cell_growth(
+                    x,
+                    y,
+                    c,
+                    w,
+                    self.next_cell_growth.1,
+                    self.next_cell_growth.2,
+                    self.next_cell_growth.3,
+                    self.next_cell_growth.0,
+                )
+                .is_gt()
+                {
                     self.next_cell_growth = (w, x, y, c);
                 }
             }
@@ -259,7 +293,7 @@ impl MapData {
                         (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
                         (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
                         weights,
-                        next_cell_growth
+                        next_cell_growth,
                     );
                 }
             });
@@ -283,8 +317,7 @@ impl MapData {
             let plant_cell = &self.cells[i][j];
             let evolution = &self.evolution_data.cells_evolution_data[plant_cell.t];
             GROWTH_DIRECTION[i][j].iter().for_each(|&(nj, ni, d)| {
-                if self.cells[ni][nj].is_none() && recalc_needed.contains(&(nj, ni)) 
-                {
+                if self.cells[ni][nj].is_none() && recalc_needed.contains(&(nj, ni)) {
                     let weights = &evolution.weights[d];
                     let next_cell_growth = self.all_next_cell_growth.entry((nj, ni)).or_default();
                     Self::update_next_cell_growth_array(
@@ -292,7 +325,7 @@ impl MapData {
                         (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
                         (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
                         weights,
-                        next_cell_growth
+                        next_cell_growth,
                     );
                 }
             });
@@ -521,7 +554,9 @@ impl MapData {
                 // Next action is cell suicide
                 self.tick(use_local_growth_recalculation);
                 self.tick_many(ticks - 1, use_local_growth_recalculation);
-            } else if self.plant_nutrition.energy >= self.evolution_data.cells_abilities[self.next_cell_growth.3].grow_cost {
+            } else if self.plant_nutrition.energy
+                >= self.evolution_data.cells_abilities[self.next_cell_growth.3].grow_cost
+            {
                 // Plant has enough energy for growth
                 self.tick(use_local_growth_recalculation);
                 self.tick_many(ticks - 1, use_local_growth_recalculation);
@@ -530,7 +565,9 @@ impl MapData {
                 self.update_plant_nutritions(ticks);
                 self.ticks += ticks;
             } else {
-                let required_energy = self.evolution_data.cells_abilities[self.next_cell_growth.3].grow_cost - self.plant_nutrition.energy;
+                let required_energy = self.evolution_data.cells_abilities[self.next_cell_growth.3]
+                    .grow_cost
+                    - self.plant_nutrition.energy;
                 let energy_per_tick = self.nutrition_per_tick.energy - self.total_passive_cost;
                 // In best case scenario
                 let till_enough_energy = (required_energy / energy_per_tick).ceil() as u32;
@@ -548,13 +585,29 @@ impl MapData {
                         }
                     };
 
-                    let till_sunlight_depleted = till_depleted_fn(self.plant_nutrition.sunlight, self.nutrition_per_tick.sunlight);
-                    let till_air_depleted = till_depleted_fn(self.plant_nutrition.air, self.nutrition_per_tick.air);
-                    let till_minerals_depleted = till_depleted_fn(self.plant_nutrition.minerals, self.nutrition_per_tick.minerals);
-                    let till_water_depleted = till_depleted_fn(self.plant_nutrition.water, self.nutrition_per_tick.water);
+                    let till_sunlight_depleted = till_depleted_fn(
+                        self.plant_nutrition.sunlight,
+                        self.nutrition_per_tick.sunlight,
+                    );
+                    let till_air_depleted =
+                        till_depleted_fn(self.plant_nutrition.air, self.nutrition_per_tick.air);
+                    let till_minerals_depleted = till_depleted_fn(
+                        self.plant_nutrition.minerals,
+                        self.nutrition_per_tick.minerals,
+                    );
+                    let till_water_depleted =
+                        till_depleted_fn(self.plant_nutrition.water, self.nutrition_per_tick.water);
 
-                    let till_depleted = [till_sunlight_depleted, till_air_depleted, till_minerals_depleted, till_water_depleted].into_iter().min().unwrap();
-                    
+                    let till_depleted = [
+                        till_sunlight_depleted,
+                        till_air_depleted,
+                        till_minerals_depleted,
+                        till_water_depleted,
+                    ]
+                    .into_iter()
+                    .min()
+                    .unwrap();
+
                     if till_depleted == 0 {
                         // We are already depleted (or one tick until depleted)
                         let energy_per_tick = [
@@ -563,7 +616,11 @@ impl MapData {
                             self.nutrition_per_tick.minerals,
                             self.nutrition_per_tick.water,
                             self.nutrition_per_tick.energy,
-                        ].into_iter().min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap() - self.total_passive_cost;
+                        ]
+                        .into_iter()
+                        .min_by(|a, b| a.partial_cmp(b).unwrap())
+                        .unwrap()
+                            - self.total_passive_cost;
 
                         let energy_next_tick = [
                             self.plant_nutrition.sunlight,
@@ -571,14 +628,19 @@ impl MapData {
                             self.plant_nutrition.minerals,
                             self.plant_nutrition.water,
                             self.nutrition_per_tick.energy,
-                        ].into_iter().min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+                        ]
+                        .into_iter()
+                        .min_by(|a, b| a.partial_cmp(b).unwrap())
+                        .unwrap();
 
                         if energy_per_tick <= 0. {
                             // There will never be enough energy for next growth
                             self.update_plant_nutritions(ticks);
                             self.ticks += ticks;
                         } else {
-                            let till_enough_energy = ((required_energy - energy_next_tick) / energy_per_tick).ceil() as u32;
+                            let till_enough_energy = ((required_energy - energy_next_tick)
+                                / energy_per_tick)
+                                .ceil() as u32;
                             if till_enough_energy > ticks {
                                 // Will not have enough ticks
                                 self.update_plant_nutritions(ticks);
@@ -591,7 +653,10 @@ impl MapData {
                                 let cell_count = self.cells_pos.len();
                                 self.tick(use_local_growth_recalculation);
                                 assert!(self.cells_pos.len() > cell_count);
-                                self.tick_many(ticks - till_enough_energy, use_local_growth_recalculation);
+                                self.tick_many(
+                                    ticks - till_enough_energy,
+                                    use_local_growth_recalculation,
+                                );
                             }
                         }
                     } else if till_enough_energy > till_depleted {
@@ -613,13 +678,21 @@ impl MapData {
                         self.update_plant_nutritions(till_enough_energy - 1);
                         self.ticks += till_enough_energy - 1;
 
-                        // We should need 1 more tick 
-                        assert!(self.plant_nutrition.energy < self.evolution_data.cells_abilities[self.next_cell_growth.3].grow_cost);
-                        assert!(self.plant_nutrition.energy + energy_per_tick >= self.evolution_data.cells_abilities[self.next_cell_growth.3].grow_cost);
+                        // We should need 1 more tick
+                        assert!(
+                            self.plant_nutrition.energy
+                                < self.evolution_data.cells_abilities[self.next_cell_growth.3]
+                                    .grow_cost
+                        );
+                        assert!(
+                            self.plant_nutrition.energy + energy_per_tick
+                                >= self.evolution_data.cells_abilities[self.next_cell_growth.3]
+                                    .grow_cost
+                        );
 
                         let old_nutrition = self.plant_nutrition.clone();
                         let old_nutrition_per_tick = self.nutrition_per_tick.clone();
-                        
+
                         let cell_count = self.cells_pos.len();
                         self.tick(use_local_growth_recalculation);
                         if self.cells_pos.len() <= cell_count {
@@ -628,7 +701,11 @@ impl MapData {
 
                             println!("nutrition = {:?}", self.plant_nutrition);
                             println!("nutrition per tick = {:?}", self.nutrition_per_tick);
-                            println!("need energy = {:?}", self.evolution_data.cells_abilities[self.next_cell_growth.3].grow_cost);
+                            println!(
+                                "need energy = {:?}",
+                                self.evolution_data.cells_abilities[self.next_cell_growth.3]
+                                    .grow_cost
+                            );
 
                             println!("required_energy = {required_energy}");
                             println!("energy_per_tick = {energy_per_tick}");

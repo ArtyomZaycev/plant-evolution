@@ -23,11 +23,20 @@ pub struct SavingParameters {
     pub selection: SaveSelection,
 }
 
+impl SavingParameters {
+    pub const DISABLED: Self = Self {
+        path: PathBuf::new(),
+        enabled: false,
+        period: SavingPeriod::EveryDuration(Duration::from_mins(5)),
+        selection: SaveSelection::Best(1),
+    };
+}
+
 impl Default for SavingParameters {
     fn default() -> Self {
         Self {
             path: "./saves/".into(),
-            enabled: Default::default(),
+            enabled: false,
             period: SavingPeriod::EveryDuration(Duration::from_mins(5)),
             selection: SaveSelection::Best(1),
         }
@@ -66,9 +75,6 @@ pub struct RunEvolutionParameters {
 impl Default for RunEvolutionParameters {
     fn default() -> Self {
         Self {
-            #[cfg(feature = "thread_evolution")]
-            ticks_per_slow_write: 5000,
-            #[cfg(not(feature = "thread_evolution"))]
             ticks_per_slow_write: 500,
         }
     }
@@ -76,7 +82,6 @@ impl Default for RunEvolutionParameters {
 
 #[derive(Debug, Clone)]
 pub struct PerformanceParameters {
-    // Can't be changed as of now
     pub multithreading_enabled: bool,
     pub number_of_threads: u32,
 
@@ -86,6 +91,35 @@ pub struct PerformanceParameters {
     pub enable_updates: bool,
     pub slow_updates: bool,
     pub slow_update_interval: Duration,
+}
+
+impl PerformanceParameters {
+    pub const ACCURACY: Self = Self {
+        multithreading_enabled: false,
+        number_of_threads: DEFAULT_THREAD_COUNT,
+        use_local_growth: false,
+        use_tick_many: false,
+        enable_updates: true,
+        slow_updates: false,
+        slow_update_interval: Duration::from_millis(100),
+    };
+
+    pub const PERFORMANCE: Self = Self {
+        multithreading_enabled: cfg!(feature = "thread_evolution"),
+        number_of_threads: DEFAULT_THREAD_COUNT,
+        use_local_growth: true,
+        use_tick_many: false,
+        enable_updates: false,
+        slow_updates: true,
+        slow_update_interval: Duration::from_millis(100),
+    };
+
+    pub const UI_PERFORMANCE: Self = Self {
+        enable_updates: true,
+        ..Self::PERFORMANCE
+    };
+
+    pub const BALANCE: Self = Self::UI_PERFORMANCE;
 }
 
 impl Default for PerformanceParameters {

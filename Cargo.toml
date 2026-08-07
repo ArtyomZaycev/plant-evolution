@@ -36,6 +36,10 @@ debug = true
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }
 
+[dev-dependencies.plant-evolution]
+path = "."
+features = ["stable_rng"]
+
 [[bench]]
 name = "growth"
 harness = false
@@ -43,5 +47,10 @@ required-features = ["stable_rng"]
 
 [[bench]]
 name = "evolution"
+harness = false
+required-features = ["stable_rng"]
+
+[[bench]]
+name = "full"
 harness = false
 required-features = ["stable_rng"]

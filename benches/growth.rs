@@ -14,7 +14,7 @@ fn growth_benchmark() {
     let mut maps = Vec::from_fn(number_of_plants, |_| MapData::default());
     (0..2000).for_each(|_| {
         maps.iter_mut().for_each(|map| {
-            map.tick();
+            map.tick(false);
         });
     });
 }

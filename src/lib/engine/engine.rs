@@ -18,6 +18,8 @@ pub enum EngineCommand {
 
     Tick,
     Evolve,
+
+    Die,
 }
 
 pub enum EngineLog {
@@ -28,6 +30,7 @@ pub enum EngineLog {
 pub enum InnerEngineState {
     #[default]
     Stale,
+    // TODO: Separate by autoevolve
     RunSimulation {
         autoevolve: Option<u32>,
     },
@@ -76,7 +79,7 @@ pub struct EngineSharedState {
 }
 
 impl EngineSharedState {
-    fn new(maps: SlowMutex<Vec<MapData>>) -> Self {
+    fn new(maps: SlowMutex<Vec<MapData>>, parameters: EngineParameters) -> Self {
         Self {
             total_evolutions: Default::default(),
             simulation_id: Arc::new(RwLock::new(format!(
@@ -86,15 +89,21 @@ impl EngineSharedState {
             maps: Arc::new(maps),
 
             inner_state: Default::default(),
-            parameters: Default::default(),
+            parameters: Arc::new(VersionedMutex::new(parameters)),
         }
     }
 }
 
+impl Drop for Engine {
+    fn drop(&mut self) {
+        let _ = self.send_command(EngineCommand::Die);
+    }
+}
+
 impl Engine {
-    pub fn new(maps: Vec<MapData>) -> Self {
+    pub fn new(maps: Vec<MapData>, parameters: EngineParameters) -> Self {
         let maps = SlowMutex::new(maps);
-        let state = EngineSharedState::new(maps);
+        let state = EngineSharedState::new(maps, parameters);
         let (commands_tx, commands_rx) = mpsc::channel();
         let (logs_tx, logs_rx) = mpsc::channel();
         Self {
@@ -125,7 +134,12 @@ impl Engine {
             .unwrap()
     }
 
-    fn do_tick_many(map: &mut MapData, number_of_ticks: u32, use_local_growth: bool, use_tick_many: bool) {
+    fn do_tick_many(
+        map: &mut MapData,
+        number_of_ticks: u32,
+        use_local_growth: bool,
+        use_tick_many: bool,
+    ) {
         if use_tick_many {
             let mut old_map = map.clone();
             map.tick_many(number_of_ticks, use_local_growth);
@@ -133,7 +147,10 @@ impl Engine {
 
             assert_eq!(map.ticks, old_map.ticks);
             if map.plant_nutrition != old_map.plant_nutrition {
-                println!("not equal!\nleft = {:?}\nright = {:?}", map.plant_nutrition, old_map.plant_nutrition);
+                println!(
+                    "not equal!\nleft = {:?}\nright = {:?}",
+                    map.plant_nutrition, old_map.plant_nutrition
+                );
             }
             assert_eq!(map.cells_pos, old_map.cells_pos);
         } else {
@@ -158,7 +175,12 @@ impl Engine {
                 for chunk in maps.chunks_mut(chunk_size) {
                     scope.execute(|| {
                         chunk.iter_mut().for_each(|map| {
-                            Self::do_tick_many(map, number_of_ticks, use_local_growth, use_tick_many);
+                            Self::do_tick_many(
+                                map,
+                                number_of_ticks,
+                                use_local_growth,
+                                use_tick_many,
+                            );
                         });
                     });
                 }
@@ -166,11 +188,16 @@ impl Engine {
         });
     }
 
-    fn run_ticks(maps: &mut Vec<MapData>, number_of_ticks: u32, use_local_growth: bool,
-        use_tick_many: bool,) {
+    fn run_ticks(
+        maps: &mut Vec<MapData>,
+        number_of_ticks: u32,
+        use_local_growth: bool,
+        use_tick_many: bool,
+    ) {
         hotpath::measure_block!("not thread_evolution", {
-            maps.iter_mut()
-                .for_each(|map| Self::do_tick_many(map, number_of_ticks, use_local_growth, use_tick_many));
+            maps.iter_mut().for_each(|map| {
+                Self::do_tick_many(map, number_of_ticks, use_local_growth, use_tick_many)
+            });
         });
     }
 
@@ -266,6 +293,11 @@ impl Engine {
                         );
                         shared_state.maps.force_write(maps.clone());
                     }
+
+                    EngineCommand::Die => {
+                        shared_state.maps.force_write(maps.clone());
+                        break;
+                    }
                 }
             }
 
@@ -306,7 +338,9 @@ impl Engine {
                 InnerEngineState::Stale => {
                     thread::sleep(Duration::from_millis(20));
                 }
-                InnerEngineState::RunSimulation { autoevolve: None } => {
+                InnerEngineState::RunSimulation {
+                    autoevolve: None,
+                } => {
                     let use_local_growth = parameters.performance_parameters.use_local_growth;
                     maps.iter_mut().for_each(|map| {
                         map.tick(use_local_growth);
@@ -338,11 +372,21 @@ impl Engine {
                             use_tick_many,
                         );
                     } else {
-                        Self::run_ticks(&mut maps, number_of_ticks, use_local_growth, use_tick_many);
+                        Self::run_ticks(
+                            &mut maps,
+                            number_of_ticks,
+                            use_local_growth,
+                            use_tick_many,
+                        );
                     }
 
                     #[cfg(not(feature = "thread_evolution"))]
-                    Self::run_ticks(&mut maps, number_of_ticks, use_local_growth, use_tick_many);
+                    Self::run_ticks(
+                        &mut maps,
+                        number_of_ticks,
+                        use_local_growth,
+                        use_tick_many,
+                    );
 
                     if maps[0].ticks < ticks_per_evolution {
                         if parameters.performance_parameters.enable_updates {
@@ -356,7 +400,11 @@ impl Engine {
                                 shared_state.maps.force_write(maps.clone());
                             }
                         }
-                        Self::do_evolution(&mut rng, &parameters.evolution_parameters, &mut maps);
+                        Self::do_evolution(
+                            &mut rng,
+                            &parameters.evolution_parameters,
+                            &mut maps,
+                        );
                         shared_state.total_evolutions.update(
                             Ordering::Relaxed,
                             Ordering::Relaxed,

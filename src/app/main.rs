@@ -19,7 +19,7 @@ fn main() {
 
     let maps = Vec::from_fn(200, |_| MapData::default());
 
-    let engine = Engine::new(maps);
+    let engine = Engine::new(maps, EngineParameters::default());
 
     eframe::run_native(
         "Plant Evolution",

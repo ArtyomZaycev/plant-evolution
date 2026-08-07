@@ -93,8 +93,10 @@ fn generate_recalc_needed_for() -> [[HashSet<(usize, usize)>; MAP_SIZE.0]; MAP_S
     core::array::from_fn(|y| {
         core::array::from_fn(|x| {
             // Where air/water/minerals was updated
-            DXDY3_2D[y][x].iter().map(|&(x, y, _)| (x, y))
-            // Where sunlight was updated
+            DXDY3_2D[y][x]
+                .iter()
+                .map(|&(x, y, _)| (x, y))
+                // Where sunlight was updated
                 .chain((y + 3..GROUND_LEVEL).flat_map(|y| {
                     let mut res = vec![(x, y)];
                     if x > 0 {

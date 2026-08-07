@@ -1,4 +1,5 @@
 mod slow_mutex;
+mod swapvec;
 mod types;
 mod versioned_mutex;
 

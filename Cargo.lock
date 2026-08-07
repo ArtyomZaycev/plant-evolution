@@ -2755,6 +2755,7 @@ dependencies = [
  "eframe",
  "egui",
  "hotpath",
+ "plant-evolution",
  "rand",
  "scoped_threadpool",
  "serde",
