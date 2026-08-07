@@ -55,7 +55,7 @@ struct State {
 impl State {
     fn start_read(&self) -> Option<bool> {
         let swapped = self.swapped.read().unwrap();
-        if self.reading.swap(true, Ordering::Relaxed) {
+        if self.reading.swap(true, Ordering::Acquire) {
             None
         } else {
             Some(*swapped)
@@ -64,9 +64,10 @@ impl State {
 
     fn start_write(&self) -> Option<bool> {
         let swapped = self.swapped.read().unwrap();
-        if self.writing.swap(true, Ordering::Relaxed) {
+        if self.writing.swap(true, Ordering::Acquire) {
             None
         } else {
+            // Can be Relaxed since we have lock on `swapped`
             self.need_swap.store(true, Ordering::Relaxed);
             Some(*swapped)
         }
@@ -74,20 +75,21 @@ impl State {
 
     fn stop_read(&self) {
         let swapped = self.swapped.read().unwrap();
-        self.reading.store(false, Ordering::Relaxed);
+        self.reading.store(false, Ordering::Release);
         drop(swapped);
         self.try_swap();
     }
 
     fn stop_write(&self) {
         let swapped = self.swapped.read().unwrap();
-        self.writing.store(false, Ordering::Relaxed);
+        self.writing.store(false, Ordering::Release);
         drop(swapped);
         self.try_swap();
     }
 
     fn try_swap(&self) {
         let mut swapped_lock = self.swapped.write().unwrap();
+        // We already should have exclusive access to the data due to the `swapped` lock
         if !self.reading.load(Ordering::Relaxed)
             && !self.writing.load(Ordering::Relaxed)
             && self.need_swap.load(Ordering::Relaxed)
