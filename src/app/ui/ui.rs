@@ -601,9 +601,7 @@ impl PlantEvolutionApp {
                 .radio(
                     matches!(
                         engine_state,
-                        InnerEngineState::RunSimulation {
-                            autoevolve: None,
-                        }
+                        InnerEngineState::RunSimulation { autoevolve: None }
                     ),
                     "Grow",
                 )

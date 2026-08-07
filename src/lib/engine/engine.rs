@@ -338,9 +338,7 @@ impl Engine {
                 InnerEngineState::Stale => {
                     thread::sleep(Duration::from_millis(20));
                 }
-                InnerEngineState::RunSimulation {
-                    autoevolve: None,
-                } => {
+                InnerEngineState::RunSimulation { autoevolve: None } => {
                     let use_local_growth = parameters.performance_parameters.use_local_growth;
                     maps.iter_mut().for_each(|map| {
                         map.tick(use_local_growth);
@@ -381,12 +379,7 @@ impl Engine {
                     }
 
                     #[cfg(not(feature = "thread_evolution"))]
-                    Self::run_ticks(
-                        &mut maps,
-                        number_of_ticks,
-                        use_local_growth,
-                        use_tick_many,
-                    );
+                    Self::run_ticks(&mut maps, number_of_ticks, use_local_growth, use_tick_many);
 
                     if maps[0].ticks < ticks_per_evolution {
                         if parameters.performance_parameters.enable_updates {
@@ -400,11 +393,7 @@ impl Engine {
                                 shared_state.maps.force_write(maps.clone());
                             }
                         }
-                        Self::do_evolution(
-                            &mut rng,
-                            &parameters.evolution_parameters,
-                            &mut maps,
-                        );
+                        Self::do_evolution(&mut rng, &parameters.evolution_parameters, &mut maps);
                         shared_state.total_evolutions.update(
                             Ordering::Relaxed,
                             Ordering::Relaxed,

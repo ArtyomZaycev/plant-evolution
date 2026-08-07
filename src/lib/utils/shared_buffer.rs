@@ -1,4 +1,13 @@
-use std::{any::type_name, cell::SyncUnsafeCell, fmt::{Debug, Display}, ops::{Deref, DerefMut}, sync::{Arc, RwLock, atomic::{AtomicBool, Ordering}}};
+use std::{
+    any::type_name,
+    cell::SyncUnsafeCell,
+    fmt::{Debug, Display},
+    ops::{Deref, DerefMut},
+    sync::{
+        Arc, RwLock,
+        atomic::{AtomicBool, Ordering},
+    },
+};
 
 pub struct SharedBuffer<T> {
     buffer: Arc<Buffer<T>>,
@@ -6,8 +15,8 @@ pub struct SharedBuffer<T> {
 }
 
 pub struct Buffer<T> {
-    data1: SyncUnsafeCell<T>, // to read
-    data2: SyncUnsafeCell<T>, // to write
+    data1: SyncUnsafeCell<T>, // to read (if not swapped)
+    data2: SyncUnsafeCell<T>, // to write (if not swapped)
 }
 
 impl<T> SharedBuffer<T> {
@@ -79,7 +88,10 @@ impl State {
 
     fn try_swap(&self) {
         let mut swapped_lock = self.swapped.write().unwrap();
-        if !self.reading.load(Ordering::Relaxed) && !self.writing.load(Ordering::Relaxed) && self.need_swap.load(Ordering::Relaxed) {
+        if !self.reading.load(Ordering::Relaxed)
+            && !self.writing.load(Ordering::Relaxed)
+            && self.need_swap.load(Ordering::Relaxed)
+        {
             *swapped_lock = !*swapped_lock;
             self.need_swap.store(false, Ordering::Relaxed);
         }
@@ -103,7 +115,7 @@ impl Display for AccessorError {
     }
 }
 
-impl std::error::Error for AccessorError { }
+impl std::error::Error for AccessorError {}
 
 impl<T> Accessor<T> {
     pub fn read<'a>(&'a self) -> Result<ReadLock<'a, T>, AccessorError> {
@@ -144,7 +156,10 @@ pub struct ReadLock<'a, T> {
 
 impl<'a, T> Debug for ReadLock<'a, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ReadLock").field("T", &type_name::<T>()).field("adress", &self.data).finish()
+        f.debug_struct("ReadLock")
+            .field("T", &type_name::<T>())
+            .field("adress", &self.data)
+            .finish()
     }
 }
 
@@ -152,9 +167,7 @@ impl<'a, T> Deref for ReadLock<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        unsafe {
-            &*self.data
-        }
+        unsafe { &*self.data }
     }
 }
 
@@ -171,7 +184,10 @@ pub struct WriteLock<'a, T> {
 
 impl<'a, T> Debug for WriteLock<'a, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("WriteLock").field("T", &type_name::<T>()).field("adress", &self.data).finish()
+        f.debug_struct("WriteLock")
+            .field("T", &type_name::<T>())
+            .field("adress", &self.data)
+            .finish()
     }
 }
 
@@ -179,17 +195,13 @@ impl<'a, T> Deref for WriteLock<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &'a Self::Target {
-        unsafe {
-            &*self.data
-        }
+        unsafe { &*self.data }
     }
 }
 
 impl<'a, T> DerefMut for WriteLock<'a, T> {
     fn deref_mut(&mut self) -> &'a mut Self::Target {
-        unsafe {
-            &mut *self.data
-        }
+        unsafe { &mut *self.data }
     }
 }
 
@@ -223,7 +235,7 @@ mod test {
                 let lock = a1.read().unwrap();
                 assert_eq!(*lock, 12);
                 drop(lock);
-                
+
                 let lock = a1.read().unwrap();
                 barrier.wait();
                 //println!("r1: {:?}", lock);
@@ -241,12 +253,12 @@ mod test {
                 let lock = a2.write().unwrap();
                 assert_eq!(*lock, 0);
                 drop(lock);
-                
+
                 let mut lock = a2.write().unwrap();
                 *lock = 12;
                 drop(lock);
                 barrier.wait();
-                
+
                 barrier.wait();
                 let mut lock = a2.write().unwrap();
                 //println!("w1: {:?}", lock);

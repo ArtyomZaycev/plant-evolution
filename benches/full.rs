@@ -16,10 +16,7 @@ fn engine_bencmark(engine: &mut Engine, autoevolve_at: u32, total_evolution: u32
         sleep(Duration::from_millis(10));
         if engine.state.total_evolutions.load(Ordering::Relaxed) >= total_evolution {
             //println!("Total evolutions: {}/{}", engine.state.total_evolutions.load(Ordering::Relaxed), total_evolution);
-            engine
-                .state
-                .inner_state
-                .write(InnerEngineState::Stale);
+            engine.state.inner_state.write(InnerEngineState::Stale);
             engine.send_command(EngineCommand::Restart).unwrap();
             break;
         }
@@ -61,7 +58,7 @@ fn criterion_benchmark(c: &mut Criterion) {
             engine_bencmark(&mut engine, 500, 100);
         });
     });
-    
+
     group.bench_function("performace", |b| {
         engine.state.parameters.update_data(|parameters| {
             parameters.performance_parameters = PerformanceParameters::PERFORMANCE
@@ -70,7 +67,7 @@ fn criterion_benchmark(c: &mut Criterion) {
             engine_bencmark(&mut engine, 500, 100);
         });
     });
-    
+
     group.bench_function("ui_performace", |b| {
         engine.state.parameters.update_data(|parameters| {
             parameters.performance_parameters = PerformanceParameters::UI_PERFORMANCE
@@ -79,7 +76,7 @@ fn criterion_benchmark(c: &mut Criterion) {
             engine_bencmark(&mut engine, 500, 100);
         });
     });
-    
+
     group.bench_function("accuracy_long", |b| {
         engine.state.parameters.update_data(|parameters| {
             parameters.performance_parameters = PerformanceParameters::ACCURACY
@@ -88,7 +85,7 @@ fn criterion_benchmark(c: &mut Criterion) {
             engine_bencmark(&mut engine, 500, 2000);
         });
     });
-    
+
     group.bench_function("performace_long", |b| {
         engine.state.parameters.update_data(|parameters| {
             parameters.performance_parameters = PerformanceParameters::PERFORMANCE
@@ -97,7 +94,7 @@ fn criterion_benchmark(c: &mut Criterion) {
             engine_bencmark(&mut engine, 500, 2000);
         });
     });
-    
+
     group.bench_function("ui_performace_long", |b| {
         engine.state.parameters.update_data(|parameters| {
             parameters.performance_parameters = PerformanceParameters::UI_PERFORMANCE
