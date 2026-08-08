@@ -64,6 +64,7 @@ pub struct Engine {
     #[allow(dead_code)]
     handler: JoinHandle<()>,
     pub state: EngineSharedState,
+    pub maps_reader: Accessor<Vec<MapData>>,
 }
 
 // Accessible by both threads
@@ -72,22 +73,19 @@ pub struct Engine {
 pub struct EngineSharedState {
     pub total_evolutions: Arc<AtomicU32>,
     pub simulation_id: Arc<RwLock<String>>,
-    pub maps: Arc<SlowMutex<Vec<MapData>>>,
 
     pub inner_state: Arc<VersionedMutex<InnerEngineState>>,
     pub parameters: Arc<VersionedMutex<EngineParameters>>,
 }
 
 impl EngineSharedState {
-    fn new(maps: SlowMutex<Vec<MapData>>, parameters: EngineParameters) -> Self {
+    fn new(parameters: EngineParameters) -> Self {
         Self {
             total_evolutions: Default::default(),
             simulation_id: Arc::new(RwLock::new(format!(
                 "Simulation {}",
                 chrono::Local::now().format("%Y-%m-%d %H-%M-%S")
             ))),
-            maps: Arc::new(maps),
-
             inner_state: Default::default(),
             parameters: Arc::new(VersionedMutex::new(parameters)),
         }
@@ -102,15 +100,17 @@ impl Drop for Engine {
 
 impl Engine {
     pub fn new(maps: Vec<MapData>, parameters: EngineParameters) -> Self {
-        let maps = SlowMutex::new(maps);
-        let state = EngineSharedState::new(maps, parameters);
+        let maps_buffer = SharedBuffer::new(maps.clone(), maps.clone());
+        let (reader, writer) = maps_buffer.init();
+        let state = EngineSharedState::new(parameters);
         let (commands_tx, commands_rx) = mpsc::channel();
         let (logs_tx, logs_rx) = mpsc::channel();
         Self {
             command_sender: commands_tx,
             logs_receiver: logs_rx,
-            handler: Self::create_run_thread(state.clone(), commands_rx, logs_tx),
+            handler: Self::create_run_thread(state.clone(), writer, commands_rx, logs_tx),
             state,
+            maps_reader: reader,
         }
     }
 
@@ -123,13 +123,14 @@ impl Engine {
 
     fn create_run_thread(
         state: EngineSharedState,
+        maps_accessor: Accessor<Vec<MapData>>,
         rx: mpsc::Receiver<EngineCommand>,
         tx: mpsc::Sender<EngineLog>,
     ) -> JoinHandle<()> {
         thread::Builder::new()
             .stack_size(32 * 1024 * 1024)
             .spawn(|| {
-                Self::run(state, rx, tx);
+                Self::run(state, maps_accessor, rx, tx);
             })
             .unwrap()
     }
@@ -225,6 +226,7 @@ impl Engine {
 
     fn run(
         shared_state: EngineSharedState,
+        maps_accessor: Accessor<Vec<MapData>>,
         receiver: mpsc::Receiver<EngineCommand>,
         logs_sender: mpsc::Sender<EngineLog>,
     ) {
@@ -237,7 +239,8 @@ impl Engine {
         };
 
         let mut parameters = shared_state.parameters.read();
-        let mut maps = SlowMutexReadResult::get(shared_state.maps.read());
+        let mut maps_update_stopwatch = Stopwatch::new(Duration::from_millis(50));
+        let mut maps = maps_accessor.read().unwrap().clone();
 
         let mut last_save = SaveMark::default();
 
@@ -254,7 +257,7 @@ impl Engine {
                         });
                         last_save = SaveMark::default();
                         shared_state.total_evolutions.store(0, Ordering::Relaxed);
-                        shared_state.maps.force_write(maps.clone());
+                        maps_update_stopwatch.force_run(|| *maps_accessor.write().unwrap() = maps.clone());
                     }
 
                     EngineCommand::Load(_) => {}
@@ -264,7 +267,7 @@ impl Engine {
                         maps.iter_mut().for_each(|map| {
                             map.tick(use_local_growth);
                         });
-                        shared_state.maps.force_write(maps.clone());
+                        maps_update_stopwatch.force_run(|| *maps_accessor.write().unwrap() = maps.clone());
                     }
                     EngineCommand::Evolve => {
                         if parameters.evolution_parameters.parent_evolution {
@@ -291,11 +294,11 @@ impl Engine {
                             Ordering::Relaxed,
                             |v| v + 1,
                         );
-                        shared_state.maps.force_write(maps.clone());
+                        maps_update_stopwatch.force_run(|| *maps_accessor.write().unwrap() = maps.clone());
                     }
 
                     EngineCommand::Die => {
-                        shared_state.maps.force_write(maps.clone());
+                        maps_update_stopwatch.force_run(|| *maps_accessor.write().unwrap() = maps.clone());
                         break;
                     }
                 }
@@ -344,7 +347,7 @@ impl Engine {
                         map.tick(use_local_growth);
                     });
                     if parameters.performance_parameters.enable_updates {
-                        shared_state.maps.slow_write(&maps);
+                        maps_update_stopwatch.slow_run(|| *maps_accessor.write().unwrap() = maps.clone());
                     }
                 }
                 InnerEngineState::RunSimulation {
@@ -383,14 +386,14 @@ impl Engine {
 
                     if maps[0].ticks < ticks_per_evolution {
                         if parameters.performance_parameters.enable_updates {
-                            shared_state.maps.slow_write(&maps);
+                            maps_update_stopwatch.slow_run(|| *maps_accessor.write().unwrap() = maps.clone());
                         }
                     } else {
                         if parameters.performance_parameters.enable_updates {
                             if parameters.performance_parameters.slow_updates {
-                                shared_state.maps.slow_write(&maps);
+                                maps_update_stopwatch.slow_run(|| *maps_accessor.write().unwrap() = maps.clone());
                             } else {
-                                shared_state.maps.force_write(maps.clone());
+                                maps_update_stopwatch.force_run(|| *maps_accessor.write().unwrap() = maps.clone());
                             }
                         }
                         Self::do_evolution(&mut rng, &parameters.evolution_parameters, &mut maps);

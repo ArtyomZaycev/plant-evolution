@@ -35,7 +35,8 @@ pub struct PlantEvolutionApp {
     selected_maps_index: Vec<usize>,
     last_selected_index: usize,
 
-    maps: SlowMutexReadResult<Vec<MapData>>,
+    maps_update_stopwatch: Stopwatch,
+    maps: Vec<MapData>,
 
     highlighted_map: Option<usize>,
     hovered_cell: Option<(usize, usize, usize)>,
@@ -45,9 +46,13 @@ pub struct PlantEvolutionApp {
 
 impl PlantEvolutionApp {
     pub fn new(engine: Engine) -> Self {
+        let maps_read_lock = engine.maps_reader.read().unwrap();
+        let maps = maps_read_lock.clone();
+        drop(maps_read_lock);
         Self {
             toast_manager: ToastManager::new(),
-            maps: engine.state.maps.read(),
+            maps_update_stopwatch: Stopwatch::new(Duration::from_millis(50)),
+            maps,
             visual_settings: VisualSettings::default(),
             settings: None,
             cell_size: 6.,
@@ -314,9 +319,9 @@ impl PlantEvolutionApp {
             .performance_parameters
             .slow_updates
         {
-            self.engine.state.maps.slow_update(&mut self.maps);
+            self.maps_update_stopwatch.slow_run(|| self.maps = self.engine.maps_reader.read().unwrap().clone());
         } else {
-            self.engine.state.maps.update(&mut self.maps);
+            self.maps_update_stopwatch.force_run(|| self.maps = self.engine.maps_reader.read().unwrap().clone());
         }
 
         self.engine
@@ -348,7 +353,7 @@ impl PlantEvolutionApp {
                         .state
                         .parameters
                         .unchecked_write(engine_parameters.clone());
-                    let interval = engine_parameters
+                    /*let interval = engine_parameters
                         .performance_parameters
                         .slow_update_interval
                         .as_millis();
@@ -361,7 +366,7 @@ impl PlantEvolutionApp {
                         .state
                         .maps
                         .write_update_interval
-                        .store(interval, Ordering::Relaxed);
+                        .store(interval, Ordering::Relaxed);*/
                     close_settings = true;
                 }
             }
