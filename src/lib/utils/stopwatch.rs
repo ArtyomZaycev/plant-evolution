@@ -13,19 +13,38 @@ impl Stopwatch {
         }
     }
 
-    pub fn slow_run<F: FnOnce()>(&mut self, f: F) {
+    pub fn slow_run_checked<F: FnOnce() -> bool>(&mut self, f: F) -> bool {
         let now = SystemTime::now();
         if now
             .duration_since(self.last_access)
             .is_ok_and(|duration| duration >= self.access_interval)
         {
-            self.last_access = now;
+            if f() {
+                self.last_access = now;
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    }
+
+    pub fn slow_run<F: FnOnce()>(&mut self, f: F) -> bool {
+        self.slow_run_checked(|| {
             f();
+            true
+        })
+    }
+
+    pub fn force_run_checked<F: FnOnce() -> bool>(&mut self, f: F) {
+        if f() {
+            self.last_access = SystemTime::now();
         }
     }
 
     pub fn force_run<F: FnOnce()>(&mut self, f: F) {
-        self.last_access = SystemTime::now();
         f();
+        self.last_access = SystemTime::now();
     }
 }

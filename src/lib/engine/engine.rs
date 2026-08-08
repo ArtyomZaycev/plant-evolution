@@ -257,9 +257,8 @@ impl Engine {
                         });
                         last_save = SaveMark::default();
                         shared_state.total_evolutions.store(0, Ordering::Relaxed);
-                        maps_update_stopwatch.force_run(|| {
-                            maps_accessor.write().unwrap().force_write(maps.clone());
-                        });
+                        maps_update_stopwatch
+                            .force_run(|| maps_accessor.write().unwrap().force_write(maps.clone()));
                     }
 
                     EngineCommand::Load(_) => {}
@@ -269,9 +268,8 @@ impl Engine {
                         maps.iter_mut().for_each(|map| {
                             map.tick(use_local_growth);
                         });
-                        maps_update_stopwatch.force_run(|| {
-                            maps_accessor.write().unwrap().force_write(maps.clone());
-                        });
+                        maps_update_stopwatch
+                            .force_run(|| maps_accessor.write().unwrap().force_write(maps.clone()));
                     }
                     EngineCommand::Evolve => {
                         if parameters.evolution_parameters.parent_evolution {
@@ -303,9 +301,8 @@ impl Engine {
                     }
 
                     EngineCommand::Die => {
-                        maps_update_stopwatch.force_run(|| {
-                            maps_accessor.write().unwrap().write(&maps);
-                        });
+                        maps_update_stopwatch
+                            .force_run_checked(|| maps_accessor.write().unwrap().write(&maps));
                         break;
                     }
                 }

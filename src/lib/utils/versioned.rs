@@ -18,10 +18,10 @@ impl<T: AtomicVersion> Version for T {
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub struct TimestampVersion(u128);
+pub struct TimestampVersion(pub u128);
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub struct SequentialVersion(u32);
+pub struct SequentialVersion(pub u32);
 
 impl Version for TimestampVersion {
     fn update(&mut self) {
@@ -58,6 +58,10 @@ impl<T, V: Version> Versioned<T, V> {
             version: V::default(),
             data,
         }
+    }
+
+    pub fn version(&self) -> &V {
+        &self.version
     }
 
     pub fn get_data(&self) -> VersionedData<T, V>
@@ -105,6 +109,12 @@ impl<T, V: Version> Versioned<T, V> {
 }
 
 pub struct VersionedData<T, V: Version = TimestampVersion>(Versioned<T, V>);
+
+impl<T, V: Version> VersionedData<T, V> {
+    pub fn version(&self) -> &V {
+        self.0.version()
+    }
+}
 
 impl<T: Clone, V: Version> Clone for VersionedData<T, V> {
     fn clone(&self) -> Self {
