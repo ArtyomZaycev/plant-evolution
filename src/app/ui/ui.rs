@@ -319,9 +319,11 @@ impl PlantEvolutionApp {
             .performance_parameters
             .slow_updates
         {
-            self.maps_update_stopwatch.slow_run(|| self.maps = self.engine.maps_reader.read().unwrap().clone());
+            self.maps_update_stopwatch
+                .slow_run(|| self.maps = self.engine.maps_reader.read().unwrap().clone());
         } else {
-            self.maps_update_stopwatch.force_run(|| self.maps = self.engine.maps_reader.read().unwrap().clone());
+            self.maps_update_stopwatch
+                .force_run(|| self.maps = self.engine.maps_reader.read().unwrap().clone());
         }
 
         self.engine

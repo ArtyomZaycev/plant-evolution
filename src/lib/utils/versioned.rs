@@ -1,5 +1,7 @@
-use std::{ops::{Deref, DerefMut}, time::SystemTime};
-
+use std::{
+    ops::{Deref, DerefMut},
+    time::SystemTime,
+};
 
 pub trait Version: Default + PartialOrd {
     fn update(&mut self);
@@ -13,7 +15,10 @@ pub struct SequentialVersion(u32);
 
 impl Version for TimestampVersion {
     fn update(&mut self) {
-        self.0 = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_micros();
+        self.0 = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_micros();
     }
 }
 
@@ -36,18 +41,21 @@ impl<T, V: Version> Versioned<T, V> {
         }
     }
 
-    pub fn clone_from(&mut self, other: &Self) where T: Clone {
+    pub fn clone_from(&mut self, other: &Self)
+    where
+        T: Clone,
+    {
         if other.version > self.version {
             self.data = other.data.clone();
         }
     }
-    
+
     pub fn take_from(&mut self, other: Self) {
         if other.version > self.version {
             self.data = other.data;
         }
     }
-    
+
     pub fn update_from<F: FnOnce(&T) -> T>(&mut self, other: Self, copy: F) {
         if other.version > self.version {
             self.data = copy(&other.data);
