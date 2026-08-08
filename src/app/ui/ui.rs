@@ -46,7 +46,7 @@ pub struct PlantEvolutionApp {
 
 impl PlantEvolutionApp {
     pub fn new(engine: Engine) -> Self {
-        let maps_read_lock = engine.maps_reader.read().unwrap();
+        let maps_read_lock = engine.maps.read().unwrap();
         let maps = maps_read_lock.get_data();
         drop(maps_read_lock);
         Self {
@@ -321,7 +321,7 @@ impl PlantEvolutionApp {
         {
             self.maps_update_stopwatch.slow_run(|| {
                 self.engine
-                    .maps_reader
+                    .maps
                     .read()
                     .unwrap()
                     .update_data(&mut self.maps);
@@ -329,7 +329,7 @@ impl PlantEvolutionApp {
         } else {
             self.maps_update_stopwatch.force_run(|| {
                 self.engine
-                    .maps_reader
+                    .maps
                     .read()
                     .unwrap()
                     .update_data(&mut self.maps);

@@ -43,16 +43,16 @@ impl<T> SharedBuffer<T> {
         }
     }
 
-    pub fn init(&self) -> (Accessor<T>, Accessor<T>) {
+    pub fn init(&self) -> (ReadAccessor<T>, WriteAccessor<T>) {
         (
-            Accessor {
+            ReadAccessor(Accessor {
                 buffer: self.buffer.clone(),
                 state: self.state.clone(),
-            },
-            Accessor {
+            }),
+            WriteAccessor(Accessor {
                 buffer: self.buffer.clone(),
                 state: self.state.clone(),
-            },
+            }),
         )
     }
 }
@@ -114,9 +114,35 @@ impl State {
     }
 }
 
+/// Accessor separated is separated into ReadAccessor and WriteAccessor due to the usul use case
+/// where one thread only reads the data, and other only writes it.<br>
+/// They can be easilt downcasted with .as_inner()
 pub struct Accessor<T> {
     buffer: Arc<Buffer<T>>,
     state: Arc<State>,
+}
+
+pub struct ReadAccessor<T>(Accessor<T>);
+pub struct WriteAccessor<T>(Accessor<T>);
+
+impl<T> ReadAccessor<T> {
+    pub fn read<'a>(&'a self) -> Result<ReadLock<'a, T>, AccessorError> {
+        self.0.read()
+    }
+
+    pub fn as_inner(&self) -> &Accessor<T> {
+        &self.0
+    }
+}
+
+impl<T> WriteAccessor<T> {
+    pub fn write<'a>(&'a self) -> Result<WriteLock<'a, T>, AccessorError> {
+        self.0.write()
+    }
+
+    pub fn as_inner(&self) -> &Accessor<T> {
+        &self.0
+    }
 }
 
 #[derive(Debug)]

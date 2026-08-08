@@ -64,7 +64,7 @@ pub struct Engine {
     #[allow(dead_code)]
     handler: JoinHandle<()>,
     pub state: EngineSharedState,
-    pub maps_reader: Accessor<Versioned<Vec<MapData>>>,
+    pub maps: ReadAccessor<Versioned<Vec<MapData>>>,
 }
 
 // Accessible by both threads
@@ -110,7 +110,7 @@ impl Engine {
             logs_receiver: logs_rx,
             handler: Self::create_run_thread(state.clone(), writer, commands_rx, logs_tx),
             state,
-            maps_reader: reader,
+            maps: reader,
         }
     }
 
@@ -123,7 +123,7 @@ impl Engine {
 
     fn create_run_thread(
         state: EngineSharedState,
-        maps_accessor: Accessor<Versioned<Vec<MapData>>>,
+        maps_accessor: WriteAccessor<Versioned<Vec<MapData>>>,
         rx: mpsc::Receiver<EngineCommand>,
         tx: mpsc::Sender<EngineLog>,
     ) -> JoinHandle<()> {
@@ -226,7 +226,7 @@ impl Engine {
 
     fn run(
         shared_state: EngineSharedState,
-        maps_accessor: Accessor<Versioned<Vec<MapData>>>,
+        maps_accessor: WriteAccessor<Versioned<Vec<MapData>>>,
         receiver: mpsc::Receiver<EngineCommand>,
         logs_sender: mpsc::Sender<EngineLog>,
     ) {
@@ -240,7 +240,7 @@ impl Engine {
 
         let mut parameters = shared_state.parameters.read();
         let mut maps_update_stopwatch = Stopwatch::new(Duration::from_millis(50));
-        let mut maps = maps_accessor.read().unwrap().get_data();
+        let mut maps = maps_accessor.as_inner().read().unwrap().get_data();
 
         let mut last_save = SaveMark::default();
 
