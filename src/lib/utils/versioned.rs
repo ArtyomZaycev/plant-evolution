@@ -7,6 +7,16 @@ pub trait Version: Default + Clone + PartialOrd {
     fn update(&mut self);
 }
 
+pub trait AtomicVersion: Default + Clone + PartialOrd {
+    fn update(&self);
+}
+
+impl<T: AtomicVersion> Version for T {
+    fn update(&mut self) {
+        AtomicVersion::update(self);
+    }
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TimestampVersion(u128);
 
@@ -57,38 +67,38 @@ impl<T, V: Version> Versioned<T, V> {
         VersionedData(self.clone())
     }
 
-    pub fn update_data(&self, other: &mut VersionedData<T, V>) -> bool
+    pub fn update(&self, other: &mut VersionedData<T, V>) -> bool
     where
         T: Clone,
     {
         if self.version > other.0.version {
-            other.0.force_update_from(self.get_data());
+            other.0.force_write(self.get_data());
             true
         } else {
             false
         }
     }
 
-    pub fn force_update_data(&self, other: &mut VersionedData<T, V>)
+    pub fn force_update(&self, other: &mut VersionedData<T, V>)
     where
         T: Clone,
     {
-        other.0.force_update_from(self.get_data());
+        other.0.force_write(self.get_data());
     }
 
-    pub fn update_from(&mut self, other: &VersionedData<T, V>) -> bool
+    pub fn write(&mut self, other: &VersionedData<T, V>) -> bool
     where
         T: Clone,
     {
         if other.0.version > self.version {
-            self.force_update_from(other.clone());
+            self.force_write(other.clone());
             true
         } else {
             false
         }
     }
 
-    pub fn force_update_from(&mut self, other: VersionedData<T, V>) {
+    pub fn force_write(&mut self, other: VersionedData<T, V>) {
         self.version = other.0.version;
         self.data = other.0.data;
     }
@@ -134,12 +144,12 @@ mod test {
         assert_eq!(*read_data, 0);
         assert_eq!(*write_data, 123);
 
-        versioned.update_data(&mut read_data);
+        versioned.update(&mut read_data);
         assert_eq!(*read_data, 0);
 
-        versioned.update_from(&write_data);
+        versioned.write(&write_data);
         assert_eq!(*write_data, 123);
-        versioned.update_data(&mut read_data);
+        versioned.update(&mut read_data);
         assert_eq!(*read_data, 123);
     }
 }

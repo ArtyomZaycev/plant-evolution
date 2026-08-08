@@ -320,19 +320,11 @@ impl PlantEvolutionApp {
             .slow_updates
         {
             self.maps_update_stopwatch.slow_run(|| {
-                self.engine
-                    .maps
-                    .read()
-                    .unwrap()
-                    .update_data(&mut self.maps);
+                self.engine.maps.read().unwrap().update(&mut self.maps);
             });
         } else {
             self.maps_update_stopwatch.force_run(|| {
-                self.engine
-                    .maps
-                    .read()
-                    .unwrap()
-                    .update_data(&mut self.maps);
+                self.engine.maps.read().unwrap().update(&mut self.maps);
             });
         }
 
