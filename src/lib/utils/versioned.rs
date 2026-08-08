@@ -3,14 +3,14 @@ use std::{
     time::SystemTime,
 };
 
-pub trait Version: Default + PartialOrd {
+pub trait Version: Default + Clone + PartialOrd {
     fn update(&mut self);
 }
 
-#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TimestampVersion(u128);
 
-#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SequentialVersion(u32);
 
 impl Version for TimestampVersion {
@@ -33,6 +33,12 @@ pub struct Versioned<T, V: Version = TimestampVersion> {
     data: T,
 }
 
+impl<T: Clone, V: Version> Clone for Versioned<T, V> {
+    fn clone(&self) -> Self {
+        Self { version: self.version.clone(), data: self.data.clone() }
+    }
+}
+
 impl<T, V: Version> Versioned<T, V> {
     pub fn new(data: T) -> Self {
         Self {
@@ -41,39 +47,84 @@ impl<T, V: Version> Versioned<T, V> {
         }
     }
 
-    pub fn clone_from(&mut self, other: &Self)
-    where
-        T: Clone,
-    {
-        if other.version > self.version {
-            self.data = other.data.clone();
+    pub fn get_data(&self) -> VersionedData<T, V> where T: Clone {
+        VersionedData(self.clone())
+    }
+
+    pub fn update_data(&self, other: &mut VersionedData<T, V>) -> bool where T: Clone {
+        if self.version > other.0.version {
+            other.0.force_update_from(self.get_data());
+            true
+        } else {
+            false
         }
     }
 
-    pub fn take_from(&mut self, other: Self) {
-        if other.version > self.version {
-            self.data = other.data;
-        }
+    pub fn force_update_data(&self, other: &mut VersionedData<T, V>) where T: Clone {
+        other.0.force_update_from(self.get_data());
     }
 
-    pub fn update_from<F: FnOnce(&T) -> T>(&mut self, other: Self, copy: F) {
-        if other.version > self.version {
-            self.data = copy(&other.data);
+    pub fn update_from(&mut self, other: &VersionedData<T, V>) -> bool where T: Clone {
+        if other.0.version > self.version {
+            self.force_update_from(other.clone());
+            true
+        } else {
+            false
         }
+    }
+    
+    pub fn force_update_from(&mut self, other: VersionedData<T, V>) {
+        self.version = other.0.version;
+        self.data = other.0.data;
     }
 }
 
-impl<T, V: Version> Deref for Versioned<T, V> {
+pub struct VersionedData<T, V: Version = TimestampVersion>(Versioned<T, V>);
+
+impl<T: Clone, V: Version> Clone for VersionedData<T, V> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl<T, V: Version> Deref for VersionedData<T, V> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        &self.data
+        &self.0.data
     }
 }
 
-impl<T, V: Version> DerefMut for Versioned<T, V> {
+impl<T, V: Version> DerefMut for VersionedData<T, V> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.version.update();
-        &mut self.data
+        self.0.version.update();
+        &mut self.0.data
+    }
+}
+
+#[allow(unused_imports)]
+mod test {
+    use crate::utils::{TimestampVersion, Versioned};
+
+    #[test]
+    fn test() {
+        let mut versioned = Versioned::<i32, TimestampVersion>::new(0);
+        let mut read_data = versioned.get_data();
+        let mut write_data = versioned.get_data();
+
+        assert_eq!(*read_data, 0);
+        assert_eq!(*write_data, 0);
+
+        *write_data = 123;
+        assert_eq!(*read_data, 0);
+        assert_eq!(*write_data, 123);
+
+        versioned.update_data(&mut read_data);
+        assert_eq!(*read_data, 0);
+
+        versioned.update_from(&write_data);
+        assert_eq!(*write_data, 123);
+        versioned.update_data(&mut read_data);
+        assert_eq!(*read_data, 123);
     }
 }

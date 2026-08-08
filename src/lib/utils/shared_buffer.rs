@@ -29,6 +29,16 @@ impl<T> SharedBuffer<T> {
             state: Default::default(),
         }
     }
+    
+    pub fn new_cloned(data: T) -> Self where T: Clone {
+        Self {
+            buffer: Arc::new(Buffer {
+                data1: SyncUnsafeCell::new(data.clone()),
+                data2: SyncUnsafeCell::new(data),
+            }),
+            state: Default::default(),
+        }
+    }
 
     pub fn init(&self) -> (Accessor<T>, Accessor<T>) {
         (
@@ -220,7 +230,7 @@ mod test {
     use crate::utils::SharedBuffer;
 
     #[test]
-    fn test1() {
+    fn test() {
         let state = SharedBuffer::new(0, 0);
         let (a1, a2) = state.init();
 

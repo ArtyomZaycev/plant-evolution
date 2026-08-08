@@ -36,7 +36,7 @@ pub struct PlantEvolutionApp {
     last_selected_index: usize,
 
     maps_update_stopwatch: Stopwatch,
-    maps: Vec<MapData>,
+    maps: VersionedData<Vec<MapData>>,
 
     highlighted_map: Option<usize>,
     hovered_cell: Option<(usize, usize, usize)>,
@@ -47,7 +47,7 @@ pub struct PlantEvolutionApp {
 impl PlantEvolutionApp {
     pub fn new(engine: Engine) -> Self {
         let maps_read_lock = engine.maps_reader.read().unwrap();
-        let maps = maps_read_lock.clone();
+        let maps = maps_read_lock.get_data();
         drop(maps_read_lock);
         Self {
             toast_manager: ToastManager::new(),
@@ -320,10 +320,14 @@ impl PlantEvolutionApp {
             .slow_updates
         {
             self.maps_update_stopwatch
-                .slow_run(|| self.maps = self.engine.maps_reader.read().unwrap().clone());
+                .slow_run(|| {
+                    self.engine.maps_reader.read().unwrap().update_data(&mut self.maps);
+                });
         } else {
             self.maps_update_stopwatch
-                .force_run(|| self.maps = self.engine.maps_reader.read().unwrap().clone());
+                .force_run(|| {
+                    self.engine.maps_reader.read().unwrap().update_data(&mut self.maps);
+                });
         }
 
         self.engine

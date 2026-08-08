@@ -64,7 +64,7 @@ pub struct Engine {
     #[allow(dead_code)]
     handler: JoinHandle<()>,
     pub state: EngineSharedState,
-    pub maps_reader: Accessor<Vec<MapData>>,
+    pub maps_reader: Accessor<Versioned<Vec<MapData>>>,
 }
 
 // Accessible by both threads
@@ -100,7 +100,7 @@ impl Drop for Engine {
 
 impl Engine {
     pub fn new(maps: Vec<MapData>, parameters: EngineParameters) -> Self {
-        let maps_buffer = SharedBuffer::new(maps.clone(), maps.clone());
+        let maps_buffer = SharedBuffer::new_cloned(Versioned::new(maps.clone()));
         let (reader, writer) = maps_buffer.init();
         let state = EngineSharedState::new(parameters);
         let (commands_tx, commands_rx) = mpsc::channel();
@@ -123,7 +123,7 @@ impl Engine {
 
     fn create_run_thread(
         state: EngineSharedState,
-        maps_accessor: Accessor<Vec<MapData>>,
+        maps_accessor: Accessor<Versioned<Vec<MapData>>>,
         rx: mpsc::Receiver<EngineCommand>,
         tx: mpsc::Sender<EngineLog>,
     ) -> JoinHandle<()> {
@@ -226,7 +226,7 @@ impl Engine {
 
     fn run(
         shared_state: EngineSharedState,
-        maps_accessor: Accessor<Vec<MapData>>,
+        maps_accessor: Accessor<Versioned<Vec<MapData>>>,
         receiver: mpsc::Receiver<EngineCommand>,
         logs_sender: mpsc::Sender<EngineLog>,
     ) {
@@ -240,7 +240,7 @@ impl Engine {
 
         let mut parameters = shared_state.parameters.read();
         let mut maps_update_stopwatch = Stopwatch::new(Duration::from_millis(50));
-        let mut maps = maps_accessor.read().unwrap().clone();
+        let mut maps = maps_accessor.read().unwrap().get_data();
 
         let mut last_save = SaveMark::default();
 
@@ -258,7 +258,7 @@ impl Engine {
                         last_save = SaveMark::default();
                         shared_state.total_evolutions.store(0, Ordering::Relaxed);
                         maps_update_stopwatch
-                            .force_run(|| *maps_accessor.write().unwrap() = maps.clone());
+                            .force_run(|| {maps_accessor.write().unwrap().force_update_from(maps.clone());});
                     }
 
                     EngineCommand::Load(_) => {}
@@ -269,7 +269,7 @@ impl Engine {
                             map.tick(use_local_growth);
                         });
                         maps_update_stopwatch
-                            .force_run(|| *maps_accessor.write().unwrap() = maps.clone());
+                            .force_run(|| {maps_accessor.write().unwrap().force_update_from(maps.clone());});
                     }
                     EngineCommand::Evolve => {
                         if parameters.evolution_parameters.parent_evolution {
@@ -297,12 +297,12 @@ impl Engine {
                             |v| v + 1,
                         );
                         maps_update_stopwatch
-                            .force_run(|| *maps_accessor.write().unwrap() = maps.clone());
+                            .force_run(|| maps_accessor.write().unwrap().force_update_from(maps.clone()));
                     }
 
                     EngineCommand::Die => {
                         maps_update_stopwatch
-                            .force_run(|| *maps_accessor.write().unwrap() = maps.clone());
+                            .force_run(|| {maps_accessor.write().unwrap().update_from(&maps);});
                         break;
                     }
                 }
@@ -352,7 +352,7 @@ impl Engine {
                     });
                     if parameters.performance_parameters.enable_updates {
                         maps_update_stopwatch
-                            .slow_run(|| *maps_accessor.write().unwrap() = maps.clone());
+                            .slow_run(|| {maps_accessor.write().unwrap().force_update_from(maps.clone());});
                     }
                 }
                 InnerEngineState::RunSimulation {
@@ -392,16 +392,16 @@ impl Engine {
                     if maps[0].ticks < ticks_per_evolution {
                         if parameters.performance_parameters.enable_updates {
                             maps_update_stopwatch
-                                .slow_run(|| *maps_accessor.write().unwrap() = maps.clone());
+                                .slow_run(|| maps_accessor.write().unwrap().force_update_from(maps.clone()));
                         }
                     } else {
                         if parameters.performance_parameters.enable_updates {
                             if parameters.performance_parameters.slow_updates {
                                 maps_update_stopwatch
-                                    .slow_run(|| *maps_accessor.write().unwrap() = maps.clone());
+                                    .slow_run(|| maps_accessor.write().unwrap().force_update_from(maps.clone()));
                             } else {
                                 maps_update_stopwatch
-                                    .force_run(|| *maps_accessor.write().unwrap() = maps.clone());
+                                    .force_run(|| maps_accessor.write().unwrap().force_update_from(maps.clone()));
                             }
                         }
                         Self::do_evolution(&mut rng, &parameters.evolution_parameters, &mut maps);
