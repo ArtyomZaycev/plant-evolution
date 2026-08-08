@@ -6,17 +6,12 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use plant_evolution_lib::{engine::*, map::*, precalc::*};
 
 fn engine_bencmark(engine: &mut Engine, autoevolve_at: u32, total_evolution: u32) {
-    engine
-        .state
-        .inner_state
-        .write(InnerEngineState::RunSimulation {
-            autoevolve: Some(autoevolve_at),
-        });
+    engine.send_command(EngineCommand::RunSimulationa(autoevolve_at)).unwrap();
     loop {
         sleep(Duration::from_millis(10));
         if engine.state.total_evolutions.load(Ordering::Relaxed) >= total_evolution {
             //println!("Total evolutions: {}/{}", engine.state.total_evolutions.load(Ordering::Relaxed), total_evolution);
-            engine.state.inner_state.write(InnerEngineState::Stale);
+            engine.send_command(EngineCommand::Stop).unwrap();
             engine.send_command(EngineCommand::Restart).unwrap();
             break;
         }

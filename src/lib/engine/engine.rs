@@ -19,15 +19,19 @@ pub enum EngineCommand {
     Tick,
     Evolve,
 
+    Stop,
+    RunTicks,
+    RunSimulationa(u32),
+
     Die,
 }
 
-pub enum EngineLog {
+pub enum EngineData {
     SaveLog(SaveLog),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub enum InnerEngineState {
+enum InnerEngineState {
     #[default]
     Stale,
     // TODO: Separate by autoevolve
@@ -60,7 +64,7 @@ impl Default for SaveMark {
 
 pub struct Engine {
     command_sender: mpsc::Sender<EngineCommand>,
-    pub logs_receiver: mpsc::Receiver<EngineLog>,
+    pub logs_receiver: mpsc::Receiver<EngineData>,
     #[allow(dead_code)]
     handler: JoinHandle<()>,
     pub state: EngineSharedState,
@@ -68,13 +72,12 @@ pub struct Engine {
 }
 
 // Accessible by both threads
-// Needs to be reworked, doesn't give information about what should/can be updated from where
 #[derive(Clone)]
 pub struct EngineSharedState {
     pub total_evolutions: Arc<AtomicU32>,
     pub simulation_id: Arc<RwLock<String>>,
 
-    pub inner_state: Arc<VersionedMutex<InnerEngineState>>,
+    // Needs to be reworked, doesn't give information about what should/can be updated from where
     pub parameters: Arc<VersionedMutex<EngineParameters>>,
 }
 
@@ -86,7 +89,6 @@ impl EngineSharedState {
                 "Simulation {}",
                 chrono::Local::now().format("%Y-%m-%d %H-%M-%S")
             ))),
-            inner_state: Default::default(),
             parameters: Arc::new(VersionedMutex::new(parameters)),
         }
     }
@@ -125,7 +127,7 @@ impl Engine {
         state: EngineSharedState,
         maps_accessor: WriteAccessor<Versioned<Vec<MapData>>>,
         rx: mpsc::Receiver<EngineCommand>,
-        tx: mpsc::Sender<EngineLog>,
+        tx: mpsc::Sender<EngineData>,
     ) -> JoinHandle<()> {
         thread::Builder::new()
             .stack_size(32 * 1024 * 1024)
@@ -228,7 +230,7 @@ impl Engine {
         shared_state: EngineSharedState,
         maps_accessor: WriteAccessor<Versioned<Vec<MapData>>>,
         receiver: mpsc::Receiver<EngineCommand>,
-        logs_sender: mpsc::Sender<EngineLog>,
+        logs_sender: mpsc::Sender<EngineData>,
     ) {
         let mut rng = get_rng();
 
@@ -244,8 +246,9 @@ impl Engine {
 
         let mut last_save = SaveMark::default();
 
+        let mut state = InnerEngineState::Stale;
+
         loop {
-            let state = VersionedMutexData::take(shared_state.inner_state.read());
             shared_state.parameters.update(&mut parameters);
 
             if let Ok(command) = receiver.try_recv() {
@@ -300,6 +303,16 @@ impl Engine {
                             .force_run(|| maps_accessor.write().unwrap().force_write(maps.clone()));
                     }
 
+                    EngineCommand::Stop => {
+                        state = InnerEngineState::Stale;
+                    }
+                    EngineCommand::RunTicks => {
+                        state = InnerEngineState::RunSimulation { autoevolve: None };
+                    }
+                    EngineCommand::RunSimulationa(autoevolve_at) => {
+                        state = InnerEngineState::RunSimulation { autoevolve: Some(autoevolve_at) };
+                    }
+
                     EngineCommand::Die => {
                         maps_update_stopwatch
                             .force_run_checked(|| maps_accessor.write().unwrap().write(&maps));
@@ -338,7 +351,7 @@ impl Engine {
                     time: save_log.time,
                     evolution: shared_state.total_evolutions.load(Ordering::Relaxed),
                 };
-                logs_sender.send(EngineLog::SaveLog(save_log)).unwrap();
+                logs_sender.send(EngineData::SaveLog(save_log)).unwrap();
             }
 
             match state {

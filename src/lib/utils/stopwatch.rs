@@ -13,6 +13,10 @@ impl Stopwatch {
         }
     }
 
+    pub fn force(&mut self) {
+        self.last_access = SystemTime::UNIX_EPOCH;
+    }
+
     pub fn slow_run_checked<F: FnOnce() -> bool>(&mut self, f: F) -> bool {
         let now = SystemTime::now();
         if now

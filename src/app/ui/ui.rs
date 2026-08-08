@@ -13,6 +13,14 @@ use crate::ui::{
     toast::*,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+enum SimulationState {
+    #[default]
+    Stale,
+    RunTicks,
+    RunSimulation(u32),
+}
+
 pub struct PlantEvolutionApp {
     toast_manager: ToastManager,
     engine: Engine,
@@ -22,7 +30,7 @@ pub struct PlantEvolutionApp {
 
     cell_size: f32,
 
-    engine_inner_state: VersionedMutexData<InnerEngineState>,
+    simulation_state: SimulationState,
 
     autoevolve_enabled: bool,
     autoevolve_at_str: String,
@@ -56,7 +64,7 @@ impl PlantEvolutionApp {
             visual_settings: VisualSettings::default(),
             settings: None,
             cell_size: 6.,
-            engine_inner_state: engine.state.inner_state.read(),
+            simulation_state: SimulationState::Stale,
             autoevolve_enabled: true,
             autoevolve_at_str: 500.to_string(),
             autoevolve_at: 500,
@@ -291,25 +299,6 @@ impl PlantEvolutionApp {
         );
     }
 
-    fn get_autoevolve(&self) -> Option<u32> {
-        if self.autoevolve_enabled {
-            Some(self.autoevolve_at)
-        } else {
-            None
-        }
-    }
-
-    fn update_autoevolve_state(&self) {
-        if self.engine.state.inner_state.cloned() != InnerEngineState::Stale {
-            self.engine
-                .state
-                .inner_state
-                .write(InnerEngineState::RunSimulation {
-                    autoevolve: self.get_autoevolve(),
-                });
-        }
-    }
-
     fn update_from_shared_state(&mut self) {
         if self
             .engine
@@ -329,17 +318,12 @@ impl PlantEvolutionApp {
         }
 
         self.engine
-            .state
-            .inner_state
-            .update(&mut self.engine_inner_state);
-
-        self.engine
             .logs_receiver
             .try_iter()
             .collect::<Vec<_>>()
             .into_iter()
             .for_each(|log| match log {
-                EngineLog::SaveLog(save_log) => self.push_save_log(save_log, true),
+                EngineData::SaveLog(save_log) => self.push_save_log(save_log, true),
             });
     }
 
@@ -531,7 +515,7 @@ impl PlantEvolutionApp {
                 egui::Button::new("Select"),
             )
             .clicked()
-            || (response.lost_focus() && ui.input(|inp| inp.key_pressed(egui::Key::Enter)))
+            || (new_selected_map_index.is_some() && response.lost_focus() && ui.input(|inp| inp.key_pressed(egui::Key::Enter)))
         {
             self.selected_maps_index = new_selected_map_index.unwrap();
             self.last_selected_index = *self.selected_maps_index.last().unwrap();
@@ -597,59 +581,46 @@ impl PlantEvolutionApp {
     fn show_right_panel_content(&mut self, ui: &mut egui::Ui) {
         ui.set_min_width(200.);
 
-        let engine_state = VersionedMutexData::get_cloned(&self.engine_inner_state);
         ui.horizontal(|ui| {
             ui.label("Simulation");
             if ui
-                .radio(engine_state == InnerEngineState::Stale, "Disabled")
+                .radio(self.simulation_state == SimulationState::Stale, "Disabled")
                 .clicked()
             {
-                self.engine.state.inner_state.write(InnerEngineState::Stale);
+                self.simulation_state = SimulationState::Stale;
+                self.engine.send_command(EngineCommand::Stop).unwrap();
             }
             if ui
                 .radio(
-                    matches!(
-                        engine_state,
-                        InnerEngineState::RunSimulation { autoevolve: None }
-                    ),
+                    self.simulation_state == SimulationState::RunTicks,
                     "Grow",
                 )
                 .clicked()
             {
                 self.autoevolve_enabled = false;
-                self.engine
-                    .state
-                    .inner_state
-                    .write(InnerEngineState::RunSimulation {
-                        autoevolve: self.get_autoevolve(),
-                    });
+                self.simulation_state = SimulationState::RunTicks;
+                self.engine.send_command(EngineCommand::RunTicks).unwrap();
             }
             if ui
                 .radio(
                     matches!(
-                        engine_state,
-                        InnerEngineState::RunSimulation {
-                            autoevolve: Some(_),
-                        }
+                        self.simulation_state,
+                        SimulationState::RunSimulation(_)
                     ),
                     "Evolve",
                 )
                 .clicked()
             {
                 self.autoevolve_enabled = true;
-                self.engine
-                    .state
-                    .inner_state
-                    .write(InnerEngineState::RunSimulation {
-                        autoevolve: self.get_autoevolve(),
-                    });
+                self.simulation_state = SimulationState::RunSimulation(self.autoevolve_at);
+                self.engine.send_command(EngineCommand::RunSimulationa(self.autoevolve_at)).unwrap();
             }
         });
 
         ui.horizontal(|ui| {
             if ui
                 .add_enabled(
-                    engine_state == InnerEngineState::Stale,
+                    self.simulation_state == SimulationState::Stale,
                     egui::Button::new("Grow"),
                 )
                 .clicked()
@@ -658,7 +629,7 @@ impl PlantEvolutionApp {
             }
             if ui
                 .add_enabled(
-                    engine_state == InnerEngineState::Stale || self.autoevolve_enabled == false,
+                    self.simulation_state == SimulationState::Stale || self.simulation_state == SimulationState::RunTicks,
                     egui::Button::new("Evolve"),
                 )
                 .clicked()
@@ -673,9 +644,11 @@ impl PlantEvolutionApp {
             if response.lost_focus() {
                 if let Ok(autoevolve_at) = self.autoevolve_at_str.parse() {
                     self.autoevolve_at = autoevolve_at;
-                    self.autoevolve_at_str = autoevolve_at.to_string();
-                    self.update_autoevolve_state();
+                    if self.autoevolve_enabled {
+                        self.engine.send_command(EngineCommand::RunSimulationa(self.autoevolve_at)).unwrap();
+                    }
                 }
+                self.autoevolve_at_str = self.autoevolve_at.to_string();
             }
         });
 
@@ -688,10 +661,8 @@ impl PlantEvolutionApp {
 
         let total_evolutions = self.engine.state.total_evolutions.load(Ordering::Relaxed);
         if matches!(
-            VersionedMutexData::get_cloned(&self.engine_inner_state),
-            InnerEngineState::RunSimulation {
-                autoevolve: Some(_),
-            }
+            self.simulation_state,
+            SimulationState::RunSimulation(_)
         ) {
             match self.last_evolutions_measurement {
                 Some((evolutions, time)) => {
