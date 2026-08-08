@@ -59,7 +59,7 @@ impl PlantEvolutionApp {
         drop(maps_read_lock);
         Self {
             toast_manager: ToastManager::new(),
-            maps_update_stopwatch: Stopwatch::new(Duration::from_millis(50)),
+            maps_update_stopwatch: Stopwatch::new(Duration::from_millis(100)),
             maps,
             visual_settings: VisualSettings::default(),
             settings: None,
@@ -308,13 +308,13 @@ impl PlantEvolutionApp {
             .performance_parameters
             .slow_updates
         {
-            self.maps_update_stopwatch.slow_run(|| {
+            if self.maps_update_stopwatch.is_elapsed() {
                 self.engine.maps.read().unwrap().update(&mut self.maps);
-            });
+                self.maps_update_stopwatch.reset();
+            }
         } else {
-            self.maps_update_stopwatch.force_run(|| {
-                self.engine.maps.read().unwrap().update(&mut self.maps);
-            });
+            self.engine.maps.read().unwrap().update(&mut self.maps);
+            self.maps_update_stopwatch.reset();
         }
 
         self.engine

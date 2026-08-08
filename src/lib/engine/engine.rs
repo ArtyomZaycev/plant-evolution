@@ -241,7 +241,7 @@ impl Engine {
         };
 
         let mut parameters = shared_state.parameters.read();
-        let mut maps_update_stopwatch = Stopwatch::new(Duration::from_millis(50));
+        let mut maps_update_stopwatch = Stopwatch::new(Duration::from_millis(100));
         let mut maps = maps_accessor.as_inner().read().unwrap().get_data();
 
         let mut last_save = SaveMark::default();
@@ -260,8 +260,9 @@ impl Engine {
                         });
                         last_save = SaveMark::default();
                         shared_state.total_evolutions.store(0, Ordering::Relaxed);
-                        maps_update_stopwatch
-                            .force_run(|| maps_accessor.write().unwrap().force_write(maps.clone()));
+
+                        maps_accessor.write().unwrap().force_write(maps.clone());
+                        maps_update_stopwatch.reset();
                     }
 
                     EngineCommand::Load(_) => {}
@@ -271,8 +272,9 @@ impl Engine {
                         maps.iter_mut().for_each(|map| {
                             map.tick(use_local_growth);
                         });
-                        maps_update_stopwatch
-                            .force_run(|| maps_accessor.write().unwrap().force_write(maps.clone()));
+
+                        maps_accessor.write().unwrap().force_write(maps.clone());
+                        maps_update_stopwatch.reset();
                     }
                     EngineCommand::Evolve => {
                         if parameters.evolution_parameters.parent_evolution {
@@ -299,8 +301,9 @@ impl Engine {
                             Ordering::Relaxed,
                             |v| v + 1,
                         );
-                        maps_update_stopwatch
-                            .force_run(|| maps_accessor.write().unwrap().force_write(maps.clone()));
+
+                        maps_accessor.write().unwrap().force_write(maps.clone());
+                        maps_update_stopwatch.reset();
                     }
 
                     EngineCommand::Stop => {
@@ -314,8 +317,8 @@ impl Engine {
                     }
 
                     EngineCommand::Die => {
-                        maps_update_stopwatch
-                            .force_run_checked(|| maps_accessor.write().unwrap().write(&maps));
+                        maps_accessor.write().unwrap().write(&maps);
+                        maps_update_stopwatch.reset();
                         break;
                     }
                 }
@@ -364,9 +367,9 @@ impl Engine {
                         map.tick(use_local_growth);
                     });
                     if parameters.performance_parameters.enable_updates {
-                        maps_update_stopwatch.slow_run(|| {
+                        if maps_update_stopwatch.is_elapsed_reset() {
                             maps_accessor.write().unwrap().force_write(maps.clone());
-                        });
+                        }
                     }
                 }
                 InnerEngineState::RunSimulation {
@@ -405,20 +408,20 @@ impl Engine {
 
                     if maps[0].ticks < ticks_per_evolution {
                         if parameters.performance_parameters.enable_updates {
-                            maps_update_stopwatch.slow_run(|| {
-                                maps_accessor.write().unwrap().force_write(maps.clone())
-                            });
+                            if maps_update_stopwatch.is_elapsed_reset() {
+                                maps_accessor.write().unwrap().force_write(maps.clone());
+                            }
                         }
                     } else {
                         if parameters.performance_parameters.enable_updates {
                             if parameters.performance_parameters.slow_updates {
-                                maps_update_stopwatch.slow_run(|| {
-                                    maps_accessor.write().unwrap().force_write(maps.clone())
-                                });
+                                if maps_update_stopwatch.is_elapsed() {
+                                    maps_accessor.write().unwrap().force_write(maps.clone());
+                                    maps_update_stopwatch.reset();
+                                }
                             } else {
-                                maps_update_stopwatch.force_run(|| {
-                                    maps_accessor.write().unwrap().force_write(maps.clone())
-                                });
+                                maps_accessor.write().unwrap().force_write(maps.clone());
+                                maps_update_stopwatch.reset();
                             }
                         }
                         Self::do_evolution(&mut rng, &parameters.evolution_parameters, &mut maps);
