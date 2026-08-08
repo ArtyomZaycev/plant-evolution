@@ -35,7 +35,10 @@ pub struct Versioned<T, V: Version = TimestampVersion> {
 
 impl<T: Clone, V: Version> Clone for Versioned<T, V> {
     fn clone(&self) -> Self {
-        Self { version: self.version.clone(), data: self.data.clone() }
+        Self {
+            version: self.version.clone(),
+            data: self.data.clone(),
+        }
     }
 }
 
@@ -47,11 +50,17 @@ impl<T, V: Version> Versioned<T, V> {
         }
     }
 
-    pub fn get_data(&self) -> VersionedData<T, V> where T: Clone {
+    pub fn get_data(&self) -> VersionedData<T, V>
+    where
+        T: Clone,
+    {
         VersionedData(self.clone())
     }
 
-    pub fn update_data(&self, other: &mut VersionedData<T, V>) -> bool where T: Clone {
+    pub fn update_data(&self, other: &mut VersionedData<T, V>) -> bool
+    where
+        T: Clone,
+    {
         if self.version > other.0.version {
             other.0.force_update_from(self.get_data());
             true
@@ -60,11 +69,17 @@ impl<T, V: Version> Versioned<T, V> {
         }
     }
 
-    pub fn force_update_data(&self, other: &mut VersionedData<T, V>) where T: Clone {
+    pub fn force_update_data(&self, other: &mut VersionedData<T, V>)
+    where
+        T: Clone,
+    {
         other.0.force_update_from(self.get_data());
     }
 
-    pub fn update_from(&mut self, other: &VersionedData<T, V>) -> bool where T: Clone {
+    pub fn update_from(&mut self, other: &VersionedData<T, V>) -> bool
+    where
+        T: Clone,
+    {
         if other.0.version > self.version {
             self.force_update_from(other.clone());
             true
@@ -72,7 +87,7 @@ impl<T, V: Version> Versioned<T, V> {
             false
         }
     }
-    
+
     pub fn force_update_from(&mut self, other: VersionedData<T, V>) {
         self.version = other.0.version;
         self.data = other.0.data;

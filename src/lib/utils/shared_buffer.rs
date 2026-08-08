@@ -29,8 +29,11 @@ impl<T> SharedBuffer<T> {
             state: Default::default(),
         }
     }
-    
-    pub fn new_cloned(data: T) -> Self where T: Clone {
+
+    pub fn new_cloned(data: T) -> Self
+    where
+        T: Clone,
+    {
         Self {
             buffer: Arc::new(Buffer {
                 data1: SyncUnsafeCell::new(data.clone()),

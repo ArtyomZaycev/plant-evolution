@@ -319,15 +319,21 @@ impl PlantEvolutionApp {
             .performance_parameters
             .slow_updates
         {
-            self.maps_update_stopwatch
-                .slow_run(|| {
-                    self.engine.maps_reader.read().unwrap().update_data(&mut self.maps);
-                });
+            self.maps_update_stopwatch.slow_run(|| {
+                self.engine
+                    .maps_reader
+                    .read()
+                    .unwrap()
+                    .update_data(&mut self.maps);
+            });
         } else {
-            self.maps_update_stopwatch
-                .force_run(|| {
-                    self.engine.maps_reader.read().unwrap().update_data(&mut self.maps);
-                });
+            self.maps_update_stopwatch.force_run(|| {
+                self.engine
+                    .maps_reader
+                    .read()
+                    .unwrap()
+                    .update_data(&mut self.maps);
+            });
         }
 
         self.engine
