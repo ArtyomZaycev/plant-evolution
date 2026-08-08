@@ -334,22 +334,9 @@ impl PlantEvolutionApp {
                 }
                 SettingsRawState::Applied(ui_settings, engine_parameters) => {
                     self.visual_settings = ui_settings.clone();
+                    self.maps_update_stopwatch.interval = engine_parameters.performance_parameters.slow_update_interval;
                     self.engine.send_command(EngineCommand::UpdateParameters(engine_parameters.clone())).unwrap();
                     self.parameters = engine_parameters.clone();
-                    /*let interval = engine_parameters
-                        .performance_parameters
-                        .slow_update_interval
-                        .as_millis();
-                    self.engine
-                        .state
-                        .maps
-                        .read_update_interval
-                        .store(interval, Ordering::Relaxed);
-                    self.engine
-                        .state
-                        .maps
-                        .write_update_interval
-                        .store(interval, Ordering::Relaxed);*/
                     close_settings = true;
                 }
             }

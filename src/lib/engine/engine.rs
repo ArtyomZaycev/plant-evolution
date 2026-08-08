@@ -253,6 +253,7 @@ impl Engine {
             if let Ok(command) = receiver.try_recv() {
                 match command {
                     EngineCommand::UpdateParameters(new_parameters) => {
+                        maps_update_stopwatch.interval = new_parameters.performance_parameters.slow_update_interval;
                         parameters = new_parameters;
                     }
 
