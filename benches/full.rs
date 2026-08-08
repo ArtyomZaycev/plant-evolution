@@ -37,7 +37,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         performance_parameters: PerformanceParameters::default(),
     };
 
-    let mut engine = Engine::new(maps, parameters);
+    let mut engine = Engine::new(maps, parameters.clone());
 
     let mut group = c.benchmark_group("engine-benchmarks");
     group
@@ -46,54 +46,60 @@ fn criterion_benchmark(c: &mut Criterion) {
         .measurement_time(Duration::from_secs(180));
 
     group.bench_function("accuracy", |b| {
-        engine.state.parameters.update_data(|parameters| {
-            parameters.performance_parameters = PerformanceParameters::ACCURACY
-        });
+        engine.send_command(EngineCommand::UpdateParameters(EngineParameters {
+            performance_parameters: PerformanceParameters::ACCURACY,
+            ..parameters.clone()
+        })).unwrap();
         b.iter(|| {
             engine_bencmark(&mut engine, 500, 100);
         });
     });
 
     group.bench_function("performace", |b| {
-        engine.state.parameters.update_data(|parameters| {
-            parameters.performance_parameters = PerformanceParameters::PERFORMANCE
-        });
+        engine.send_command(EngineCommand::UpdateParameters(EngineParameters {
+            performance_parameters: PerformanceParameters::PERFORMANCE,
+            ..parameters.clone()
+        })).unwrap();
         b.iter(|| {
             engine_bencmark(&mut engine, 500, 100);
         });
     });
 
     group.bench_function("ui_performace", |b| {
-        engine.state.parameters.update_data(|parameters| {
-            parameters.performance_parameters = PerformanceParameters::UI_PERFORMANCE
-        });
+        engine.send_command(EngineCommand::UpdateParameters(EngineParameters {
+            performance_parameters: PerformanceParameters::UI_PERFORMANCE,
+            ..parameters.clone()
+        })).unwrap();
         b.iter(|| {
             engine_bencmark(&mut engine, 500, 100);
         });
     });
 
     group.bench_function("accuracy_long", |b| {
-        engine.state.parameters.update_data(|parameters| {
-            parameters.performance_parameters = PerformanceParameters::ACCURACY
-        });
+        engine.send_command(EngineCommand::UpdateParameters(EngineParameters {
+            performance_parameters: PerformanceParameters::ACCURACY,
+            ..parameters.clone()
+        })).unwrap();
         b.iter(|| {
             engine_bencmark(&mut engine, 500, 2000);
         });
     });
 
     group.bench_function("performace_long", |b| {
-        engine.state.parameters.update_data(|parameters| {
-            parameters.performance_parameters = PerformanceParameters::PERFORMANCE
-        });
+        engine.send_command(EngineCommand::UpdateParameters(EngineParameters {
+            performance_parameters: PerformanceParameters::PERFORMANCE,
+            ..parameters.clone()
+        })).unwrap();
         b.iter(|| {
             engine_bencmark(&mut engine, 500, 2000);
         });
     });
 
     group.bench_function("ui_performace_long", |b| {
-        engine.state.parameters.update_data(|parameters| {
-            parameters.performance_parameters = PerformanceParameters::UI_PERFORMANCE
-        });
+        engine.send_command(EngineCommand::UpdateParameters(EngineParameters {
+            performance_parameters: PerformanceParameters::UI_PERFORMANCE,
+            ..parameters.clone()
+        })).unwrap();
         b.iter(|| {
             engine_bencmark(&mut engine, 500, 2000);
         });

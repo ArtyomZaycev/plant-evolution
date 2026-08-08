@@ -26,7 +26,9 @@ pub struct PlantEvolutionApp {
     engine: Engine,
 
     visual_settings: VisualSettings,
-    settings: Option<AppSettingsEditor>,
+    parameters: EngineParameters,
+
+    settings_editor: Option<AppSettingsEditor>,
 
     cell_size: f32,
 
@@ -53,7 +55,7 @@ pub struct PlantEvolutionApp {
 }
 
 impl PlantEvolutionApp {
-    pub fn new(engine: Engine) -> Self {
+    pub fn new(engine: Engine, parameters: EngineParameters) -> Self {
         let maps_read_lock = engine.maps.read().unwrap();
         let maps = maps_read_lock.get_data();
         drop(maps_read_lock);
@@ -62,7 +64,8 @@ impl PlantEvolutionApp {
             maps_update_stopwatch: Stopwatch::new(Duration::from_millis(100)),
             maps,
             visual_settings: VisualSettings::default(),
-            settings: None,
+            parameters,
+            settings_editor: None,
             cell_size: 6.,
             simulation_state: SimulationState::Stale,
             autoevolve_enabled: true,
@@ -281,10 +284,7 @@ impl PlantEvolutionApp {
 
     fn save_maps(&mut self, selection: &SaveSelection) {
         let folder = self
-            .engine
-            .state
             .parameters
-            .read()
             .saving_parameters
             .path
             .clone();
@@ -301,10 +301,7 @@ impl PlantEvolutionApp {
 
     fn update_from_shared_state(&mut self) {
         if self
-            .engine
-            .state
             .parameters
-            .read()
             .performance_parameters
             .slow_updates
         {
@@ -329,7 +326,7 @@ impl PlantEvolutionApp {
 
     fn manage_settings_window(&mut self, ui: &mut egui::Ui) {
         let mut close_settings = false;
-        if let Some(settings) = &mut self.settings {
+        if let Some(settings) = &mut self.settings_editor {
             match settings.get_state() {
                 SettingsRawState::InProgress => {}
                 SettingsRawState::Cancelled => {
@@ -337,10 +334,8 @@ impl PlantEvolutionApp {
                 }
                 SettingsRawState::Applied(ui_settings, engine_parameters) => {
                     self.visual_settings = ui_settings.clone();
-                    self.engine
-                        .state
-                        .parameters
-                        .unchecked_write(engine_parameters.clone());
+                    self.engine.send_command(EngineCommand::UpdateParameters(engine_parameters.clone())).unwrap();
+                    self.parameters = engine_parameters.clone();
                     /*let interval = engine_parameters
                         .performance_parameters
                         .slow_update_interval
@@ -363,7 +358,7 @@ impl PlantEvolutionApp {
             });
         }
         if close_settings {
-            self.settings = None;
+            self.settings_editor = None;
         }
     }
 
@@ -440,10 +435,7 @@ impl PlantEvolutionApp {
 
     fn manage_updates_disabled_window(&mut self, ui: &mut egui::Ui) {
         if !self
-            .engine
-            .state
             .parameters
-            .read()
             .performance_parameters
             .enable_updates
         {
@@ -461,9 +453,8 @@ impl PlantEvolutionApp {
                     ui.vertical_centered_justified(|ui| {
                         ui.label("Updates are disabled");
                         if ui.button("Enable").clicked() {
-                            self.engine.state.parameters.update_data(|parameters| {
-                                parameters.performance_parameters.enable_updates = true;
-                            });
+                            self.parameters.performance_parameters.enable_updates = true;
+                            self.engine.send_command(EngineCommand::UpdateParameters(self.parameters.clone())).unwrap();
                         }
                     });
                 });
@@ -494,9 +485,9 @@ impl PlantEvolutionApp {
                 }
                 ui.separator();
                 if ui.button("Settings").clicked() {
-                    self.settings = Some(AppSettingsEditor::new((
+                    self.settings_editor = Some(AppSettingsEditor::new((
                         self.visual_settings.clone(),
-                        self.engine.state.parameters.cloned(),
+                        self.parameters.clone(),
                     )));
                 }
             });

@@ -12,9 +12,11 @@ use super::{parameters::*, saving::*};
 use crate::{evolution::*, map::MapData, utils::*};
 
 pub enum EngineCommand {
-    Restart,
+    UpdateParameters(EngineParameters),
 
     Load(String),
+
+    Restart,
 
     Tick,
     Evolve,
@@ -71,25 +73,23 @@ pub struct Engine {
     pub maps: ReadAccessor<Versioned<Vec<MapData>>>,
 }
 
-// Accessible by both threads
+/// Accessible by both threads<br>
+/// Engine can't be expected to do something because shared state changed,
+/// use EngineCommand for that
 #[derive(Clone)]
 pub struct EngineSharedState {
     pub total_evolutions: Arc<AtomicU32>,
     pub simulation_id: Arc<RwLock<String>>,
-
-    // Needs to be reworked, doesn't give information about what should/can be updated from where
-    pub parameters: Arc<VersionedMutex<EngineParameters>>,
 }
 
 impl EngineSharedState {
-    fn new(parameters: EngineParameters) -> Self {
+    fn new() -> Self {
         Self {
             total_evolutions: Default::default(),
             simulation_id: Arc::new(RwLock::new(format!(
                 "Simulation {}",
                 chrono::Local::now().format("%Y-%m-%d %H-%M-%S")
             ))),
-            parameters: Arc::new(VersionedMutex::new(parameters)),
         }
     }
 }
@@ -104,13 +104,13 @@ impl Engine {
     pub fn new(maps: Vec<MapData>, parameters: EngineParameters) -> Self {
         let maps_buffer = SharedBuffer::new_cloned(Versioned::new(maps.clone()));
         let (reader, writer) = maps_buffer.init();
-        let state = EngineSharedState::new(parameters);
+        let state = EngineSharedState::new();
         let (commands_tx, commands_rx) = mpsc::channel();
         let (logs_tx, logs_rx) = mpsc::channel();
         Self {
             command_sender: commands_tx,
             logs_receiver: logs_rx,
-            handler: Self::create_run_thread(state.clone(), writer, commands_rx, logs_tx),
+            handler: Self::create_run_thread(state.clone(), parameters, writer, commands_rx, logs_tx),
             state,
             maps: reader,
         }
@@ -125,6 +125,7 @@ impl Engine {
 
     fn create_run_thread(
         state: EngineSharedState,
+        parameters: EngineParameters,
         maps_accessor: WriteAccessor<Versioned<Vec<MapData>>>,
         rx: mpsc::Receiver<EngineCommand>,
         tx: mpsc::Sender<EngineData>,
@@ -132,7 +133,7 @@ impl Engine {
         thread::Builder::new()
             .stack_size(32 * 1024 * 1024)
             .spawn(|| {
-                Self::run(state, maps_accessor, rx, tx);
+                Self::run(state, parameters, maps_accessor, rx, tx);
             })
             .unwrap()
     }
@@ -228,6 +229,7 @@ impl Engine {
 
     fn run(
         shared_state: EngineSharedState,
+        mut parameters: EngineParameters,
         maps_accessor: WriteAccessor<Versioned<Vec<MapData>>>,
         receiver: mpsc::Receiver<EngineCommand>,
         logs_sender: mpsc::Sender<EngineData>,
@@ -240,7 +242,6 @@ impl Engine {
             scoped_threadpool::Pool::new(thread_count)
         };
 
-        let mut parameters = shared_state.parameters.read();
         let mut maps_update_stopwatch = Stopwatch::new(Duration::from_millis(100));
         let mut maps = maps_accessor.as_inner().read().unwrap().get_data();
 
@@ -249,10 +250,14 @@ impl Engine {
         let mut state = InnerEngineState::Stale;
 
         loop {
-            shared_state.parameters.update(&mut parameters);
-
             if let Ok(command) = receiver.try_recv() {
                 match command {
+                    EngineCommand::UpdateParameters(new_parameters) => {
+                        parameters = new_parameters;
+                    }
+
+                    EngineCommand::Load(_) => {todo!()}
+                    
                     EngineCommand::Restart => {
                         maps.iter_mut().for_each(|map| {
                             map.evolution_data = PlantEvolutionData::generate(&mut rng);
@@ -264,8 +269,6 @@ impl Engine {
                         maps_accessor.write().unwrap().force_write(maps.clone());
                         maps_update_stopwatch.reset();
                     }
-
-                    EngineCommand::Load(_) => {}
 
                     EngineCommand::Tick => {
                         let use_local_growth = parameters.performance_parameters.use_local_growth;
