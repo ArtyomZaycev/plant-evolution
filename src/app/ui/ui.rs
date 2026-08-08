@@ -28,7 +28,7 @@ pub struct PlantEvolutionApp {
     visual_settings: VisualSettings,
     parameters: EngineParameters,
 
-    settings_editor: Option<AppSettingsEditor>,
+    settings_editor: Option<SettingsEditor>,
 
     cell_size: f32,
 
@@ -325,27 +325,19 @@ impl PlantEvolutionApp {
     }
 
     fn manage_settings_window(&mut self, ui: &mut egui::Ui) {
-        let mut close_settings = false;
-        if let Some(settings) = &mut self.settings_editor {
-            match settings.get_state() {
-                SettingsRawState::InProgress => {}
-                SettingsRawState::Cancelled => {
-                    close_settings = true;
-                }
-                SettingsRawState::Applied(ui_settings, engine_parameters) => {
-                    self.visual_settings = ui_settings.clone();
-                    self.maps_update_stopwatch.interval = engine_parameters.performance_parameters.slow_update_interval;
-                    self.engine.send_command(EngineCommand::UpdateParameters(engine_parameters.clone())).unwrap();
-                    self.parameters = engine_parameters.clone();
-                    close_settings = true;
-                }
-            }
+        if let Some(settings) = self.settings_editor.take() {
             egui::Modal::new("settings".into()).show(ui.ctx(), |ui| {
-                ui.add(settings);
+                match settings.show(ui) {
+                    SettingsEditorState::Active(settings) => self.settings_editor = Some(settings),
+                    SettingsEditorState::Applied(visual_settings, engine_parameters) => {
+                        self.visual_settings = visual_settings.clone();
+                        self.maps_update_stopwatch.interval = engine_parameters.performance_parameters.slow_update_interval;
+                        self.engine.send_command(EngineCommand::UpdateParameters(engine_parameters.clone())).unwrap();
+                        self.parameters = engine_parameters.clone();
+                    },
+                    SettingsEditorState::Cancelled => {},
+                }
             });
-        }
-        if close_settings {
-            self.settings_editor = None;
         }
     }
 
@@ -472,7 +464,7 @@ impl PlantEvolutionApp {
                 }
                 ui.separator();
                 if ui.button("Settings").clicked() {
-                    self.settings_editor = Some(AppSettingsEditor::new((
+                    self.settings_editor = Some(SettingsEditor::new((
                         self.visual_settings.clone(),
                         self.parameters.clone(),
                     )));
