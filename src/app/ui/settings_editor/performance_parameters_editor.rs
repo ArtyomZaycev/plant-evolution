@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{num::NonZero, time::Duration};
 
 use egui::{Align, Layout, Slider, Vec2};
 
@@ -9,6 +9,7 @@ pub struct PerformanceParametersEditor {
     // Can be changed only if thread_evolution in enabled
     pub multithreading_enabled: bool,
     pub number_of_threads: u32,
+    max_number_of_threads: u32,
 
     pub use_local_growth: bool,
     pub use_tick_many: bool,
@@ -20,9 +21,11 @@ pub struct PerformanceParametersEditor {
 
 impl EditorUi<PerformanceParameters> for PerformanceParametersEditor {
     fn new(settings: PerformanceParameters) -> Self {
+        let max_number_of_threads = std::thread::available_parallelism().map_or(DEFAULT_THREAD_COUNT, |v| v.get() as u32);
         Self {
-            multithreading_enabled: settings.multithreading_enabled,
+            multithreading_enabled: cfg!(feature = "thread_evolution") && settings.multithreading_enabled,
             number_of_threads: settings.number_of_threads,
+            max_number_of_threads: max_number_of_threads.max(DEFAULT_THREAD_COUNT),
             use_local_growth: settings.use_local_growth,
             use_tick_many: settings.use_tick_many,
             enable_updates: settings.enable_updates,
@@ -63,8 +66,8 @@ impl egui::Widget for &mut PerformanceParametersEditor {
             ui.horizontal(|ui| {
                 ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Multithreading"));
                 ui.add_enabled_ui(cfg!(feature = "thread_evolution"), |ui| {
-                    ui.radio_value(&mut self.multithreading_enabled, true, "Enabled");
                     ui.radio_value(&mut self.multithreading_enabled, false, "Disabled");
+                    ui.radio_value(&mut self.multithreading_enabled, true, "Enabled");
                 });
             });
             ui.horizontal(|ui| {
@@ -73,7 +76,7 @@ impl egui::Widget for &mut PerformanceParametersEditor {
                 });
                 ui.add_enabled(
                     cfg!(feature = "thread_evolution"),
-                    Slider::new(&mut self.number_of_threads, 2..=DEFAULT_THREAD_COUNT),
+                    Slider::new(&mut self.number_of_threads, 2..=self.max_number_of_threads),
                 );
             });
             ui.separator();
@@ -83,29 +86,29 @@ impl egui::Widget for &mut PerformanceParametersEditor {
                 ui.allocate_ui_with_layout(desired_size, layout, |ui| {
                     ui.label("Local growth recalculation")
                 });
-                ui.radio_value(&mut self.use_local_growth, true, "Enabled");
                 ui.radio_value(&mut self.use_local_growth, false, "Disabled");
+                ui.radio_value(&mut self.use_local_growth, true, "Enabled");
             });
             ui.horizontal(|ui| {
                 ui.allocate_ui_with_layout(desired_size, layout, |ui| {
                     ui.label("Skip empty ticks (not recommended)")
                 });
-                ui.radio_value(&mut self.use_tick_many, true, "Enabled");
                 ui.radio_value(&mut self.use_tick_many, false, "Disabled");
+                ui.radio_value(&mut self.use_tick_many, true, "Enabled");
             });
             ui.separator();
 
             // Slow updates settings
             ui.horizontal(|ui| {
                 ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Updates"));
-                ui.radio_value(&mut self.enable_updates, true, "Enabled");
                 ui.radio_value(&mut self.enable_updates, false, "Disabled");
+                ui.radio_value(&mut self.enable_updates, true, "Enabled");
             });
             ui.add_enabled_ui(self.enable_updates, |ui| {
                 ui.horizontal(|ui| {
                     ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Slow updates"));
-                    ui.radio_value(&mut self.slow_updates, true, "Enabled");
                     ui.radio_value(&mut self.slow_updates, false, "Disabled");
+                    ui.radio_value(&mut self.slow_updates, true, "Enabled");
                 });
             });
             ui.add_enabled_ui(self.enable_updates && self.slow_updates, |ui| {

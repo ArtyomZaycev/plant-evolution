@@ -42,8 +42,8 @@ impl egui::Widget for &mut SavingParametersEditor {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
-                ui.radio_value(&mut self.enabled, true, "Enabled");
                 ui.radio_value(&mut self.enabled, false, "Disabled");
+                ui.radio_value(&mut self.enabled, true, "Enabled");
             });
             ui.add_enabled_ui(self.enabled, |ui| {
                 ui.horizontal(|ui| {

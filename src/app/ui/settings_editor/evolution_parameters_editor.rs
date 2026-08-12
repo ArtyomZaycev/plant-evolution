@@ -65,8 +65,8 @@ impl egui::Widget for &mut EvolutionParametersEditor {
                 ui.allocate_ui_with_layout(desired_size, layout, |ui| {
                     ui.label("Parents Evolution")
                 });
-                ui.radio_value(&mut self.parent_evolution, true, "Enabled");
                 ui.radio_value(&mut self.parent_evolution, false, "Disabled");
+                ui.radio_value(&mut self.parent_evolution, true, "Enabled");
             });
             ui.horizontal(|ui| {
                 ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Evolution chance"));

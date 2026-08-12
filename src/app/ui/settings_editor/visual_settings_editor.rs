@@ -115,15 +115,15 @@ impl egui::Widget for &mut VisualSettingsEditor {
                 ui.allocate_ui_with_layout(desired_size, layout, |ui| {
                     ui.label("Highlight hovered")
                 });
-                ui.radio_value(&mut self.highlight_hovered_cell, true, "Enabled");
                 ui.radio_value(&mut self.highlight_hovered_cell, false, "Disabled");
+                ui.radio_value(&mut self.highlight_hovered_cell, true, "Enabled");
             });
             ui.horizontal(|ui| {
                 ui.allocate_ui_with_layout(desired_size, layout, |ui| {
                     ui.label("Highlight pointer")
                 });
-                ui.radio_value(&mut self.highlight_pointer, true, "Enabled");
                 ui.radio_value(&mut self.highlight_pointer, false, "Disabled");
+                ui.radio_value(&mut self.highlight_pointer, true, "Enabled");
             });
         })
         .response
