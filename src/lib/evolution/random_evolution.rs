@@ -5,7 +5,11 @@ use rand::RngExt;
 use super::{
     CellEvolutionData, PlantEvolutionData, RunningEvolutionData, run_evolution, weights_tree::*,
 };
-use crate::{evolution::{WithVolatility, consts::MAX_WEIGHTS_TREE_SIZE}, map::*, utils::*};
+use crate::{
+    evolution::{WithVolatility, consts::MAX_WEIGHTS_TREE_SIZE},
+    map::*,
+    utils::*,
+};
 
 fn apply_change_chance_and<F: FnOnce() -> bool>(change_chance: f32, random: f32, f: F) -> bool {
     if random < change_chance { f() } else { false }

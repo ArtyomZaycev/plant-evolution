@@ -11,29 +11,33 @@ pub const VOLATILITY_NMULTIPLIER: f32 = 0.992;
 pub const MIN_AFTER_VOLATILITY: f32 = 0.05;
 pub const MAX_AFTER_VOLATILITY: f32 = 0.9;
 
-pub const DEFAULT_BASIC_CELL: LazyCell<PlantCellAbilities> = LazyCell::new(|| PlantCellAbilities {
-    sunlight_consumption: WithVolatility::new(0.1),
-    air_consumption: WithVolatility::new(0.1),
-    minerals_consumption: WithVolatility::new(0.1),
-    water_consumption: WithVolatility::new(0.1),
-    energy_production_speed: WithVolatility::new(0.1),
-    seed: false,
-    grow_cost: 0.,
-    passive_cost: 0.,
-}.with_populated_cost());
+pub const DEFAULT_BASIC_CELL: LazyCell<PlantCellAbilities> = LazyCell::new(|| {
+    PlantCellAbilities {
+        sunlight_consumption: WithVolatility::new(0.1),
+        air_consumption: WithVolatility::new(0.1),
+        minerals_consumption: WithVolatility::new(0.1),
+        water_consumption: WithVolatility::new(0.1),
+        energy_production_speed: WithVolatility::new(0.1),
+        seed: false,
+        grow_cost: 0.,
+        passive_cost: 0.,
+    }
+    .with_populated_cost()
+});
 
-pub const DEFAULT_SEED_CELL: LazyCell<PlantCellAbilities> = LazyCell::new(|| PlantCellAbilities {
-    sunlight_consumption: WithVolatility::new(0.),
-    air_consumption: WithVolatility::new(0.),
-    minerals_consumption: WithVolatility::new(1.),
-    water_consumption: WithVolatility::new(1.),
-    energy_production_speed: WithVolatility::new(0.4),
-    seed: false,
-    grow_cost: 0.,
-    passive_cost: 0.,
-}
-.with_populated_cost());
-
+pub const DEFAULT_SEED_CELL: LazyCell<PlantCellAbilities> = LazyCell::new(|| {
+    PlantCellAbilities {
+        sunlight_consumption: WithVolatility::new(0.),
+        air_consumption: WithVolatility::new(0.),
+        minerals_consumption: WithVolatility::new(1.),
+        water_consumption: WithVolatility::new(1.),
+        energy_production_speed: WithVolatility::new(0.4),
+        seed: false,
+        grow_cost: 0.,
+        passive_cost: 0.,
+    }
+    .with_populated_cost()
+});
 
 pub const DEFAULT_THREAD_COUNT: u32 = 8;
 

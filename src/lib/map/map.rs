@@ -1,7 +1,11 @@
 use std::{cell::LazyCell, collections::HashMap, f32};
 
 use super::{map_cell::*, plant_cell::*};
-use crate::{evolution::{consts::*, *}, precalc::*, utils::*};
+use crate::{
+    evolution::{consts::*, *},
+    precalc::*,
+    utils::*,
+};
 
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct PlantNutrition {

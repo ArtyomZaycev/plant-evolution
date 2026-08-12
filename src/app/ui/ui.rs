@@ -1,14 +1,16 @@
-use std::{
-    sync::atomic::Ordering,
-    time::SystemTime,
-};
+use std::{sync::atomic::Ordering, time::SystemTime};
 
 use egui::{Align2, Button, CollapsingHeader, Color32, FontId, Pos2, Rect, Sense, TextEdit, Vec2};
 
-use plant_evolution_lib::{consts::DEFAULT_STOPWATCH_INTERVAL, engine::*, map::*, precalc::*, utils::*};
+use plant_evolution_lib::{
+    consts::DEFAULT_STOPWATCH_INTERVAL, engine::*, map::*, precalc::*, utils::*,
+};
 
 use crate::ui::{
-    consts::*, settings::VisualSettings, settings_editor::{editor::*, utils::EditorUi}, toast::*,
+    consts::*,
+    settings::VisualSettings,
+    settings_editor::{editor::*, utils::EditorUi},
+    toast::*,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]

@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{evolution::{WithVolatility, consts::*}, precalc::NUMBER_OF_CELLS};
+use crate::{
+    evolution::{WithVolatility, consts::*},
+    precalc::NUMBER_OF_CELLS,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlantCellAbilities {

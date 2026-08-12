@@ -3,7 +3,9 @@
 
 mod ui;
 
-use plant_evolution_lib::{engine::*, evolution::consts::*, map::MapData, precalc::populate_consts};
+use plant_evolution_lib::{
+    engine::*, evolution::consts::*, map::MapData, precalc::populate_consts,
+};
 
 use crate::ui::{consts::*, ui::PlantEvolutionApp};
 
