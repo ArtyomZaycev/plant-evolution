@@ -166,7 +166,7 @@ pub fn parents_random_evolve(
         .enumerate()
         .for_each(|(i, data)| {
             maps[i + samples].evolution_data = data.clone();
-            if rng.random_bool(PARENTS_EVOLUTION_CHANCE) {
+            if rng.random_bool(PARENTS_EVOLUTION_EVOLVE_CHANCE) {
                 maps[i + samples].evolve_random(rng, change_chance, change_entropy);
             }
         });
