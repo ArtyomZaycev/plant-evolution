@@ -476,23 +476,10 @@ impl MapData {
 
     fn fill_as_basic_map(map: &mut [[MapCell; MAP_SIZE.0]; MAP_SIZE.1]) {
         let mut sunlight = 1.;
-        map.iter_mut().enumerate().for_each(|(i, row)| {
+        // Soil is always the same, no need to update it
+        map[..GROUND_LEVEL].iter_mut().for_each(|row| {
             sunlight *= SUNLIGHT_AIR_MULTIPLIER;
-            row.iter_mut().for_each(|cell| {
-                *cell = if i < GROUND_LEVEL {
-                    MapCell::Air(AirParameters { sunlight })
-                } else {
-                    // TODO: Use GROUND_LEVEL
-                    let depth = i - MAP_SIZE.1 / 2;
-                    let depth = depth as f32 / (MAP_SIZE.1 / 2) as f32;
-                    MapCell::Soil(SoilParameters {
-                        minerals: LOW_DEPTH_MINERALS
-                            + (HIGH_DEPTH_MINERALS - LOW_DEPTH_MINERALS).abs() * depth,
-                        water: HIGH_DEPTH_WATER
-                            + (HIGH_DEPTH_WATER - LOW_DEPTH_WATER).abs() * (1. - depth),
-                    })
-                };
-            });
+            row.fill(MapCell::Air(AirParameters { sunlight }));
         });
     }
 
