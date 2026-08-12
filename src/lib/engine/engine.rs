@@ -24,6 +24,7 @@ pub enum EngineCommand {
     Stop,
     RunTicks,
     RunSimulationa(u32),
+    UpdateViewedMaps(Vec<usize>),
 
     Die,
 }
@@ -243,6 +244,7 @@ impl Engine {
 
         let mut maps_update_stopwatch = Stopwatch::new(Duration::from_millis(100));
         let mut maps = maps_accessor.as_inner().read().unwrap().get_data();
+        let mut viewed_maps = None;
 
         let mut last_save = SaveMark::default();
 
@@ -324,6 +326,10 @@ impl Engine {
                         };
                     }
 
+                    EngineCommand::UpdateViewedMaps(new_viewed_maps) => {
+                        viewed_maps = Some(new_viewed_maps);
+                    }
+
                     EngineCommand::Die => {
                         maps_accessor.write().unwrap().write(&maps);
                         maps_update_stopwatch.reset();
@@ -374,9 +380,18 @@ impl Engine {
                     maps.iter_mut().for_each(|map| {
                         map.tick(use_local_growth);
                     });
+
                     if parameters.performance_parameters.enable_updates {
-                        if maps_update_stopwatch.is_elapsed_reset() {
-                            maps_accessor.write().unwrap().force_write(maps.clone());
+                        if !parameters.performance_parameters.slow_updates || maps_update_stopwatch.is_elapsed_reset() {
+                            maps_accessor.write().unwrap().update_data(|old_maps| {
+                                if let Some(viewed_maps) = &viewed_maps {
+                                    viewed_maps.iter().for_each(|i| {
+                                        old_maps[*i] = maps[*i].clone();
+                                    });
+                                } else {
+                                    *old_maps = (*maps).clone();
+                                }
+                            });
                         }
                     }
                 }
@@ -414,24 +429,21 @@ impl Engine {
                     #[cfg(not(feature = "thread_evolution"))]
                     Self::run_ticks(&mut maps, number_of_ticks, use_local_growth, use_tick_many);
 
-                    if maps[0].ticks < ticks_per_evolution {
-                        if parameters.performance_parameters.enable_updates {
-                            if maps_update_stopwatch.is_elapsed_reset() {
-                                maps_accessor.write().unwrap().force_write(maps.clone());
-                            }
-                        }
-                    } else {
-                        if parameters.performance_parameters.enable_updates {
-                            if parameters.performance_parameters.slow_updates {
-                                if maps_update_stopwatch.is_elapsed() {
-                                    maps_accessor.write().unwrap().force_write(maps.clone());
-                                    maps_update_stopwatch.reset();
+                    if parameters.performance_parameters.enable_updates {
+                        if !parameters.performance_parameters.slow_updates || maps_update_stopwatch.is_elapsed_reset() {
+                            maps_accessor.write().unwrap().update_data(|old_maps| {
+                                if let Some(viewed_maps) = &viewed_maps {
+                                    viewed_maps.iter().for_each(|i| {
+                                        old_maps[*i] = maps[*i].clone();
+                                    });
+                                } else {
+                                    *old_maps = (*maps).clone();
                                 }
-                            } else {
-                                maps_accessor.write().unwrap().force_write(maps.clone());
-                                maps_update_stopwatch.reset();
-                            }
+                            });
                         }
+                    }
+
+                    if maps[0].ticks >= ticks_per_evolution {
                         Self::do_evolution(&mut rng, &parameters.evolution_parameters, &mut maps);
                         shared_state.total_evolutions.update(
                             Ordering::Relaxed,

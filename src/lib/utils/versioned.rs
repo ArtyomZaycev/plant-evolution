@@ -52,6 +52,7 @@ impl<T: Clone, V: Version> Clone for Versioned<T, V> {
     }
 }
 
+// TODO: Rework, this is a mess
 impl<T, V: Version> Versioned<T, V> {
     pub fn new(data: T) -> Self {
         Self {
@@ -105,6 +106,11 @@ impl<T, V: Version> Versioned<T, V> {
     pub fn force_write(&mut self, other: VersionedData<T, V>) {
         self.version = other.0.version;
         self.data = other.0.data;
+    }
+
+    pub fn update_data<F: FnOnce(&mut T)>(&mut self, f: F) {
+        self.version.update();
+        f(&mut self.data);
     }
 }
 

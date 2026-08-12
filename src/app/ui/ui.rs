@@ -55,10 +55,12 @@ pub struct PlantEvolutionApp {
 }
 
 impl PlantEvolutionApp {
-    pub fn new(engine: Engine, parameters: EngineParameters) -> Self {
+    pub fn new(mut engine: Engine, parameters: EngineParameters) -> Self {
         let maps_read_lock = engine.maps.read().unwrap();
         let maps = maps_read_lock.get_data();
         drop(maps_read_lock);
+
+        engine.send_command(EngineCommand::UpdateViewedMaps(vec![0])).unwrap();
         Self {
             toast_manager: ToastManager::new(),
             maps_update_stopwatch: Stopwatch::new(DEFAULT_STOPWATCH_INTERVAL),
@@ -269,6 +271,8 @@ impl PlantEvolutionApp {
         {
             self.highlighted_map = None;
         }
+
+        self.engine.send_command(EngineCommand::UpdateViewedMaps (self.selected_maps_index.clone())).unwrap();
     }
 
     fn push_save_log(&mut self, save_log: SaveLog, is_autosave: bool) {
