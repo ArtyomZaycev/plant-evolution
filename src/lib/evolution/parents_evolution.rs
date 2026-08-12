@@ -95,18 +95,13 @@ impl ParentCombination for PlantCellAbilities {
 }
 
 #[hotpath::measure]
-pub fn parent_combine(
-    rng: &mut Rng,
-    data: &[PlantEvolutionData],
-    maps: &mut [MapData],
-) {
-    maps.iter_mut()
-        .for_each(|map| {
-            let idx1 = rng.random_range(0..data.len());
-            let idx2 = {
-                let idx = rng.random_range(0..data.len() - 1);
-                if idx >= idx1 { idx + 1 } else { idx }
-            };
-            map.evolution_data = data[idx1].parent_combine(rng, &data[idx2]);
-        });
+pub fn parent_combine(rng: &mut Rng, data: &[PlantEvolutionData], maps: &mut [MapData]) {
+    maps.iter_mut().for_each(|map| {
+        let idx1 = rng.random_range(0..data.len());
+        let idx2 = {
+            let idx = rng.random_range(0..data.len() - 1);
+            if idx >= idx1 { idx + 1 } else { idx }
+        };
+        map.evolution_data = data[idx1].parent_combine(rng, &data[idx2]);
+    });
 }

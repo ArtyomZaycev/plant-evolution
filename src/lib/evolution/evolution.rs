@@ -155,26 +155,18 @@ pub fn parents_random_evolve(
     maps.resize_with(plants, || MapData::default());
     parent_combine(rng, &best_evolution_data, &mut maps[samples..]);
 
-    hotpath::measure_block!("parents_random_evolve block1", {
-        best_evolution_data
-            .into_iter()
-            .enumerate()
-            .for_each(|(i, data)| {
-                maps[i].evolution_data = data;
-            });
+    best_evolution_data
+        .into_iter()
+        .enumerate()
+        .for_each(|(i, data)| {
+            maps[i].evolution_data = data;
+        });
+    maps[samples..].iter_mut().for_each(|map| {
+        if rng.random_bool(PARENTS_EVOLUTION_EVOLVE_CHANCE) {
+            hotpath::measure_block!("parents_do_evolve", {
+                map.evolve_random(rng, change_chance, change_entropy);
+            })
+        }
     });
-    hotpath::measure_block!("parents_random_evolve block2", {
-        maps[samples..]
-            .iter_mut()
-            .for_each(|map| {
-                if rng.random_bool(PARENTS_EVOLUTION_EVOLVE_CHANCE) {
-                    hotpath::measure_block!("parents_do_evolve", {
-                        map.evolve_random(rng, change_chance, change_entropy);
-                    })
-                }
-            });
-    });
-    hotpath::measure_block!("parents_random_evolve block3", {
-        maps.iter_mut().for_each(|map| map.restart());
-    });
+    maps.iter_mut().for_each(|map| map.restart());
 }

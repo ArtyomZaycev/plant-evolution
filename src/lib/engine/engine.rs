@@ -169,6 +169,7 @@ impl Engine {
     }
 
     #[cfg(feature = "thread_evolution")]
+    #[hotpath::measure]
     fn run_ticks_threaded(
         threadpool: &mut scoped_threadpool::Pool,
         maps: &mut Vec<MapData>,
@@ -177,37 +178,29 @@ impl Engine {
         use_local_growth: bool,
         use_tick_many: bool,
     ) {
-        hotpath::measure_block!("thread_evolution", {
-            let chunk_size = maps
-                .len()
-                .div_ceil(threadpool.thread_count().min(thread_count) as usize);
-            threadpool.scoped(|scope| {
-                for chunk in maps.chunks_mut(chunk_size) {
-                    scope.execute(|| {
-                        chunk.iter_mut().for_each(|map| {
-                            Self::do_tick_many(
-                                map,
-                                number_of_ticks,
-                                use_local_growth,
-                                use_tick_many,
-                            );
-                        });
+        let chunk_size = maps
+            .len()
+            .div_ceil(threadpool.thread_count().min(thread_count) as usize);
+        threadpool.scoped(|scope| {
+            for chunk in maps.chunks_mut(chunk_size) {
+                scope.execute(|| {
+                    chunk.iter_mut().for_each(|map| {
+                        Self::do_tick_many(map, number_of_ticks, use_local_growth, use_tick_many);
                     });
-                }
-            });
+                });
+            }
         });
     }
 
+    #[hotpath::measure]
     fn run_ticks(
         maps: &mut Vec<MapData>,
         number_of_ticks: u32,
         use_local_growth: bool,
         use_tick_many: bool,
     ) {
-        hotpath::measure_block!("not thread_evolution", {
-            maps.iter_mut().for_each(|map| {
-                Self::do_tick_many(map, number_of_ticks, use_local_growth, use_tick_many)
-            });
+        maps.iter_mut().for_each(|map| {
+            Self::do_tick_many(map, number_of_ticks, use_local_growth, use_tick_many)
         });
     }
 
