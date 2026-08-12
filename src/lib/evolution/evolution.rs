@@ -126,18 +126,18 @@ pub fn random_evolve(
 ) {
     let best_evolution_data = sample_best_maps_evolution(maps, samples);
     maps.resize(plants, MapData::default());
-    best_evolution_data
-        .iter()
-        .enumerate()
-        .for_each(|(i, data)| {
-            maps[i].evolution_data = data.clone();
-        });
     maps.iter_mut()
         .skip(samples)
         .enumerate()
         .for_each(|(i, map)| {
             map.evolution_data = best_evolution_data[i % samples].clone();
             map.evolve_random(rng, change_chance, change_entropy);
+        });
+    best_evolution_data
+        .into_iter()
+        .enumerate()
+        .for_each(|(i, data)| {
+            maps[i].evolution_data = data;
         });
     maps.iter_mut().for_each(|map| map.restart());
 }
@@ -155,20 +155,28 @@ pub fn parents_random_evolve(
     maps.resize(plants, MapData::default());
     let children_evolution_data = parent_combine(rng, &best_evolution_data, maps.len() - samples);
 
-    best_evolution_data
-        .iter()
-        .enumerate()
-        .for_each(|(i, data)| {
-            maps[i].evolution_data = data.clone();
-        });
-    children_evolution_data
-        .iter()
-        .enumerate()
-        .for_each(|(i, data)| {
-            maps[i + samples].evolution_data = data.clone();
-            if rng.random_bool(PARENTS_EVOLUTION_EVOLVE_CHANCE) {
-                maps[i + samples].evolve_random(rng, change_chance, change_entropy);
-            }
-        });
-    maps.iter_mut().for_each(|map| map.restart());
+    hotpath::measure_block!("parents_random_evolve block1", {
+        best_evolution_data
+            .into_iter()
+            .enumerate()
+            .for_each(|(i, data)| {
+                maps[i].evolution_data = data;
+            });
+    });
+    hotpath::measure_block!("parents_random_evolve block2", {
+        children_evolution_data
+            .into_iter()
+            .enumerate()
+            .for_each(|(i, data)| {
+                maps[i + samples].evolution_data = data;
+                if rng.random_bool(PARENTS_EVOLUTION_EVOLVE_CHANCE) {
+                    hotpath::measure_block!("parents_do_evolve", {
+                        maps[i + samples].evolve_random(rng, change_chance, change_entropy);
+                    })
+                }
+            });
+    });
+    hotpath::measure_block!("parents_random_evolve block3", {
+        maps.iter_mut().for_each(|map| map.restart());
+    });
 }

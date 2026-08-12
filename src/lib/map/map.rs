@@ -229,10 +229,15 @@ impl MapData {
         w2: f32,
     ) -> std::cmp::Ordering {
         (
+            // Weight (how much the plant wants to grow here)
             w1,
+            // Horizontal distance from the center (less is better)
             -((x1.abs_diff(PLANT_CENTER.0) + y1.abs_diff(PLANT_CENTER.1)) as i32),
+            // Cell type (less is better)
             -(c1 as i32),
+            // Horizontal position
             x1,
+            // Vertical position
             y1,
         )
             .partial_cmp(&(
@@ -469,6 +474,28 @@ impl MapData {
         })
     }
 
+    fn fill_as_basic_map(map: &mut [[MapCell; MAP_SIZE.0]; MAP_SIZE.1]) {
+        let mut sunlight = 1.;
+        map.iter_mut().enumerate().for_each(|(i, row)| {
+            sunlight *= SUNLIGHT_AIR_MULTIPLIER;
+            row.iter_mut().for_each(|cell| {
+                *cell = if i < GROUND_LEVEL {
+                    MapCell::Air(AirParameters { sunlight })
+                } else {
+                    // TODO: Use GROUND_LEVEL
+                    let depth = i - MAP_SIZE.1 / 2;
+                    let depth = depth as f32 / (MAP_SIZE.1 / 2) as f32;
+                    MapCell::Soil(SoilParameters {
+                        minerals: LOW_DEPTH_MINERALS
+                            + (HIGH_DEPTH_MINERALS - LOW_DEPTH_MINERALS).abs() * depth,
+                        water: HIGH_DEPTH_WATER
+                            + (HIGH_DEPTH_WATER - LOW_DEPTH_WATER).abs() * (1. - depth),
+                    })
+                };
+            });
+        });
+    }
+
     fn generate_basic_plants() -> [[PlantCell; MAP_SIZE.0]; MAP_SIZE.1] {
         core::array::from_fn(|i| {
             core::array::from_fn(|j| {
@@ -509,7 +536,7 @@ impl MapData {
     pub fn restart(&mut self) {
         self.ticks = 0;
         self.plant_nutrition = PlantNutrition::STARTING;
-        hotpath::measure_block!("restart: map&plants clone", {
+        hotpath::measure_block!("map_restart_cloning", {
             // Time is literally the same as clone
             /*unsafe {
                 // Do not inline, it breaks somehow
@@ -526,9 +553,11 @@ impl MapData {
                 self.cells[y][x].t = usize::MAX;
             });
             self.cells[PLANT_CENTER.1][PLANT_CENTER.0].t = 0;
-            self.map = Self::BASIC_MAP.clone();
+            Self::fill_as_basic_map(&mut self.map);
         });
-        self.cells_pos = vec![PLANT_CENTER];
+        self.cells_pos.resize(1, PLANT_CENTER);
+        self.cells_pos[0] = PLANT_CENTER;
+
         self.populate_plant_inputs();
         self.recalc_all_next_cell_growth();
     }
