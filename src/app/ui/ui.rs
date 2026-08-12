@@ -635,9 +635,8 @@ impl PlantEvolutionApp {
                         if !self.evolutions_delta.is_normal() {
                             self.evolutions_delta = time_per_evolution.as_secs_f32();
                         } else {
-                            let alpha = COUNTER_ALPHA;
-                            self.evolutions_delta = (self.evolutions_delta * (1. - alpha))
-                                + (time_per_evolution.as_secs_f32() * alpha);
+                            self.evolutions_delta = (self.evolutions_delta * (1. - COUNTER_ALPHA))
+                                + (time_per_evolution.as_secs_f32() * COUNTER_ALPHA);
                         }
                         self.last_evolutions_measurement =
                             Some((total_evolutions, SystemTime::now()));

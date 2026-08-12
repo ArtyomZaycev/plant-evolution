@@ -3,3 +3,4 @@ rustflags = ["-C", "link-args=/STACK:33554432"]
 
 [env]
 HOTPATH_REPORT="functions-timing,functions-alloc,threads"
+HOTPATH_FOCUS="/^*(parents_random_evolve|random_evolve|run_ticks|run_ticks_threaded)/"
