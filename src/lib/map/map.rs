@@ -362,7 +362,7 @@ impl MapData {
     }
 
     #[hotpath::measure]
-    fn search_cells(&self, x: usize, y: usize, ex_plants: &mut [[bool; MAP_SIZE.1]; MAP_SIZE.0]) {
+    fn search_cells(&self, x: usize, y: usize, ex_plants: &mut [[bool; MAP_SIZE.0]; MAP_SIZE.1]) {
         ex_plants[y][x] = true;
         if x > 0 && !ex_plants[y][x - 1] && self.cells[y][x - 1].is_some() {
             self.search_cells(x - 1, y, ex_plants);
