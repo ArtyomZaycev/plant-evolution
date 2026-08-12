@@ -1,5 +1,7 @@
 use egui::Color32;
 
+use crate::ui::consts::*;
+
 #[derive(Debug, Clone)]
 pub struct VisualSettings {
     pub min_cell_size: f32,
@@ -20,7 +22,7 @@ pub struct VisualSettings {
 impl Default for VisualSettings {
     fn default() -> Self {
         Self {
-            min_cell_size: 4.,
+            min_cell_size: DEFAULT_MIN_CELL_SIZE,
             plant_color: Color32::GREEN,
             seed_color: Color32::RED,
             air_color: Color32::LIGHT_BLUE,

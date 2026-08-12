@@ -3,20 +3,20 @@
 
 mod ui;
 
-use plant_evolution_lib::{engine::*, map::MapData, precalc::populate_consts};
+use plant_evolution_lib::{engine::*, evolution::consts::*, map::MapData, precalc::populate_consts};
 
-use crate::ui::ui::PlantEvolutionApp;
+use crate::ui::{consts::*, ui::PlantEvolutionApp};
 
 #[hotpath::main]
 fn main() {
     populate_consts();
 
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([1024.0, 720.0]),
+        viewport: egui::ViewportBuilder::default().with_inner_size(DEFAULT_WINDOW_SIZE),
         ..Default::default()
     };
 
-    let maps = Vec::from_fn(200, |_| MapData::default());
+    let maps = Vec::from_fn(DEFAULT_NUMBER_OF_PLANTS, |_| MapData::default());
 
     let engine = Engine::new(maps, EngineParameters::default());
 

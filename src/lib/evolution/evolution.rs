@@ -4,7 +4,7 @@ use rand::RngExt;
 use serde::{Deserialize, Serialize};
 
 use super::{evolution_volatility::*, parents_evolution::*, random_evolution::*, weights_tree::*};
-use crate::{map::*, precalc::*, utils::Rng};
+use crate::{evolution::consts::*, map::*, precalc::*, utils::Rng};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CellEvolutionData {
@@ -50,30 +50,8 @@ impl PlantEvolutionData {
     }
 
     fn rand_generate(rng: &mut Rng) -> Self {
-        let basic_cell = PlantCellAbilities {
-            sunlight_consumption: WithVolatility::new(0.1),
-            air_consumption: WithVolatility::new(0.1),
-            minerals_consumption: WithVolatility::new(0.1),
-            water_consumption: WithVolatility::new(0.1),
-            energy_production_speed: WithVolatility::new(0.1),
-            seed: false,
-            grow_cost: 0.,
-            passive_cost: 0.,
-        }
-        .with_populated_cost();
-
-        let mut cells = std::array::repeat(basic_cell);
-        cells[0] = PlantCellAbilities {
-            sunlight_consumption: WithVolatility::new(0.),
-            air_consumption: WithVolatility::new(0.),
-            minerals_consumption: WithVolatility::new(1.),
-            water_consumption: WithVolatility::new(1.),
-            energy_production_speed: WithVolatility::new(0.4),
-            seed: false,
-            grow_cost: 0.,
-            passive_cost: 0.,
-        }
-        .with_populated_cost();
+        let mut cells = std::array::repeat(DEFAULT_BASIC_CELL.clone());
+        cells[0] = DEFAULT_SEED_CELL.clone();
 
         Self {
             evolutions: 0,
@@ -188,7 +166,7 @@ pub fn parents_random_evolve(
         .enumerate()
         .for_each(|(i, data)| {
             maps[i + samples].evolution_data = data.clone();
-            if rng.random_bool(0.75) {
+            if rng.random_bool(PARENTS_EVOLUTION_CHANCE) {
                 maps[i + samples].evolve_random(rng, change_chance, change_entropy);
             }
         });

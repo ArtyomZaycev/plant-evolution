@@ -244,7 +244,7 @@ impl Engine {
 
         #[cfg(feature = "thread_evolution")]
         let mut threadpool = {
-            let thread_count = DEFAULT_THREAD_COUNT;
+            let thread_count = crate::evolution::consts::DEFAULT_THREAD_COUNT;
             scoped_threadpool::Pool::new(thread_count)
         };
 

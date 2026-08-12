@@ -3,6 +3,7 @@ mod evolution_volatility;
 mod parents_evolution;
 mod random_evolution;
 mod weights_tree;
+pub mod consts;
 
 pub use evolution::*;
 pub use evolution_volatility::*;

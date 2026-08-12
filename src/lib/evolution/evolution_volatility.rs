@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use serde::{Deserialize, Serialize};
 
-use crate::utils::Rng;
+use crate::{evolution::consts::*, utils::Rng};
 
 use super::{parents_evolution::*, random_evolution::*};
 
@@ -40,11 +40,11 @@ impl<T: RandomEvolution> RandomEvolution for WithVolatility<T> {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
         let changed = self.value.evolve_random(
             rng,
-            (change_chance * self.volatility).clamp(0.05, 0.9),
+            (change_chance * self.volatility).clamp(MIN_AFTER_VOLATILITY, MAX_AFTER_VOLATILITY),
             change_entropy,
         );
-        self.volatility *= if changed { 1.2 } else { 0.992 };
-        self.volatility = self.volatility.clamp(0.1, 2.);
+        self.volatility *= if changed { VOLATILITY_PMULTIPLIER } else { VOLATILITY_NMULTIPLIER };
+        self.volatility = self.volatility.clamp(MIN_VOLATILITY, MAX_VOLATILITY);
         changed
     }
 }

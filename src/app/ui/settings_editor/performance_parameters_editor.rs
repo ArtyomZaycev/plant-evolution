@@ -3,7 +3,7 @@ use std::time::Duration;
 use egui::{Align, Layout, Slider, Vec2};
 
 use super::utils::*;
-use plant_evolution_lib::{engine::*, utils::DEFAULT_THREAD_COUNT};
+use plant_evolution_lib::{engine::*, evolution::consts::DEFAULT_THREAD_COUNT};
 
 pub struct PerformanceParametersEditor {
     // Can be changed only if thread_evolution in enabled

@@ -1,6 +1,6 @@
 use std::{path::PathBuf, time::Duration};
 
-use crate::utils::DEFAULT_THREAD_COUNT;
+use crate::{consts::*, evolution::consts::*};
 
 #[derive(Debug, Clone, Copy)]
 pub enum SavingPeriod {
@@ -57,11 +57,11 @@ pub struct EvolutionParameters {
 impl Default for EvolutionParameters {
     fn default() -> Self {
         Self {
-            plants: 200,
-            samples: 10,
+            plants: DEFAULT_NUMBER_OF_PLANTS,
+            samples: DEFAULT_NUMBER_OF_SAMPLES,
             parent_evolution: true,
-            change_chance: 0.05,
-            change_entropy: 0.8,
+            change_chance: DEFAULT_CHANGE_CHANCE,
+            change_entropy: DEFAULT_CHANGE_ENTROPY,
             run_evolution_parameters: RunEvolutionParameters::default(),
         }
     }
@@ -101,7 +101,7 @@ impl PerformanceParameters {
         use_tick_many: false,
         enable_updates: true,
         slow_updates: false,
-        slow_update_interval: Duration::from_millis(100),
+        slow_update_interval: DEFAULT_STOPWATCH_INTERVAL,
     };
 
     pub const PERFORMANCE: Self = Self {
@@ -111,7 +111,7 @@ impl PerformanceParameters {
         use_tick_many: false,
         enable_updates: false,
         slow_updates: true,
-        slow_update_interval: Duration::from_millis(100),
+        slow_update_interval: DEFAULT_STOPWATCH_INTERVAL,
     };
 
     pub const UI_PERFORMANCE: Self = Self {
@@ -133,7 +133,7 @@ impl Default for PerformanceParameters {
 
             enable_updates: true,
             slow_updates: true,
-            slow_update_interval: Duration::from_millis(100),
+            slow_update_interval: DEFAULT_STOPWATCH_INTERVAL,
         }
     }
 }

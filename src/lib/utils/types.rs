@@ -22,5 +22,3 @@ mod rng {
 }
 
 pub use rng::*;
-
-pub const DEFAULT_THREAD_COUNT: u32 = 8;

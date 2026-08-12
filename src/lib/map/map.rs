@@ -1,7 +1,7 @@
 use std::{cell::LazyCell, collections::HashMap, f32};
 
 use super::{map_cell::*, plant_cell::*};
-use crate::{evolution::*, precalc::*, utils::*};
+use crate::{evolution::{consts::*, *}, precalc::*, utils::*};
 
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct PlantNutrition {
@@ -73,9 +73,9 @@ impl MapData {
                 MapCell::Air(air_parameters) => {
                     air_parameters.sunlight = sunlight;
                     if self.cells[i][x].is_some() {
-                        sunlight *= 0.3;
+                        sunlight *= SUNLIGHT_CELL_MULTIPLIER;
                     } else {
-                        sunlight *= 0.93;
+                        sunlight *= SUNLIGHT_AIR_MULTIPLIER;
                     }
                 }
                 MapCell::Soil(_) => break,
@@ -103,9 +103,9 @@ impl MapData {
                     match &self.map[ny][nx] {
                         MapCell::Air(_) => {
                             if self.cells[ny][nx].is_none() {
-                                air += distance
+                                air += distance * AIR_AIR_MULTIPLIER;
                             } else {
-                                air += distance / 8.;
+                                air += distance * AIR_CELL_MULTIPLIER;
                             }
                         }
                         MapCell::Soil(_) => {}
@@ -446,15 +446,11 @@ impl MapData {
     fn generate_basic_map() -> [[MapCell; MAP_SIZE.0]; MAP_SIZE.1] {
         let mut sunlight = 1.;
         core::array::from_fn(|i| {
-            sunlight *= 0.99;
+            sunlight *= SUNLIGHT_AIR_MULTIPLIER;
             core::array::from_fn(|_| {
                 if i < GROUND_LEVEL {
                     MapCell::Air(AirParameters { sunlight })
                 } else {
-                    const LOW_DEPTH_MINERALS: f32 = 0.1;
-                    const LOW_DEPTH_WATER: f32 = 0.2;
-                    const HIGH_DEPTH_MINERALS: f32 = 0.3;
-                    const HIGH_DEPTH_WATER: f32 = 0.01;
                     // TODO: Use GROUND_LEVEL
                     let depth = i - MAP_SIZE.1 / 2;
                     let depth = depth as f32 / (MAP_SIZE.1 / 2) as f32;
@@ -741,7 +737,7 @@ impl MapData {
             let mut cnt = 0;
             for &(x2, y2) in &seeds {
                 if x != x2 || y != y2 {
-                    if (x as f32 - x2 as f32).powi(2) + (y as f32 - y2 as f32).powi(2) < 25. {
+                    if x.abs_diff(x2) + y.abs_diff(y2) < SEEDS_MIN_DISTANCE {
                         cnt += 1;
                     }
                 }
@@ -749,7 +745,7 @@ impl MapData {
             seeds_score += 2. / (cnt + 1) as f32;
         }
 
-        (seeds_score * 10.)
+        (seeds_score * SEED_SCORE)
             + ([
                 self.nutrition_per_tick.sunlight,
                 self.nutrition_per_tick.air,
@@ -760,7 +756,7 @@ impl MapData {
             .into_iter()
             .reduce(f32::min)
             .unwrap()
-                * 100.)
+                * SCORE_NUTRITION_MULTIPLIER)
                 .sqrt()
     }
 }

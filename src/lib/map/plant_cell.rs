@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{evolution::WithVolatility, precalc::NUMBER_OF_CELLS};
+use crate::{evolution::{WithVolatility, consts::*}, precalc::NUMBER_OF_CELLS};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlantCellAbilities {
@@ -22,16 +22,16 @@ impl PlantCellAbilities {
             + *self.air_consumption
             + *self.minerals_consumption
             + *self.water_consumption
-            + self.energy_production_speed.sqrt() * 4.)
+            + self.energy_production_speed.sqrt() * ENERGY_PRODUCTION_COST_MULTIPLIER)
             .powi(2)
-            + if self.seed { 50. } else { 0. };
+            + if self.seed { SEED_COST } else { 0. };
 
         self.passive_cost = (*self.sunlight_consumption
             + *self.air_consumption
             + *self.minerals_consumption
             + *self.water_consumption
             + *self.energy_production_speed)
-            / 80.;
+            * PASSIVE_COST_MULTIPLIER;
     }
 
     pub fn with_populated_cost(mut self) -> Self {

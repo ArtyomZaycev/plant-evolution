@@ -5,7 +5,7 @@ use rand::RngExt;
 use super::{
     CellEvolutionData, PlantEvolutionData, RunningEvolutionData, run_evolution, weights_tree::*,
 };
-use crate::{evolution::WithVolatility, map::*, utils::*};
+use crate::{evolution::{WithVolatility, consts::MAX_WEIGHTS_TREE_SIZE}, map::*, utils::*};
 
 fn apply_change_chance_and<F: FnOnce() -> bool>(change_chance: f32, random: f32, f: F) -> bool {
     if random < change_chance { f() } else { false }
@@ -152,7 +152,7 @@ impl RandomEvolution for WeightsTree {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
         apply_change_chance(change_chance, rng.random(), || {
             let idx = rng.random_range(0..self.nodes.len());
-            let allow_add = self.nodes.len() < 40;
+            let allow_add = self.nodes.len() < MAX_WEIGHTS_TREE_SIZE;
             /*
                 0 - tweak
                     Value - adjust Value

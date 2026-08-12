@@ -1,16 +1,14 @@
 use std::{
     sync::atomic::Ordering,
-    time::{Duration, SystemTime},
+    time::SystemTime,
 };
 
 use egui::{Align2, Button, CollapsingHeader, Color32, FontId, Pos2, Rect, Sense, TextEdit, Vec2};
 
-use plant_evolution_lib::{engine::*, map::*, precalc::*, utils::*};
+use plant_evolution_lib::{consts::DEFAULT_STOPWATCH_INTERVAL, engine::*, map::*, precalc::*, utils::*};
 
 use crate::ui::{
-    settings::VisualSettings,
-    settings_editor::{editor::*, utils::EditorUi},
-    toast::*,
+    consts::*, settings::VisualSettings, settings_editor::{editor::*, utils::EditorUi}, toast::*,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -61,16 +59,16 @@ impl PlantEvolutionApp {
         drop(maps_read_lock);
         Self {
             toast_manager: ToastManager::new(),
-            maps_update_stopwatch: Stopwatch::new(Duration::from_millis(100)),
+            maps_update_stopwatch: Stopwatch::new(DEFAULT_STOPWATCH_INTERVAL),
             maps,
             visual_settings: VisualSettings::default(),
             parameters,
             settings_editor: None,
-            cell_size: 6.,
+            cell_size: DEFAULT_MIN_CELL_SIZE,
             simulation_state: SimulationState::Stale,
             autoevolve_enabled: true,
-            autoevolve_at_str: 500.to_string(),
-            autoevolve_at: 500,
+            autoevolve_at_str: DEFAULT_AUTOEVOLVE_AT.to_string(),
+            autoevolve_at: DEFAULT_AUTOEVOLVE_AT,
             last_evolutions_measurement: None,
             evolutions_delta: f32::NAN,
             selected_map_index_str: "1".to_owned(),
@@ -214,7 +212,7 @@ impl PlantEvolutionApp {
                                 x: j as f32 * self.cell_size + 0.5 * self.cell_size,
                                 y: i as f32 * self.cell_size + 0.5 * self.cell_size,
                             },
-                        self.cell_size * 0.4,
+                        self.cell_size * SEED_RADIUS_MULTIPLIER,
                         self.visual_settings.seed_color,
                     );
                 }
@@ -223,7 +221,7 @@ impl PlantEvolutionApp {
 
         if self.visual_settings.highlight_pointer {
             ui.ctx().input(|i| i.pointer.interact_pos()).inspect(|pos| {
-                painter.circle_filled(*pos, 2., Color32::RED);
+                painter.circle_filled(*pos, POINTER_RADIUS, Color32::RED);
             });
         }
 
@@ -408,12 +406,11 @@ impl PlantEvolutionApp {
 
     fn manage_updates_disabled_window(&mut self, ui: &mut egui::Ui) {
         if !self.parameters.performance_parameters.enable_updates {
-            let width = 200.;
-            let pos = ui.clip_rect().center_top() + Vec2::new(0., 24.);
+            let pos = ui.clip_rect().center_top() + UPDATES_DISABLED_WINDOW_OFFSET;
             egui::Window::new("updates_disabled")
-                .max_width(width)
-                .min_width(width)
-                .default_width(width)
+                .max_width(UPDATES_DISABLED_WINDOW_WIDTH)
+                .min_width(UPDATES_DISABLED_WINDOW_WIDTH)
+                .default_width(UPDATES_DISABLED_WINDOW_WIDTH)
                 .fixed_pos(pos)
                 .pivot(Align2::CENTER_TOP)
                 .resizable(false)
@@ -437,9 +434,9 @@ impl PlantEvolutionApp {
     fn show_top_panel_content(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.menu_button("File", |ui| {
-                ui.set_min_width(100.);
+                ui.set_min_width(MENU_MIN_WIDTH);
                 ui.menu_button("Save", |ui| {
-                    ui.set_min_width(80.);
+                    ui.set_min_width(SUBMENU_MIN_WIDTH);
                     if ui.button("Best").clicked() {
                         self.save_maps(&SaveSelection::Best(1));
                     }
@@ -628,7 +625,7 @@ impl PlantEvolutionApp {
         if matches!(self.simulation_state, SimulationState::RunSimulation(_)) {
             match self.last_evolutions_measurement {
                 Some((evolutions, time)) => {
-                    if total_evolutions - evolutions >= 10 {
+                    if total_evolutions - evolutions >= EVOLUTIONS_PER_COUNTER_UPDATE {
                         let time_per_evolution = SystemTime::now()
                             .duration_since(time)
                             .unwrap()
@@ -636,7 +633,7 @@ impl PlantEvolutionApp {
                         if !self.evolutions_delta.is_normal() {
                             self.evolutions_delta = time_per_evolution.as_secs_f32();
                         } else {
-                            let alpha = 0.2;
+                            let alpha = COUNTER_ALPHA;
                             self.evolutions_delta = (self.evolutions_delta * (1. - alpha))
                                 + (time_per_evolution.as_secs_f32() * alpha);
                         }
