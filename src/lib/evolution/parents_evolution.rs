@@ -98,16 +98,15 @@ impl ParentCombination for PlantCellAbilities {
 pub fn parent_combine(
     rng: &mut Rng,
     data: &[PlantEvolutionData],
-    children: usize,
-) -> Vec<PlantEvolutionData> {
-    (0..children)
-        .map(|_| {
+    maps: &mut [MapData],
+) {
+    maps.iter_mut()
+        .for_each(|map| {
             let idx1 = rng.random_range(0..data.len());
             let idx2 = {
                 let idx = rng.random_range(0..data.len() - 1);
                 if idx >= idx1 { idx + 1 } else { idx }
             };
-            data[idx1].parent_combine(rng, &data[idx2])
-        })
-        .collect()
+            map.evolution_data = data[idx1].parent_combine(rng, &data[idx2]);
+        });
 }

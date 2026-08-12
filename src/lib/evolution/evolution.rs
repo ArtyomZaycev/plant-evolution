@@ -153,7 +153,7 @@ pub fn parents_random_evolve(
 ) {
     let best_evolution_data = sample_best_maps_evolution(maps, samples);
     maps.resize_with(plants, || MapData::default());
-    let children_evolution_data = parent_combine(rng, &best_evolution_data, maps.len() - samples);
+    parent_combine(rng, &best_evolution_data, &mut maps[samples..]);
 
     hotpath::measure_block!("parents_random_evolve block1", {
         best_evolution_data
@@ -164,14 +164,12 @@ pub fn parents_random_evolve(
             });
     });
     hotpath::measure_block!("parents_random_evolve block2", {
-        children_evolution_data
-            .into_iter()
-            .enumerate()
-            .for_each(|(i, data)| {
-                maps[i + samples].evolution_data = data;
+        maps[samples..]
+            .iter_mut()
+            .for_each(|map| {
                 if rng.random_bool(PARENTS_EVOLUTION_EVOLVE_CHANCE) {
                     hotpath::measure_block!("parents_do_evolve", {
-                        maps[i + samples].evolve_random(rng, change_chance, change_entropy);
+                        map.evolve_random(rng, change_chance, change_entropy);
                     })
                 }
             });
