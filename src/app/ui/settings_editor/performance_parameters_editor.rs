@@ -1,4 +1,4 @@
-use std::{num::NonZero, time::Duration};
+use std::time::Duration;
 
 use egui::{Align, Layout, Slider, Vec2};
 
@@ -21,9 +21,11 @@ pub struct PerformanceParametersEditor {
 
 impl EditorUi<PerformanceParameters> for PerformanceParametersEditor {
     fn new(settings: PerformanceParameters) -> Self {
-        let max_number_of_threads = std::thread::available_parallelism().map_or(DEFAULT_THREAD_COUNT, |v| v.get() as u32);
+        let max_number_of_threads =
+            std::thread::available_parallelism().map_or(DEFAULT_THREAD_COUNT, |v| v.get() as u32);
         Self {
-            multithreading_enabled: cfg!(feature = "thread_evolution") && settings.multithreading_enabled,
+            multithreading_enabled: cfg!(feature = "thread_evolution")
+                && settings.multithreading_enabled,
             number_of_threads: settings.number_of_threads,
             max_number_of_threads: max_number_of_threads.max(DEFAULT_THREAD_COUNT),
             use_local_growth: settings.use_local_growth,
