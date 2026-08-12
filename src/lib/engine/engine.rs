@@ -110,7 +110,13 @@ impl Engine {
         Self {
             command_sender: commands_tx,
             logs_receiver: logs_rx,
-            handler: Self::create_run_thread(state.clone(), parameters, writer, commands_rx, logs_tx),
+            handler: Self::create_run_thread(
+                state.clone(),
+                parameters,
+                writer,
+                commands_rx,
+                logs_tx,
+            ),
             state,
             maps: reader,
         }
@@ -253,12 +259,15 @@ impl Engine {
             if let Ok(command) = receiver.try_recv() {
                 match command {
                     EngineCommand::UpdateParameters(new_parameters) => {
-                        maps_update_stopwatch.interval = new_parameters.performance_parameters.slow_update_interval;
+                        maps_update_stopwatch.interval =
+                            new_parameters.performance_parameters.slow_update_interval;
                         parameters = new_parameters;
                     }
 
-                    EngineCommand::Load(_) => {todo!()}
-                    
+                    EngineCommand::Load(_) => {
+                        todo!()
+                    }
+
                     EngineCommand::Restart => {
                         maps.iter_mut().for_each(|map| {
                             map.evolution_data = PlantEvolutionData::generate(&mut rng);
@@ -317,7 +326,9 @@ impl Engine {
                         state = InnerEngineState::RunSimulation { autoevolve: None };
                     }
                     EngineCommand::RunSimulationa(autoevolve_at) => {
-                        state = InnerEngineState::RunSimulation { autoevolve: Some(autoevolve_at) };
+                        state = InnerEngineState::RunSimulation {
+                            autoevolve: Some(autoevolve_at),
+                        };
                     }
 
                     EngineCommand::Die => {

@@ -39,7 +39,7 @@ pub struct PlantEvolutionApp {
     autoevolve_at: u32,
 
     last_evolutions_measurement: Option<(u32, SystemTime)>,
-    evolutions_per_minute: f32,
+    evolutions_delta: f32,
 
     selected_map_index_str: String,
     selected_maps_index: Vec<usize>,
@@ -72,7 +72,7 @@ impl PlantEvolutionApp {
             autoevolve_at_str: 500.to_string(),
             autoevolve_at: 500,
             last_evolutions_measurement: None,
-            evolutions_per_minute: f32::NAN,
+            evolutions_delta: f32::NAN,
             selected_map_index_str: "1".to_owned(),
             selected_maps_index: vec![0],
             last_selected_index: 0,
@@ -283,11 +283,7 @@ impl PlantEvolutionApp {
     }
 
     fn save_maps(&mut self, selection: &SaveSelection) {
-        let folder = self
-            .parameters
-            .saving_parameters
-            .path
-            .clone();
+        let folder = self.parameters.saving_parameters.path.clone();
         let simulation_id = self.engine.state.simulation_id.read().unwrap().clone();
         self.push_save_log(
             save_maps(
@@ -300,11 +296,7 @@ impl PlantEvolutionApp {
     }
 
     fn update_from_shared_state(&mut self) {
-        if self
-            .parameters
-            .performance_parameters
-            .slow_updates
-        {
+        if self.parameters.performance_parameters.slow_updates {
             if self.maps_update_stopwatch.is_elapsed() {
                 self.engine.maps.read().unwrap().update(&mut self.maps);
                 self.maps_update_stopwatch.reset();
@@ -326,17 +318,19 @@ impl PlantEvolutionApp {
 
     fn manage_settings_window(&mut self, ui: &mut egui::Ui) {
         if let Some(settings) = self.settings_editor.take() {
-            egui::Modal::new("settings".into()).show(ui.ctx(), |ui| {
-                match settings.show(ui) {
-                    SettingsEditorState::Active(settings) => self.settings_editor = Some(settings),
-                    SettingsEditorState::Applied(visual_settings, engine_parameters) => {
-                        self.visual_settings = visual_settings.clone();
-                        self.maps_update_stopwatch.interval = engine_parameters.performance_parameters.slow_update_interval;
-                        self.engine.send_command(EngineCommand::UpdateParameters(engine_parameters.clone())).unwrap();
-                        self.parameters = engine_parameters.clone();
-                    },
-                    SettingsEditorState::Cancelled => {},
+            egui::Modal::new("settings".into()).show(ui.ctx(), |ui| match settings.show(ui) {
+                SettingsEditorState::Active(settings) => self.settings_editor = Some(settings),
+                SettingsEditorState::Applied(visual_settings, engine_parameters) => {
+                    self.visual_settings = visual_settings.clone();
+                    self.maps_update_stopwatch.interval = engine_parameters
+                        .performance_parameters
+                        .slow_update_interval;
+                    self.engine
+                        .send_command(EngineCommand::UpdateParameters(engine_parameters.clone()))
+                        .unwrap();
+                    self.parameters = engine_parameters.clone();
                 }
+                SettingsEditorState::Cancelled => {}
             });
         }
     }
@@ -413,11 +407,7 @@ impl PlantEvolutionApp {
     }
 
     fn manage_updates_disabled_window(&mut self, ui: &mut egui::Ui) {
-        if !self
-            .parameters
-            .performance_parameters
-            .enable_updates
-        {
+        if !self.parameters.performance_parameters.enable_updates {
             let width = 200.;
             let pos = ui.clip_rect().center_top() + Vec2::new(0., 24.);
             egui::Window::new("updates_disabled")
@@ -433,7 +423,11 @@ impl PlantEvolutionApp {
                         ui.label("Updates are disabled");
                         if ui.button("Enable").clicked() {
                             self.parameters.performance_parameters.enable_updates = true;
-                            self.engine.send_command(EngineCommand::UpdateParameters(self.parameters.clone())).unwrap();
+                            self.engine
+                                .send_command(EngineCommand::UpdateParameters(
+                                    self.parameters.clone(),
+                                ))
+                                .unwrap();
                         }
                     });
                 });
@@ -485,7 +479,9 @@ impl PlantEvolutionApp {
                 egui::Button::new("Select"),
             )
             .clicked()
-            || (new_selected_map_index.is_some() && response.lost_focus() && ui.input(|inp| inp.key_pressed(egui::Key::Enter)))
+            || (new_selected_map_index.is_some()
+                && response.lost_focus()
+                && ui.input(|inp| inp.key_pressed(egui::Key::Enter)))
         {
             self.selected_maps_index = new_selected_map_index.unwrap();
             self.last_selected_index = *self.selected_maps_index.last().unwrap();
@@ -561,10 +557,7 @@ impl PlantEvolutionApp {
                 self.engine.send_command(EngineCommand::Stop).unwrap();
             }
             if ui
-                .radio(
-                    self.simulation_state == SimulationState::RunTicks,
-                    "Grow",
-                )
+                .radio(self.simulation_state == SimulationState::RunTicks, "Grow")
                 .clicked()
             {
                 self.autoevolve_enabled = false;
@@ -573,17 +566,16 @@ impl PlantEvolutionApp {
             }
             if ui
                 .radio(
-                    matches!(
-                        self.simulation_state,
-                        SimulationState::RunSimulation(_)
-                    ),
+                    matches!(self.simulation_state, SimulationState::RunSimulation(_)),
                     "Evolve",
                 )
                 .clicked()
             {
                 self.autoevolve_enabled = true;
                 self.simulation_state = SimulationState::RunSimulation(self.autoevolve_at);
-                self.engine.send_command(EngineCommand::RunSimulationa(self.autoevolve_at)).unwrap();
+                self.engine
+                    .send_command(EngineCommand::RunSimulationa(self.autoevolve_at))
+                    .unwrap();
             }
         });
 
@@ -599,7 +591,8 @@ impl PlantEvolutionApp {
             }
             if ui
                 .add_enabled(
-                    self.simulation_state == SimulationState::Stale || self.simulation_state == SimulationState::RunTicks,
+                    self.simulation_state == SimulationState::Stale
+                        || self.simulation_state == SimulationState::RunTicks,
                     egui::Button::new("Evolve"),
                 )
                 .clicked()
@@ -615,7 +608,9 @@ impl PlantEvolutionApp {
                 if let Ok(autoevolve_at) = self.autoevolve_at_str.parse() {
                     self.autoevolve_at = autoevolve_at;
                     if self.autoevolve_enabled {
-                        self.engine.send_command(EngineCommand::RunSimulationa(self.autoevolve_at)).unwrap();
+                        self.engine
+                            .send_command(EngineCommand::RunSimulationa(self.autoevolve_at))
+                            .unwrap();
                     }
                 }
                 self.autoevolve_at_str = self.autoevolve_at.to_string();
@@ -630,10 +625,7 @@ impl PlantEvolutionApp {
         );
 
         let total_evolutions = self.engine.state.total_evolutions.load(Ordering::Relaxed);
-        if matches!(
-            self.simulation_state,
-            SimulationState::RunSimulation(_)
-        ) {
+        if matches!(self.simulation_state, SimulationState::RunSimulation(_)) {
             match self.last_evolutions_measurement {
                 Some((evolutions, time)) => {
                     if total_evolutions - evolutions >= 10 {
@@ -641,8 +633,13 @@ impl PlantEvolutionApp {
                             .duration_since(time)
                             .unwrap()
                             .div_f32((total_evolutions - evolutions) as f32);
-                        self.evolutions_per_minute =
-                            Duration::from_mins(1).div_duration_f32(time_per_evolution);
+                        if !self.evolutions_delta.is_normal() {
+                            self.evolutions_delta = time_per_evolution.as_secs_f32();
+                        } else {
+                            let alpha = 0.2;
+                            self.evolutions_delta = (self.evolutions_delta * (1. - alpha))
+                                + (time_per_evolution.as_secs_f32() * alpha);
+                        }
                         self.last_evolutions_measurement =
                             Some((total_evolutions, SystemTime::now()));
                     }
@@ -652,7 +649,7 @@ impl PlantEvolutionApp {
                 }
             }
         } else {
-            self.evolutions_per_minute = f32::NAN;
+            self.evolutions_delta = f32::NAN;
         }
 
         ui.label(format!(
@@ -660,8 +657,8 @@ impl PlantEvolutionApp {
             total_evolutions,
             format!(
                 " ({:.1}/minute)",
-                if self.evolutions_per_minute.is_normal() {
-                    self.evolutions_per_minute
+                if self.evolutions_delta.is_normal() {
+                    1. / self.evolutions_delta * 60.
                 } else {
                     0.
                 },

@@ -23,7 +23,12 @@ fn main() {
     eframe::run_native(
         "Plant Evolution",
         options,
-        Box::new(|_| Ok(Box::new(PlantEvolutionApp::new(engine, EngineParameters::default())))),
+        Box::new(|_| {
+            Ok(Box::new(PlantEvolutionApp::new(
+                engine,
+                EngineParameters::default(),
+            )))
+        }),
     )
     .unwrap();
 }

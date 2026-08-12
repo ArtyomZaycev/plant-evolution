@@ -22,7 +22,7 @@ impl Stopwatch {
     pub fn reset(&mut self) {
         self.last = SystemTime::now();
     }
-    
+
     pub fn is_elapsed_reset(&mut self) -> bool {
         if self.is_elapsed() {
             self.reset();

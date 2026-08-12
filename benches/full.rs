@@ -6,7 +6,9 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use plant_evolution_lib::{engine::*, map::*, precalc::*};
 
 fn engine_bencmark(engine: &mut Engine, autoevolve_at: u32, total_evolution: u32) {
-    engine.send_command(EngineCommand::RunSimulationa(autoevolve_at)).unwrap();
+    engine
+        .send_command(EngineCommand::RunSimulationa(autoevolve_at))
+        .unwrap();
     loop {
         sleep(Duration::from_millis(10));
         if engine.state.total_evolutions.load(Ordering::Relaxed) >= total_evolution {
@@ -46,60 +48,72 @@ fn criterion_benchmark(c: &mut Criterion) {
         .measurement_time(Duration::from_secs(180));
 
     group.bench_function("accuracy", |b| {
-        engine.send_command(EngineCommand::UpdateParameters(EngineParameters {
-            performance_parameters: PerformanceParameters::ACCURACY,
-            ..parameters.clone()
-        })).unwrap();
+        engine
+            .send_command(EngineCommand::UpdateParameters(EngineParameters {
+                performance_parameters: PerformanceParameters::ACCURACY,
+                ..parameters.clone()
+            }))
+            .unwrap();
         b.iter(|| {
             engine_bencmark(&mut engine, 500, 100);
         });
     });
 
     group.bench_function("performace", |b| {
-        engine.send_command(EngineCommand::UpdateParameters(EngineParameters {
-            performance_parameters: PerformanceParameters::PERFORMANCE,
-            ..parameters.clone()
-        })).unwrap();
+        engine
+            .send_command(EngineCommand::UpdateParameters(EngineParameters {
+                performance_parameters: PerformanceParameters::PERFORMANCE,
+                ..parameters.clone()
+            }))
+            .unwrap();
         b.iter(|| {
             engine_bencmark(&mut engine, 500, 100);
         });
     });
 
     group.bench_function("ui_performace", |b| {
-        engine.send_command(EngineCommand::UpdateParameters(EngineParameters {
-            performance_parameters: PerformanceParameters::UI_PERFORMANCE,
-            ..parameters.clone()
-        })).unwrap();
+        engine
+            .send_command(EngineCommand::UpdateParameters(EngineParameters {
+                performance_parameters: PerformanceParameters::UI_PERFORMANCE,
+                ..parameters.clone()
+            }))
+            .unwrap();
         b.iter(|| {
             engine_bencmark(&mut engine, 500, 100);
         });
     });
 
     group.bench_function("accuracy_long", |b| {
-        engine.send_command(EngineCommand::UpdateParameters(EngineParameters {
-            performance_parameters: PerformanceParameters::ACCURACY,
-            ..parameters.clone()
-        })).unwrap();
+        engine
+            .send_command(EngineCommand::UpdateParameters(EngineParameters {
+                performance_parameters: PerformanceParameters::ACCURACY,
+                ..parameters.clone()
+            }))
+            .unwrap();
         b.iter(|| {
             engine_bencmark(&mut engine, 500, 2000);
         });
     });
 
     group.bench_function("performace_long", |b| {
-        engine.send_command(EngineCommand::UpdateParameters(EngineParameters {
-            performance_parameters: PerformanceParameters::PERFORMANCE,
-            ..parameters.clone()
-        })).unwrap();
+        engine
+            .send_command(EngineCommand::UpdateParameters(EngineParameters {
+                performance_parameters: PerformanceParameters::PERFORMANCE,
+                ..parameters.clone()
+            }))
+            .unwrap();
         b.iter(|| {
             engine_bencmark(&mut engine, 500, 2000);
         });
     });
 
     group.bench_function("ui_performace_long", |b| {
-        engine.send_command(EngineCommand::UpdateParameters(EngineParameters {
-            performance_parameters: PerformanceParameters::UI_PERFORMANCE,
-            ..parameters.clone()
-        })).unwrap();
+        engine
+            .send_command(EngineCommand::UpdateParameters(EngineParameters {
+                performance_parameters: PerformanceParameters::UI_PERFORMANCE,
+                ..parameters.clone()
+            }))
+            .unwrap();
         b.iter(|| {
             engine_bencmark(&mut engine, 500, 2000);
         });
