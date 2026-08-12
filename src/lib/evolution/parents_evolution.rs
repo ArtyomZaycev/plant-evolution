@@ -34,7 +34,7 @@ impl<T: ParentCombination, const N: usize> ParentCombination for [T; N] {
 impl ParentCombination for PlantEvolutionData {
     fn parent_combine(&self, rng: &mut Rng, other: &Self) -> Self {
         Self {
-            evolutions: self.evolutions,
+            evolutions: self.evolutions.max(other.evolutions),
             cells_evolution_data: self
                 .cells_evolution_data
                 .parent_combine(rng, &other.cells_evolution_data),
