@@ -8,7 +8,7 @@ use crate::{evolution::consts::*, map::*, precalc::*, utils::Rng};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CellEvolutionData {
-    pub weights: [[WithVolatility<WeightsTree>; NUMBER_OF_CELLS]; 3],
+    pub weights: [[WithVolatility<WeightsTree>; NUMBER_OF_CELLS]; 4],
     pub suicide_weights: WithVolatility<WeightsTree>,
 }
 

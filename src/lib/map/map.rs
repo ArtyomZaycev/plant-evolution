@@ -231,6 +231,7 @@ impl MapData {
 
     // TODO: Measure performance agains simpler comparisons
     /// Determenistic way of choosing next cell growth
+    #[inline(always)]
     fn compare_next_cell_growth(
         x1: usize,
         y1: usize,
@@ -308,7 +309,7 @@ impl MapData {
             let evolution = &self.evolution_data.cells_evolution_data[plant_cell.t];
             GROWTH_DIRECTION[i][j].iter().for_each(|&(nj, ni, d)| {
                 if self.cells[ni][nj].is_none() {
-                    let weights = &evolution.weights[d];
+                    let weights = &evolution.weights[d as usize];
                     let next_cell_growth = self.all_next_cell_growth.entry((nj, ni)).or_default();
                     Self::update_next_cell_growth_array(
                         plant_cell,
@@ -340,7 +341,7 @@ impl MapData {
             let evolution = &self.evolution_data.cells_evolution_data[plant_cell.t];
             GROWTH_DIRECTION[i][j].iter().for_each(|&(nj, ni, d)| {
                 if self.cells[ni][nj].is_none() && recalc_needed.contains(&(nj, ni)) {
-                    let weights = &evolution.weights[d];
+                    let weights = &evolution.weights[d as usize];
                     let next_cell_growth = self.all_next_cell_growth.entry((nj, ni)).or_default();
                     Self::update_next_cell_growth_array(
                         plant_cell,

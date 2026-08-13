@@ -367,49 +367,23 @@ impl PlantEvolutionApp {
                     evolution_data.suicide_weights.volatility,
                     evolution_data.suicide_weights.get_formula()
                 ));
-                egui::CollapsingHeader::new("Up")
-                    .default_open(true)
-                    .show(ui, |ui| {
-                        evolution_data.weights[0]
-                            .iter()
-                            .enumerate()
-                            .for_each(|(i, w)| {
-                                ui.label(format!(
-                                    "{} (v={:.2}): {}",
-                                    i + 1,
-                                    w.volatility,
-                                    w.get_formula()
-                                ));
-                            });
-                    });
-                egui::CollapsingHeader::new("Sideways")
-                    .default_open(true)
-                    .show(ui, |ui| {
-                        evolution_data.weights[1]
-                            .iter()
-                            .enumerate()
-                            .for_each(|(i, w)| {
-                                ui.label(format!(
-                                    "{} (v={:.2}): {}",
-                                    i + 1,
-                                    w.volatility,
-                                    w.get_formula()
-                                ));
-                            });
-                    });
-                egui::CollapsingHeader::new("Down")
-                    .default_open(true)
-                    .show(ui, |ui| {
-                        evolution_data.weights[2]
-                            .iter()
-                            .enumerate()
-                            .for_each(|(i, w)| {
-                                ui.label(format!(
-                                    "{} (v={:.2}): {}",
-                                    i + 1,
-                                    w.volatility,
-                                    w.get_formula()
-                                ));
+                ["Up", "Down", "Inwards", "Outwards"]
+                    .into_iter()
+                    .enumerate()
+                    .for_each(|(dir, dir_name)| {
+                        egui::CollapsingHeader::new(dir_name)
+                            .default_open(true)
+                            .show(ui, |ui| {
+                                evolution_data.weights[dir].iter().enumerate().for_each(
+                                    |(i, w)| {
+                                        ui.label(format!(
+                                            "{} (v={:.2}): {}",
+                                            i + 1,
+                                            w.volatility,
+                                            w.get_formula()
+                                        ));
+                                    },
+                                );
                             });
                     });
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {

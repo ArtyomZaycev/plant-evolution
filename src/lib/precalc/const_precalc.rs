@@ -8,8 +8,17 @@ pub const MAP_SIZE: (usize, usize) = (81, 81);
 pub const GROUND_LEVEL: usize = MAP_SIZE.1 / 2 + 1;
 pub const PLANT_CENTER: (usize, usize) = (MAP_SIZE.0 / 2, GROUND_LEVEL + 1);
 
+#[derive(Debug, Clone, Copy)]
+#[repr(u8)]
+pub enum GrowthDirection {
+    Up = 0,
+    Down = 1,
+    Inwards = 2,
+    Outwards = 3,
+}
+
 pub type DxDy2d = (usize, usize, f32);
-pub type GrowthDir = (usize, usize, usize);
+pub type GrowthDir = (usize, usize, GrowthDirection);
 // Every adjacent cell with distance 1
 pub static DXDY1_2D: LazyLock<[[Vec<DxDy2d>; MAP_SIZE.0]; MAP_SIZE.1]> =
     LazyLock::new(|| generate_dxdy(1));
@@ -21,7 +30,7 @@ pub static DXDY3_2D: LazyLock<[[Vec<DxDy2d>; MAP_SIZE.0]; MAP_SIZE.1]> =
     LazyLock::new(|| generate_dxdy(3));
 
 // Where this cell can grow
-// For now it's [up, down, outwards..]
+// For now it's [up, down, inwards, outwards]
 pub static GROWTH_DIRECTION: LazyLock<[[Vec<GrowthDir>; MAP_SIZE.0]; MAP_SIZE.1]> =
     LazyLock::new(|| generate_growth_direction());
 
@@ -62,26 +71,30 @@ fn generate_dxdy(max_distance: i32) -> [[Vec<DxDy2d>; MAP_SIZE.0]; MAP_SIZE.1] {
     })
 }
 
-// TODO: plants should be able to grow towards the center
 fn generate_growth_direction() -> [[Vec<GrowthDir>; MAP_SIZE.0]; MAP_SIZE.1] {
     core::array::from_fn(|i| {
         core::array::from_fn(|j| {
             let mut dirs = Vec::new();
             if i > 0 {
-                dirs.push((j, i - 1, 0));
+                dirs.push((j, i - 1, GrowthDirection::Down));
             }
             if i + 1 < MAP_SIZE.1 {
-                dirs.push((j, i + 1, 2));
+                dirs.push((j, i + 1, GrowthDirection::Up));
             }
             if j == PLANT_CENTER.0 {
-                dirs.push((j - 1, i, 1));
-                dirs.push((j + 1, i, 1));
+                dirs.push((j - 1, i, GrowthDirection::Outwards));
+                dirs.push((j + 1, i, GrowthDirection::Outwards));
             } else {
-                if j < PLANT_CENTER.0 && j > 0 {
-                    dirs.push((j - 1, i, 1));
-                }
-                if j > PLANT_CENTER.0 && j + 1 < MAP_SIZE.0 {
-                    dirs.push((j + 1, i, 1));
+                if j < PLANT_CENTER.0 {
+                    if j > 0 {
+                        dirs.push((j - 1, i, GrowthDirection::Outwards));
+                    }
+                    dirs.push((j + 1, i, GrowthDirection::Inwards));
+                } else {
+                    if j + 1 < MAP_SIZE.0 {
+                        dirs.push((j + 1, i, GrowthDirection::Outwards));
+                    }
+                    dirs.push((j - 1, i, GrowthDirection::Inwards));
                 }
             }
             dirs
