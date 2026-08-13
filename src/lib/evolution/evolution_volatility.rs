@@ -64,6 +64,9 @@ impl<T: ParentCombination> ParentCombination for WithVolatility<T> {
 
 impl<T: Default> Default for WithVolatility<T> {
     fn default() -> Self {
-        Self { value: Default::default(), volatility: 1. }
+        Self {
+            value: Default::default(),
+            volatility: 1.,
+        }
     }
 }

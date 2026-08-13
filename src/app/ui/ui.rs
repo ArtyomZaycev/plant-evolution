@@ -6,12 +6,15 @@ use plant_evolution_lib::{
     consts::DEFAULT_STOPWATCH_INTERVAL, engine::*, map::*, precalc::*, utils::*,
 };
 
-use crate::{config::Config, ui::{
-    consts::*,
-    settings::VisualSettings,
-    settings_editor::{editor::*, utils::EditorUi},
-    toast::*,
-}};
+use crate::{
+    config::Config,
+    ui::{
+        consts::*,
+        settings::VisualSettings,
+        settings_editor::{editor::*, utils::EditorUi},
+        toast::*,
+    },
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 enum SimulationState {
@@ -61,7 +64,9 @@ impl PlantEvolutionApp {
         let maps = maps_read_lock.get_data();
         drop(maps_read_lock);
 
-        engine.send_command(EngineCommand::UpdateViewedMaps(vec![0])).unwrap();
+        engine
+            .send_command(EngineCommand::UpdateViewedMaps(vec![0]))
+            .unwrap();
         Self {
             toast_manager: ToastManager::new(),
             config,
@@ -274,7 +279,11 @@ impl PlantEvolutionApp {
             self.highlighted_map = None;
         }
 
-        self.engine.send_command(EngineCommand::UpdateViewedMaps (self.selected_maps_index.clone())).unwrap();
+        self.engine
+            .send_command(EngineCommand::UpdateViewedMaps(
+                self.selected_maps_index.clone(),
+            ))
+            .unwrap();
     }
 
     fn push_save_log(&mut self, save_log: SaveLog, is_autosave: bool) {
@@ -460,7 +469,10 @@ impl PlantEvolutionApp {
                 ui.separator();
                 if ui.button("Restart").clicked() {
                     if self.config.get_locked_seed().is_none() {
-                        self.engine.state.rng_seed.store(rng::get_random_seed(), Ordering::Relaxed);
+                        self.engine
+                            .state
+                            .rng_seed
+                            .store(rng::get_random_seed(), Ordering::Relaxed);
                     }
                     self.engine.send_command(EngineCommand::Restart).unwrap();
                 }
@@ -821,9 +833,19 @@ impl PlantEvolutionApp {
     fn show_simulation_info_panel_content(&mut self, ui: &mut egui::Ui) {
         let seed = self.engine.state.rng_seed.load(Ordering::Relaxed);
         ui.horizontal(|ui| {
-            if ui.add(egui::Label::new(format!("Seed: {seed}")).sense(Sense::click())).clicked() {
-                ui.send_cmd(egui::OutputCommand::CopyText(self.engine.state.rng_seed.load(Ordering::Relaxed).to_string()));
-                self.toast_manager.add(Toast::new("Simulation seed copied to the clipboard"));
+            if ui
+                .add(egui::Label::new(format!("Seed: {seed}")).sense(Sense::click()))
+                .clicked()
+            {
+                ui.send_cmd(egui::OutputCommand::CopyText(
+                    self.engine
+                        .state
+                        .rng_seed
+                        .load(Ordering::Relaxed)
+                        .to_string(),
+                ));
+                self.toast_manager
+                    .add(Toast::new("Simulation seed copied to the clipboard"));
             }
             ui.add_enabled_ui(!cfg!(feature = "stable_rng"), |ui| {
                 let is_seed_locked = self.config.get_locked_seed().is_some();

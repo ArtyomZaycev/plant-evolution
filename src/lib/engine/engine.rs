@@ -1,11 +1,19 @@
 use std::{
     sync::{
-        Arc, RwLock, atomic::{AtomicU32, AtomicU64, Ordering}, mpsc,
-    }, thread::{self, JoinHandle}, time::{Duration, SystemTime},
+        Arc, RwLock,
+        atomic::{AtomicU32, AtomicU64, Ordering},
+        mpsc,
+    },
+    thread::{self, JoinHandle},
+    time::{Duration, SystemTime},
 };
 
 use super::{parameters::*, saving::*};
-use crate::{evolution::*, map::MapData, utils::{rng::get_rng_seeded, *}};
+use crate::{
+    evolution::*,
+    map::MapData,
+    utils::{rng::get_rng_seeded, *},
+};
 
 pub enum EngineCommand {
     UpdateParameters(EngineParameters),
@@ -88,7 +96,7 @@ impl EngineSharedState {
                 "Simulation {}",
                 chrono::Local::now().format("%Y-%m-%d %H-%M-%S")
             ))),
-            rng_seed: Arc::new(AtomicU64::new(rng_seed))
+            rng_seed: Arc::new(AtomicU64::new(rng_seed)),
         }
     }
 }
@@ -385,7 +393,9 @@ impl Engine {
                     });
 
                     if parameters.performance_parameters.enable_updates {
-                        if !parameters.performance_parameters.slow_updates || maps_update_stopwatch.is_elapsed_reset() {
+                        if !parameters.performance_parameters.slow_updates
+                            || maps_update_stopwatch.is_elapsed_reset()
+                        {
                             maps_accessor.write().unwrap().update_data(|old_maps| {
                                 if let Some(viewed_maps) = &viewed_maps {
                                     viewed_maps.iter().for_each(|i| {
@@ -433,7 +443,9 @@ impl Engine {
                     Self::run_ticks(&mut maps, number_of_ticks, use_local_growth, use_tick_many);
 
                     if parameters.performance_parameters.enable_updates {
-                        if !parameters.performance_parameters.slow_updates || maps_update_stopwatch.is_elapsed_reset() {
+                        if !parameters.performance_parameters.slow_updates
+                            || maps_update_stopwatch.is_elapsed_reset()
+                        {
                             maps_accessor.write().unwrap().update_data(|old_maps| {
                                 if let Some(viewed_maps) = &viewed_maps {
                                     viewed_maps.iter().for_each(|i| {

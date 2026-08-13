@@ -15,7 +15,10 @@ pub fn get_seed() -> u64 {
 #[cfg(not(feature = "stable_rng"))]
 /// Same value within one run
 pub fn get_seed() -> u64 {
-    if let Some(seed) = std::env::var(SEED_ENV).ok().and_then(|seed| seed.parse::<u64>().ok()) {
+    if let Some(seed) = std::env::var(SEED_ENV)
+        .ok()
+        .and_then(|seed| seed.parse::<u64>().ok())
+    {
         seed
     } else {
         let seed = get_random_seed();

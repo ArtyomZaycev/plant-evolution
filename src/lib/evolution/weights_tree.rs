@@ -106,7 +106,9 @@ pub struct WeightsTree {
 
 impl Default for WeightsTree {
     fn default() -> Self {
-        Self { nodes: vec![TreeNode::Value(Default::default())] }
+        Self {
+            nodes: vec![TreeNode::Value(Default::default())],
+        }
     }
 }
 
