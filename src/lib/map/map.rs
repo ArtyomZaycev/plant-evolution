@@ -550,7 +550,9 @@ impl MapData {
         self.cells_pos[0] = PLANT_CENTER;
 
         self.populate_plant_inputs();
+        self.recalc_plant_nutrition();
         self.recalc_all_next_cell_growth();
+        self.recalc_next_cell_suicide();
     }
 
     pub fn tick(&mut self, use_local_growth_recalculation: bool) {
