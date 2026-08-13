@@ -813,6 +813,13 @@ impl PlantEvolutionApp {
         });
     }
 
+    fn show_simulation_info_panel_content(&mut self, ui: &mut egui::Ui) {
+        if ui.add(egui::Label::new(format!("Seed: {}", self.engine.state.rng_seed.load(Ordering::Relaxed))).sense(Sense::click())).clicked() {
+            ui.send_cmd(egui::OutputCommand::CopyText(self.engine.state.rng_seed.load(Ordering::Relaxed).to_string()));
+            self.toast_manager.add(Toast::new("Simulation seed copied to the clipboard"));
+        }
+    }
+
     fn show_bottom_panel_content(&mut self, ui: &mut egui::Ui) {
         match self.hovered_cell.or(self.highlighted_cell) {
             Some((map_idx, x, y)) => {
@@ -962,6 +969,9 @@ impl eframe::App for PlantEvolutionApp {
         });
 
         egui::Panel::right("control_menu").show_inside(ui, |ui| {
+            egui::Panel::bottom("simulation_info")
+                .show_inside(ui, |ui| self.show_simulation_info_panel_content(ui));
+
             self.show_right_panel_content(ui);
         });
 

@@ -50,8 +50,8 @@ impl ToastManager {
         }
     }
 
-    pub fn add(&mut self, notification: Toast) {
-        self.toasts.push(notification);
+    pub fn add(&mut self, toast: Toast) {
+        self.toasts.push(toast);
     }
 
     pub fn show(&mut self, ui: &mut egui::Ui) {

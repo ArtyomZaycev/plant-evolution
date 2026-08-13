@@ -232,7 +232,8 @@ impl Engine {
         receiver: mpsc::Receiver<EngineCommand>,
         logs_sender: mpsc::Sender<EngineData>,
     ) {
-        let mut rng = rng::get_rng();
+        let rng_seed = shared_state.rng_seed.load(Ordering::Relaxed);
+        let mut rng = rng::get_rng_seeded(rng_seed);
 
         #[cfg(feature = "thread_evolution")]
         let mut threadpool = {
