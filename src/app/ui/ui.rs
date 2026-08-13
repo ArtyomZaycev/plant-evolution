@@ -459,6 +459,9 @@ impl PlantEvolutionApp {
                 if ui.button("Load").clicked() {}
                 ui.separator();
                 if ui.button("Restart").clicked() {
+                    if self.config.get_locked_seed().is_none() {
+                        self.engine.state.rng_seed.store(rng::get_random_seed(), Ordering::Relaxed);
+                    }
                     self.engine.send_command(EngineCommand::Restart).unwrap();
                 }
                 ui.separator();

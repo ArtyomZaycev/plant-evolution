@@ -5,7 +5,7 @@ use std::{
 };
 
 use super::{parameters::*, saving::*};
-use crate::{evolution::*, map::MapData, utils::*};
+use crate::{evolution::*, map::MapData, utils::{rng::get_rng_seeded, *}};
 
 pub enum EngineCommand {
     UpdateParameters(EngineParameters),
@@ -263,10 +263,14 @@ impl Engine {
                     }
 
                     EngineCommand::Restart => {
+                        let rng_seed = shared_state.rng_seed.load(Ordering::Relaxed);
+                        rng = get_rng_seeded(rng_seed);
+
                         maps.iter_mut().for_each(|map| {
                             map.evolution_data = PlantEvolutionData::generate(&mut rng);
                             map.restart();
                         });
+                        rng = get_rng_seeded(rng_seed);
                         last_save = SaveMark::default();
                         shared_state.total_evolutions.store(0, Ordering::Relaxed);
 

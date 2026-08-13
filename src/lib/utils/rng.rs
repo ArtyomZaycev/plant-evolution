@@ -13,20 +13,21 @@ pub fn get_seed() -> u64 {
 }
 
 #[cfg(not(feature = "stable_rng"))]
-/// Always returns the same value
+/// Same value within one run
 pub fn get_seed() -> u64 {
     if let Some(seed) = std::env::var(SEED_ENV).ok().and_then(|seed| seed.parse::<u64>().ok()) {
         seed
     } else {
-        use rand::Rng;
-
-        let mut rng = rand::rng();
-        let seed = rng.next_u64() % 1_000_033;
+        let seed = get_random_seed();
         unsafe {
             std::env::set_var(SEED_ENV, seed.to_string());
         }
         seed
     }
+}
+
+pub fn get_random_seed() -> u64 {
+    rand::random::<u64>() % 1_000_033
 }
 
 pub fn get_rng() -> Rng {
