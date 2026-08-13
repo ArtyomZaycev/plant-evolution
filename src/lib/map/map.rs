@@ -474,9 +474,8 @@ impl MapData {
                 if i < GROUND_LEVEL {
                     MapCell::Air(AirParameters { sunlight })
                 } else {
-                    // TODO: Use GROUND_LEVEL
-                    let depth = i - MAP_SIZE.1 / 2;
-                    let depth = depth as f32 / (MAP_SIZE.1 / 2) as f32;
+                    let depth = i - GROUND_LEVEL;
+                    let depth = depth as f32 / (MAP_SIZE.1 - GROUND_LEVEL) as f32;
                     MapCell::Soil(SoilParameters {
                         minerals: LOW_DEPTH_MINERALS
                             + (HIGH_DEPTH_MINERALS - LOW_DEPTH_MINERALS).abs() * depth,
