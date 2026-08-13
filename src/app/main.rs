@@ -1,13 +1,15 @@
 #![feature(vec_from_fn)]
 #![feature(iter_intersperse)]
+#![feature(path_trailing_sep)]
 
 mod ui;
+mod config;
 
 use plant_evolution_lib::{
     engine::*, evolution::consts::*, map::MapData, precalc::populate_consts, utils::rng,
 };
 
-use crate::ui::{consts::*, ui::PlantEvolutionApp};
+use crate::{config::Config, ui::{consts::*, ui::PlantEvolutionApp}};
 
 #[hotpath::main]
 fn main() {
@@ -18,7 +20,8 @@ fn main() {
         ..Default::default()
     };
 
-    let rng_seed = rng::get_seed();
+    let config = Config::load();
+    let rng_seed = config.get_locked_seed().unwrap_or(rng::get_seed());
     let mut maps_rng = rng::get_rng_seeded(rng_seed);
     let maps = Vec::from_fn(DEFAULT_NUMBER_OF_PLANTS, |_| MapData::generate(&mut maps_rng));
 
@@ -30,6 +33,7 @@ fn main() {
         Box::new(|_| {
             Ok(Box::new(PlantEvolutionApp::new(
                 engine,
+                config,
                 EngineParameters::default(),
             )))
         }),

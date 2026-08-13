@@ -21,6 +21,7 @@ serde_json = "1.0.150"
 serde = { version = "1.0.228", features = ["derive"] }
 chrono = "0.4.45"
 scoped_threadpool = { version = "0.1.9", optional = true }
+directories-next = "2.0.0"
 
 [features]
 default = ["thread_evolution"]

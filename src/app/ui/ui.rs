@@ -6,12 +6,12 @@ use plant_evolution_lib::{
     consts::DEFAULT_STOPWATCH_INTERVAL, engine::*, map::*, precalc::*, utils::*,
 };
 
-use crate::ui::{
+use crate::{config::Config, ui::{
     consts::*,
     settings::VisualSettings,
     settings_editor::{editor::*, utils::EditorUi},
     toast::*,
-};
+}};
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 enum SimulationState {
@@ -23,6 +23,7 @@ enum SimulationState {
 
 pub struct PlantEvolutionApp {
     toast_manager: ToastManager,
+    config: Config,
     engine: Engine,
 
     visual_settings: VisualSettings,
@@ -55,7 +56,7 @@ pub struct PlantEvolutionApp {
 }
 
 impl PlantEvolutionApp {
-    pub fn new(mut engine: Engine, parameters: EngineParameters) -> Self {
+    pub fn new(mut engine: Engine, config: Config, parameters: EngineParameters) -> Self {
         let maps_read_lock = engine.maps.read().unwrap();
         let maps = maps_read_lock.get_data();
         drop(maps_read_lock);
@@ -63,6 +64,7 @@ impl PlantEvolutionApp {
         engine.send_command(EngineCommand::UpdateViewedMaps(vec![0])).unwrap();
         Self {
             toast_manager: ToastManager::new(),
+            config,
             maps_update_stopwatch: Stopwatch::new(DEFAULT_STOPWATCH_INTERVAL),
             maps,
             visual_settings: VisualSettings::default(),
@@ -814,10 +816,24 @@ impl PlantEvolutionApp {
     }
 
     fn show_simulation_info_panel_content(&mut self, ui: &mut egui::Ui) {
-        if ui.add(egui::Label::new(format!("Seed: {}", self.engine.state.rng_seed.load(Ordering::Relaxed))).sense(Sense::click())).clicked() {
-            ui.send_cmd(egui::OutputCommand::CopyText(self.engine.state.rng_seed.load(Ordering::Relaxed).to_string()));
-            self.toast_manager.add(Toast::new("Simulation seed copied to the clipboard"));
-        }
+        let seed = self.engine.state.rng_seed.load(Ordering::Relaxed);
+        ui.horizontal(|ui| {
+            if ui.add(egui::Label::new(format!("Seed: {seed}")).sense(Sense::click())).clicked() {
+                ui.send_cmd(egui::OutputCommand::CopyText(self.engine.state.rng_seed.load(Ordering::Relaxed).to_string()));
+                self.toast_manager.add(Toast::new("Simulation seed copied to the clipboard"));
+            }
+            ui.add_enabled_ui(!cfg!(feature = "stable_rng"), |ui| {
+                let is_seed_locked = self.config.get_locked_seed().is_some();
+                let lock = if is_seed_locked { "🔒" } else { "🔓" };
+                if ui.selectable_label(is_seed_locked, lock).clicked() {
+                    if is_seed_locked {
+                        let _ = self.config.unlock_seed();
+                    } else {
+                        let _ = self.config.lock_seed(seed);
+                    }
+                }
+            });
+        });
     }
 
     fn show_bottom_panel_content(&mut self, ui: &mut egui::Ui) {
