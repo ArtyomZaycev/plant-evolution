@@ -762,7 +762,7 @@ impl MapData {
                     }
                 }
             }
-            seeds_score += 2. / (cnt + 1) as f32;
+            seeds_score += 1. / (cnt + 1) as f32;
         }
 
         (seeds_score * SEED_SCORE)

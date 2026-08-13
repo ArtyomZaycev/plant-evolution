@@ -64,7 +64,7 @@ pub const HIGH_DEPTH_WATER: f32 = 0.01;
 
 pub const SEEDS_MIN_DISTANCE: usize = 5;
 
-pub const SEED_SCORE: f32 = 10.;
+pub const SEED_SCORE: f32 = 20.;
 pub const SCORE_NUTRITION_MULTIPLIER: f32 = 100.;
 
 pub const ENERGY_PRODUCTION_COST_MULTIPLIER: f32 = 4.;
