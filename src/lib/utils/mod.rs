@@ -1,9 +1,9 @@
 mod shared_buffer;
 mod stopwatch;
-mod types;
+pub mod rng;
 mod versioned;
 
 pub use shared_buffer::*;
 pub use stopwatch::*;
-pub use types::*;
 pub use versioned::*;
+pub use rng::Rng;

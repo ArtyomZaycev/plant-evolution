@@ -1,3 +1,5 @@
+use std::cell::LazyCell;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -5,7 +7,7 @@ use crate::{
     precalc::NUMBER_OF_CELLS,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PlantCellAbilities {
     pub sunlight_consumption: WithVolatility<f32>,
     pub air_consumption: WithVolatility<f32>,
@@ -19,6 +21,34 @@ pub struct PlantCellAbilities {
 }
 
 impl PlantCellAbilities {
+    pub const DEFAULT_BASIC: LazyCell<Self> = LazyCell::new(|| {
+        Self {
+            sunlight_consumption: WithVolatility::new(0.1),
+            air_consumption: WithVolatility::new(0.1),
+            minerals_consumption: WithVolatility::new(0.1),
+            water_consumption: WithVolatility::new(0.1),
+            energy_production_speed: WithVolatility::new(0.1),
+            seed: false,
+            grow_cost: 0.,
+            passive_cost: 0.,
+        }
+        .with_populated_cost()
+    });
+
+    pub const DEFAULT_SEED: LazyCell<Self> = LazyCell::new(|| {
+        Self {
+            sunlight_consumption: WithVolatility::new(0.),
+            air_consumption: WithVolatility::new(0.),
+            minerals_consumption: WithVolatility::new(1.),
+            water_consumption: WithVolatility::new(1.),
+            energy_production_speed: WithVolatility::new(0.4),
+            seed: false,
+            grow_cost: 0.,
+            passive_cost: 0.,
+        }
+        .with_populated_cost()
+    });
+
     pub fn populate_cost(&mut self) {
         self.grow_cost = (1.
             + *self.sunlight_consumption

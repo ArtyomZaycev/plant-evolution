@@ -3,7 +3,7 @@
 use std::{sync::atomic::Ordering, thread::sleep, time::Duration};
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use plant_evolution_lib::{engine::*, map::*, precalc::*};
+use plant_evolution_lib::{engine::*, map::*, precalc::*, utils::rng};
 
 fn engine_bencmark(engine: &mut Engine, autoevolve_at: u32, total_evolution: u32) {
     engine
@@ -23,7 +23,8 @@ fn engine_bencmark(engine: &mut Engine, autoevolve_at: u32, total_evolution: u32
 fn criterion_benchmark(c: &mut Criterion) {
     populate_consts();
 
-    let maps = Vec::from_fn(200, |_| MapData::default());
+    let mut maps_rng = rng::get_rng();
+    let maps = Vec::from_fn(200, |_| MapData::generate(&mut maps_rng));
     let parameters = EngineParameters {
         saving_parameters: SavingParameters::DISABLED,
         evolution_parameters: EvolutionParameters {

@@ -104,6 +104,12 @@ pub struct WeightsTree {
     pub nodes: Vec<TreeNode>,
 }
 
+impl Default for WeightsTree {
+    fn default() -> Self {
+        Self { nodes: vec![TreeNode::Value(Default::default())] }
+    }
+}
+
 impl WeightsTree {
     fn calc_inner(&self, input: &PlantCellInput, height: f32, xdist: f32, idx: usize) -> f32 {
         match &self.nodes[idx] {

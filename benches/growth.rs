@@ -3,7 +3,7 @@
 use std::{thread, time::Duration};
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use plant_evolution_lib::{map::*, precalc::*};
+use plant_evolution_lib::{map::*, precalc::*, utils::rng};
 
 extern crate plant_evolution_lib;
 
@@ -11,7 +11,8 @@ extern crate plant_evolution_lib;
 
 fn growth_benchmark() {
     let number_of_plants: usize = 100;
-    let mut maps = Vec::from_fn(number_of_plants, |_| MapData::default());
+    let mut maps_rng = rng::get_rng();
+    let mut maps = Vec::from_fn(number_of_plants, |_| MapData::generate(&mut maps_rng));
     (0..2000).for_each(|_| {
         maps.iter_mut().for_each(|map| {
             map.tick(false);

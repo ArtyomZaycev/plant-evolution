@@ -11,8 +11,10 @@ extern crate plant_evolution_lib;
 
 fn evolution_benchmark() {
     let number_of_plants: usize = 200;
-    let mut maps = Vec::from_fn(number_of_plants, |_| MapData::default());
-    let mut rng = get_rng();
+    let mut maps_rng = rng::get_rng();
+    let mut maps = Vec::from_fn(number_of_plants, |_| MapData::generate(&mut maps_rng));
+
+    let mut rng = rng::get_rng();
     run_evolution_random(None, &mut maps, &mut rng, 1000, 1000, 0.9, 0.1);
     black_box(maps);
 }

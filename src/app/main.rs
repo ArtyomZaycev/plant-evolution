@@ -4,7 +4,7 @@
 mod ui;
 
 use plant_evolution_lib::{
-    engine::*, evolution::consts::*, map::MapData, precalc::populate_consts,
+    engine::*, evolution::consts::*, map::MapData, precalc::populate_consts, utils::rng,
 };
 
 use crate::ui::{consts::*, ui::PlantEvolutionApp};
@@ -18,7 +18,8 @@ fn main() {
         ..Default::default()
     };
 
-    let maps = Vec::from_fn(DEFAULT_NUMBER_OF_PLANTS, |_| MapData::default());
+    let mut maps_rng = rng::get_rng();
+    let maps = Vec::from_fn(DEFAULT_NUMBER_OF_PLANTS, |_| MapData::generate(&mut maps_rng));
 
     let engine = Engine::new(maps, EngineParameters::default());
 

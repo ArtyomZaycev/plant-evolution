@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use super::{evolution_volatility::*, parents_evolution::*, random_evolution::*, weights_tree::*};
 use crate::{evolution::consts::*, map::*, precalc::*, utils::Rng};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CellEvolutionData {
     pub weights: [[WithVolatility<WeightsTree>; NUMBER_OF_CELLS]; 3],
     pub suicide_weights: WithVolatility<WeightsTree>,
@@ -37,7 +37,7 @@ impl CellEvolutionData {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PlantEvolutionData {
     pub evolutions: u32,
     pub cells_evolution_data: [WithVolatility<CellEvolutionData>; NUMBER_OF_CELLS],
@@ -50,8 +50,8 @@ impl PlantEvolutionData {
     }
 
     fn rand_generate(rng: &mut Rng) -> Self {
-        let mut cells = std::array::repeat(DEFAULT_BASIC_CELL.clone());
-        cells[0] = DEFAULT_SEED_CELL.clone();
+        let mut cells = std::array::repeat(PlantCellAbilities::DEFAULT_BASIC.clone());
+        cells[0] = PlantCellAbilities::DEFAULT_SEED.clone();
 
         Self {
             evolutions: 0,

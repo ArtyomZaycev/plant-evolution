@@ -49,11 +49,24 @@ pub struct MapData {
 
 impl Default for MapData {
     fn default() -> Self {
-        let mut rng = get_rng();
-        Self::generate(
-            PlantEvolutionData::generate(&mut rng),
-            PlantNutrition::STARTING,
-        )
+        let mut s = Self {
+            evolution_data: PlantEvolutionData::default(),
+            next_cell_growth: (f32::NEG_INFINITY, 0, 0, 0),
+            next_cell_suicide: (f32::NEG_INFINITY, 0, 0),
+            ticks: 0,
+            plant_nutrition: PlantNutrition::STARTING,
+            total_passive_cost: 0.,
+            nutrition_per_tick: PlantNutrition::default(),
+            all_next_cell_growth: HashMap::new(),
+            cells_pos: vec![PLANT_CENTER],
+            map: Self::BASIC_MAP.clone(),
+            cells: Self::BASIC_PLANTS.clone(),
+        };
+        s.populate_plant_inputs();
+        s.recalc_plant_nutrition();
+        s.recalc_all_next_cell_growth();
+        s.recalc_next_cell_suicide();
+        s
     }
 }
 
@@ -498,19 +511,10 @@ impl MapData {
         })
     }
 
-    pub fn generate(evolution_data: PlantEvolutionData, plant_nutrition: PlantNutrition) -> Self {
+    pub fn generate(rng: &mut Rng) -> Self {
         let mut s = Self {
-            evolution_data,
-            next_cell_growth: (f32::NEG_INFINITY, 0, 0, 0),
-            next_cell_suicide: (f32::NEG_INFINITY, 0, 0),
-            ticks: 0,
-            plant_nutrition,
-            total_passive_cost: 0.,
-            nutrition_per_tick: PlantNutrition::default(),
-            all_next_cell_growth: HashMap::new(),
-            cells_pos: vec![PLANT_CENTER],
-            map: Self::BASIC_MAP.clone(),
-            cells: Self::BASIC_PLANTS.clone(),
+            evolution_data: PlantEvolutionData::generate(rng),
+            ..Default::default()
         };
         s.populate_plant_inputs();
         s.recalc_plant_nutrition();

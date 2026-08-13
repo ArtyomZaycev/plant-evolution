@@ -1,11 +1,7 @@
 use std::{
     sync::{
-        Arc, RwLock,
-        atomic::{AtomicU32, Ordering},
-        mpsc,
-    },
-    thread::{self, JoinHandle},
-    time::{Duration, SystemTime},
+        Arc, RwLock, atomic::{AtomicU32, AtomicU64, Ordering}, mpsc,
+    }, thread::{self, JoinHandle}, time::{Duration, SystemTime},
 };
 
 use super::{parameters::*, saving::*};
@@ -81,6 +77,7 @@ pub struct Engine {
 pub struct EngineSharedState {
     pub total_evolutions: Arc<AtomicU32>,
     pub simulation_id: Arc<RwLock<String>>,
+    pub rng_seed: Arc<AtomicU64>,
 }
 
 impl EngineSharedState {
@@ -91,6 +88,7 @@ impl EngineSharedState {
                 "Simulation {}",
                 chrono::Local::now().format("%Y-%m-%d %H-%M-%S")
             ))),
+            rng_seed: Arc::new(AtomicU64::new(rng::get_seed()))
         }
     }
 }
@@ -234,7 +232,7 @@ impl Engine {
         receiver: mpsc::Receiver<EngineCommand>,
         logs_sender: mpsc::Sender<EngineData>,
     ) {
-        let mut rng = get_rng();
+        let mut rng = rng::get_rng();
 
         #[cfg(feature = "thread_evolution")]
         let mut threadpool = {
