@@ -18,10 +18,11 @@ fn main() {
         ..Default::default()
     };
 
-    let mut maps_rng = rng::get_rng();
+    let rng_seed = rng::get_seed();
+    let mut maps_rng = rng::get_rng_seeded(rng_seed);
     let maps = Vec::from_fn(DEFAULT_NUMBER_OF_PLANTS, |_| MapData::generate(&mut maps_rng));
 
-    let engine = Engine::new(maps, EngineParameters::default());
+    let engine = Engine::new(rng_seed, maps, EngineParameters::default());
 
     eframe::run_native(
         "Plant Evolution",

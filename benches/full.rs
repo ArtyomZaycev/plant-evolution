@@ -23,8 +23,8 @@ fn engine_bencmark(engine: &mut Engine, autoevolve_at: u32, total_evolution: u32
 fn criterion_benchmark(c: &mut Criterion) {
     populate_consts();
 
-    let mut maps_rng = rng::get_rng();
-    let maps = Vec::from_fn(200, |_| MapData::generate(&mut maps_rng));
+    let mut rng = rng::get_rng();
+    let maps = Vec::from_fn(200, |_| MapData::generate(&mut rng));
     let parameters = EngineParameters {
         saving_parameters: SavingParameters::DISABLED,
         evolution_parameters: EvolutionParameters {
@@ -40,7 +40,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         performance_parameters: PerformanceParameters::default(),
     };
 
-    let mut engine = Engine::new(maps, parameters.clone());
+    let mut engine = Engine::new(rng::get_seed(), maps, parameters.clone());
 
     let mut group = c.benchmark_group("engine-benchmarks");
     group

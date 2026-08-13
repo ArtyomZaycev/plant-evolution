@@ -81,14 +81,14 @@ pub struct EngineSharedState {
 }
 
 impl EngineSharedState {
-    fn new() -> Self {
+    fn new(rng_seed: u64) -> Self {
         Self {
             total_evolutions: Default::default(),
             simulation_id: Arc::new(RwLock::new(format!(
                 "Simulation {}",
                 chrono::Local::now().format("%Y-%m-%d %H-%M-%S")
             ))),
-            rng_seed: Arc::new(AtomicU64::new(rng::get_seed()))
+            rng_seed: Arc::new(AtomicU64::new(rng_seed))
         }
     }
 }
@@ -100,10 +100,10 @@ impl Drop for Engine {
 }
 
 impl Engine {
-    pub fn new(maps: Vec<MapData>, parameters: EngineParameters) -> Self {
+    pub fn new(rng_seed: u64, maps: Vec<MapData>, parameters: EngineParameters) -> Self {
         let maps_buffer = SharedBuffer::new_cloned(Versioned::new(maps.clone()));
         let (reader, writer) = maps_buffer.init();
-        let state = EngineSharedState::new();
+        let state = EngineSharedState::new(rng_seed);
         let (commands_tx, commands_rx) = mpsc::channel();
         let (logs_tx, logs_rx) = mpsc::channel();
         Self {

@@ -3,7 +3,7 @@ use rand::{SeedableRng, rngs::SmallRng};
 pub type Rng = SmallRng;
 
 #[cfg(feature = "stable_rng")]
-const DEFAULT_SEED: u64 = 43390;
+const DEFAULT_SEED: u64 = 844311;
 
 #[cfg(feature = "stable_rng")]
 pub fn get_seed() -> u64 {
