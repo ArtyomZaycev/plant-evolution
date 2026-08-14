@@ -74,7 +74,7 @@ impl PlantEvolutionApp {
         Self {
             toast_manager: ToastManager::new(),
             config,
-            trail: MapsTrail::new(),
+            trail: MapsTrail::new(engine.state.rng_seed.load(Ordering::Relaxed)),
             maps_update_stopwatch: Stopwatch::new(DEFAULT_STOPWATCH_INTERVAL),
             maps,
             visual_settings: VisualSettings::default(),
@@ -243,7 +243,7 @@ impl PlantEvolutionApp {
         }
 
         let mut view_list = self.selected_maps_index.clone();
-        if self.trail.enabled && !view_list.contains(&0) {
+        if self.trail.record && !view_list.contains(&0) {
             view_list.push(0);
         }
         self.engine
@@ -286,14 +286,20 @@ impl PlantEvolutionApp {
             self.maps_update_stopwatch.reset();
         }
 
-        if self.trail.enabled
-            && self.maps[0].calculate_score() > self.trail.last_score().unwrap_or(f32::NEG_INFINITY)
+        // Account for restarting
+        if self
+            .trail
+            .last_total_evolutions()
+            .is_some_and(|total| total > self.engine.state.total_evolutions.load(Ordering::Relaxed))
+            || self.trail.rng_seed != self.engine.state.rng_seed.load(Ordering::Relaxed)
         {
-            self.trail.push(
-                &self.maps[0],
-                self.engine.state.total_evolutions.load(Ordering::Relaxed),
-            );
+            self.trail.clear();
         }
+
+        self.trail.push(
+            &self.maps[0],
+            self.engine.state.total_evolutions.load(Ordering::Relaxed),
+        );
 
         self.engine
             .logs_receiver
@@ -310,14 +316,17 @@ impl PlantEvolutionApp {
             egui::Modal::new("settings".into()).show(ui.ctx(), |ui| match settings.show(ui) {
                 SettingsEditorState::Active(settings) => self.settings_editor = Some(settings),
                 SettingsEditorState::Applied(visual_settings, engine_parameters) => {
-                    self.visual_settings = visual_settings.clone();
+                    self.visual_settings = visual_settings;
+                    self.trail.record = self.visual_settings.record_history;
+                    self.trail.compress = self.visual_settings.compress_history;
+
                     self.maps_update_stopwatch.interval = engine_parameters
                         .performance_parameters
                         .slow_update_interval;
                     self.engine
                         .send_command(EngineCommand::UpdateParameters(engine_parameters.clone()))
                         .unwrap();
-                    self.parameters = engine_parameters.clone();
+                    self.parameters = engine_parameters;
                 }
                 SettingsEditorState::Cancelled => {}
             });
@@ -327,6 +336,7 @@ impl PlantEvolutionApp {
     fn manage_desicion_tree_window(&mut self, ui: &mut egui::Ui) {
         if let Some((map_idx, cell_idx)) = self.selected_decision_tree {
             let evolution_data = &self.maps[map_idx].evolution_data.cells_evolution_data[cell_idx];
+            let mut is_open = true;
             egui::Window::new(format!(
                 "Plant {}, cell {} decision tree",
                 map_idx + 1,
@@ -334,11 +344,13 @@ impl PlantEvolutionApp {
             ))
             .collapsible(false)
             .resizable(false)
+            .open(&mut is_open)
             .show(ui.ctx(), |ui| {
                 ui.label(format!("Cell volatility: {:.2}", evolution_data.volatility));
                 ui.label(format!(
                     "Suicide (v={:.2}): {}",
                     evolution_data.suicide_weights.volatility,
+                    // TODO: Why always 0??
                     evolution_data.suicide_weights.get_formula()
                 ));
                 ["Up", "Down", "Inwards", "Outwards"]
@@ -360,51 +372,74 @@ impl PlantEvolutionApp {
                                 );
                             });
                     });
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
-                    if ui.button("Close").clicked() {
-                        self.selected_decision_tree = None;
-                    }
-                });
             });
+            if !is_open {
+                self.selected_decision_tree = None;
+            }
         }
     }
 
     fn manage_trail_window(&mut self, ui: &mut egui::Ui) {
+        let mut show_trail = self.show_trail;
         egui::Window::new("Evolution History")
             .collapsible(false)
             .resizable(true)
             .default_width(650.)
-            .open(&mut self.show_trail)
+            .open(&mut show_trail)
             .show(ui.ctx(), |ui| {
                 self.trail.show(ui, &self.visual_settings);
+
+                // check self.show_trail because of the fadeout
+                if self.show_trail && !self.trail.record {
+                    self.show_trail_disabled_window(ui);
+                }
+            });
+        self.show_trail = show_trail;
+    }
+
+    fn show_trail_disabled_window(&mut self, ui: &mut egui::Ui) {
+        let pos = ui.clip_rect().center_top() + UPDATES_DISABLED_WINDOW_OFFSET;
+        egui::Window::new("trail_disabled")
+            .max_width(UPDATES_DISABLED_WINDOW_WIDTH)
+            .min_width(UPDATES_DISABLED_WINDOW_WIDTH)
+            .default_width(UPDATES_DISABLED_WINDOW_WIDTH)
+            .fixed_pos(pos)
+            .pivot(Align2::CENTER_TOP)
+            .resizable(false)
+            .title_bar(false)
+            .order(egui::Order::Foreground)
+            .show(ui.ctx(), |ui| {
+                ui.vertical_centered_justified(|ui| {
+                    ui.label("History is disabled");
+                    if ui.button("Enable").clicked() {
+                        self.visual_settings.record_history = true;
+                        self.trail.record = true;
+                    }
+                });
             });
     }
 
-    fn manage_updates_disabled_window(&mut self, ui: &mut egui::Ui) {
-        if !self.parameters.performance_parameters.enable_updates {
-            let pos = ui.clip_rect().center_top() + UPDATES_DISABLED_WINDOW_OFFSET;
-            egui::Window::new("updates_disabled")
-                .max_width(UPDATES_DISABLED_WINDOW_WIDTH)
-                .min_width(UPDATES_DISABLED_WINDOW_WIDTH)
-                .default_width(UPDATES_DISABLED_WINDOW_WIDTH)
-                .fixed_pos(pos)
-                .pivot(Align2::CENTER_TOP)
-                .resizable(false)
-                .title_bar(false)
-                .show(ui.ctx(), |ui| {
-                    ui.vertical_centered_justified(|ui| {
-                        ui.label("Updates are disabled");
-                        if ui.button("Enable").clicked() {
-                            self.parameters.performance_parameters.enable_updates = true;
-                            self.engine
-                                .send_command(EngineCommand::UpdateParameters(
-                                    self.parameters.clone(),
-                                ))
-                                .unwrap();
-                        }
-                    });
+    fn show_updates_disabled_window(&mut self, ui: &mut egui::Ui) {
+        let pos = ui.clip_rect().center_top() + UPDATES_DISABLED_WINDOW_OFFSET;
+        egui::Window::new("updates_disabled")
+            .max_width(UPDATES_DISABLED_WINDOW_WIDTH)
+            .min_width(UPDATES_DISABLED_WINDOW_WIDTH)
+            .default_width(UPDATES_DISABLED_WINDOW_WIDTH)
+            .fixed_pos(pos)
+            .pivot(Align2::CENTER_TOP)
+            .resizable(false)
+            .title_bar(false)
+            .show(ui.ctx(), |ui| {
+                ui.vertical_centered_justified(|ui| {
+                    ui.label("History recording is disabled");
+                    if ui.button("Enable").clicked() {
+                        self.parameters.performance_parameters.enable_updates = true;
+                        self.engine
+                            .send_command(EngineCommand::UpdateParameters(self.parameters.clone()))
+                            .unwrap();
+                    }
                 });
-        }
+            });
     }
 
     fn show_top_panel_content(&mut self, ui: &mut egui::Ui) {
@@ -429,10 +464,12 @@ impl PlantEvolutionApp {
                 if ui.button("Restart").clicked() {
                     self.trail.clear();
                     if self.config.get_locked_seed().is_none() {
+                        let new_seed = rng::get_random_seed();
                         self.engine
                             .state
                             .rng_seed
-                            .store(rng::get_random_seed(), Ordering::Relaxed);
+                            .store(new_seed, Ordering::Relaxed);
+                        self.trail.rng_seed = new_seed;
                     }
                     self.engine.send_command(EngineCommand::Restart).unwrap();
                 }
@@ -986,7 +1023,9 @@ impl eframe::App for PlantEvolutionApp {
         });
 
         egui::CentralPanel::default().show(ui, |ui| {
-            self.manage_updates_disabled_window(ui);
+            if !self.parameters.performance_parameters.enable_updates {
+                self.show_updates_disabled_window(ui);
+            }
 
             egui::Panel::bottom("cell_info")
                 .min_size(40.)

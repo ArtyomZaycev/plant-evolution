@@ -132,7 +132,7 @@ impl Default for PerformanceParameters {
             use_tick_many: false,
 
             enable_updates: true,
-            slow_updates: true,
+            slow_updates: false,
             slow_update_interval: DEFAULT_STOPWATCH_INTERVAL,
         }
     }

@@ -17,6 +17,8 @@ pub struct VisualSettingsEditor {
     highlighted_map_border_color: Color32,
     highlight_hovered_cell: bool,
     highlight_pointer: bool,
+    record_history: bool,
+    compress_history: bool,
 }
 
 impl EditorUi<VisualSettings> for VisualSettingsEditor {
@@ -31,6 +33,8 @@ impl EditorUi<VisualSettings> for VisualSettingsEditor {
             highlighted_map_border_color: settings.highlighted_map_border_color,
             highlight_hovered_cell: settings.highlight_hovered_cell,
             highlight_pointer: settings.highlight_pointer,
+            record_history: settings.record_history,
+            compress_history: settings.compress_history,
         }
     }
 
@@ -45,6 +49,8 @@ impl EditorUi<VisualSettings> for VisualSettingsEditor {
             highlighted_map_border_color: self.highlighted_map_border_color,
             highlight_hovered_cell: self.highlight_hovered_cell,
             highlight_pointer: self.highlight_pointer,
+            record_history: self.record_history,
+            compress_history: self.compress_history,
         })
     }
 }
@@ -79,6 +85,13 @@ impl egui::Widget for &mut VisualSettingsEditor {
                 });
             };
         ui.vertical(|ui| {
+            ui.horizontal(|ui| {
+                ui.allocate_ui_with_layout(desired_size, layout, |ui| ui.label("Record history"));
+                ui.radio_value(&mut self.record_history, false, "Disabled");
+                ui.radio_value(&mut self.record_history, true, "Enabled");
+            });
+            ui.separator();
+
             ui.horizontal(|ui| {
                 ui.allocate_ui_with_layout(desired_size, layout, |ui| {
                     ui.label("Minimum cell size (pixels)")

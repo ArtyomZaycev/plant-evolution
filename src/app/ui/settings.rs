@@ -17,6 +17,9 @@ pub struct VisualSettings {
 
     pub highlight_hovered_cell: bool,
     pub highlight_pointer: bool,
+
+    pub record_history: bool,
+    pub compress_history: bool,
 }
 
 impl Default for VisualSettings {
@@ -31,6 +34,8 @@ impl Default for VisualSettings {
             highlighted_map_border_color: Color32::BLUE,
             highlight_hovered_cell: true,
             highlight_pointer: true,
+            record_history: true,
+            compress_history: true,
         }
     }
 }
