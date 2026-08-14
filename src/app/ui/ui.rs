@@ -7,8 +7,14 @@ use plant_evolution_lib::{
 };
 
 use crate::{
-    config::Config, ui::{
-        consts::*, map::{draw_map, get_ui_map_size}, settings::VisualSettings, settings_editor::{editor::*, utils::EditorUi}, toast::*, trail::MapsTrail,
+    config::Config,
+    ui::{
+        consts::*,
+        map::{draw_map, get_ui_map_size},
+        settings::VisualSettings,
+        settings_editor::{editor::*, utils::EditorUi},
+        toast::*,
+        trail::MapsTrail,
     },
 };
 
@@ -176,8 +182,17 @@ impl PlantEvolutionApp {
 
     fn draw_map(&mut self, ui: &mut egui::Ui, map_idx: usize, canvas_start: Pos2) {
         let painter = ui.painter_at(Rect::from_min_size(canvas_start, self.get_ui_map_size()));
-        draw_map(&self.visual_settings, &painter, &self.maps[map_idx], self.cell_size, self.highlighted_cell.or(self.hovered_cell).and_then(|(idx, j, i)| if idx == map_idx {Some((j, i))} else {None}), canvas_start);
-        
+        draw_map(
+            &self.visual_settings,
+            &painter,
+            &self.maps[map_idx],
+            self.cell_size,
+            self.highlighted_cell
+                .or(self.hovered_cell)
+                .and_then(|(idx, j, i)| if idx == map_idx { Some((j, i)) } else { None }),
+            canvas_start,
+        );
+
         if self.visual_settings.highlight_pointer {
             ui.ctx().input(|i| i.pointer.interact_pos()).inspect(|pos| {
                 painter.circle_filled(*pos, POINTER_RADIUS, Color32::RED);
@@ -232,9 +247,7 @@ impl PlantEvolutionApp {
             view_list.push(0);
         }
         self.engine
-            .send_command(EngineCommand::UpdateViewedMaps(
-                view_list
-            ))
+            .send_command(EngineCommand::UpdateViewedMaps(view_list))
             .unwrap();
     }
 
@@ -273,8 +286,13 @@ impl PlantEvolutionApp {
             self.maps_update_stopwatch.reset();
         }
 
-        if self.trail.enabled && self.maps[0].calculate_score() > self.trail.last_score().unwrap_or(f32::NEG_INFINITY) {
-            self.trail.push(&self.maps[0], self.engine.state.total_evolutions.load(Ordering::Relaxed));
+        if self.trail.enabled
+            && self.maps[0].calculate_score() > self.trail.last_score().unwrap_or(f32::NEG_INFINITY)
+        {
+            self.trail.push(
+                &self.maps[0],
+                self.engine.state.total_evolutions.load(Ordering::Relaxed),
+            );
         }
 
         self.engine
@@ -952,27 +970,27 @@ impl eframe::App for PlantEvolutionApp {
         self.manage_desicion_tree_window(ui);
         self.manage_trail_window(ui);
 
-        egui::Panel::top("top_panel").show_inside(ui, |ui| {
+        egui::Panel::top("top_panel").show(ui, |ui| {
             self.show_top_panel_content(ui);
         });
 
-        egui::Panel::left("plants_list").show_inside(ui, |ui| {
+        egui::Panel::left("plants_list").show(ui, |ui| {
             self.show_left_panel_content(ui);
         });
 
-        egui::Panel::right("control_menu").show_inside(ui, |ui| {
+        egui::Panel::right("control_menu").show(ui, |ui| {
             egui::Panel::bottom("simulation_info")
-                .show_inside(ui, |ui| self.show_simulation_info_panel_content(ui));
+                .show(ui, |ui| self.show_simulation_info_panel_content(ui));
 
             self.show_right_panel_content(ui);
         });
 
-        egui::CentralPanel::default().show_inside(ui, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             self.manage_updates_disabled_window(ui);
 
             egui::Panel::bottom("cell_info")
                 .min_size(40.)
-                .show_inside(ui, |ui| self.show_bottom_panel_content(ui));
+                .show(ui, |ui| self.show_bottom_panel_content(ui));
 
             self.show_central_panel_content(ui);
         });

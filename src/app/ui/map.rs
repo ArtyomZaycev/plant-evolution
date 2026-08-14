@@ -1,16 +1,23 @@
 use egui::{Color32, Pos2, Rect, Vec2};
-use plant_evolution_lib::{map::{MapCell, MapData}, precalc::MAP_SIZE};
+use plant_evolution_lib::{
+    map::{MapCell, MapData},
+    precalc::MAP_SIZE,
+};
 
 use crate::ui::{consts::*, settings::VisualSettings};
 
 pub fn get_ui_map_size(cell_size: f32) -> Vec2 {
-    Vec2::new(
-        MAP_SIZE.0 as f32 * cell_size,
-        MAP_SIZE.1 as f32 * cell_size,
-    )
+    Vec2::new(MAP_SIZE.0 as f32 * cell_size, MAP_SIZE.1 as f32 * cell_size)
 }
 
-pub fn draw_map(visual_settings: &VisualSettings, painter: &egui::Painter, map: &MapData, cell_size: f32, highlighted_cell: Option<(usize, usize)>, canvas_start: Pos2) {
+pub fn draw_map(
+    visual_settings: &VisualSettings,
+    painter: &egui::Painter,
+    map: &MapData,
+    cell_size: f32,
+    highlighted_cell: Option<(usize, usize)>,
+    canvas_start: Pos2,
+) {
     for i in 0..MAP_SIZE.1 {
         for j in 0..MAP_SIZE.0 {
             let rect = Rect::from_min_size(
@@ -34,19 +41,16 @@ pub fn draw_map(visual_settings: &VisualSettings, painter: &egui::Painter, map: 
                 }
             };
 
-            let color = if visual_settings.highlight_hovered_cell
-                && highlighted_cell == Some((j, i))
-            {
-                Color32::BROWN
-            } else {
-                color
-            };
+            let color =
+                if visual_settings.highlight_hovered_cell && highlighted_cell == Some((j, i)) {
+                    Color32::BROWN
+                } else {
+                    color
+                };
             painter.rect_filled(rect, 0., color);
 
             if map.cells[i][j].is_some()
-                && map.evolution_data.cells_abilities
-                    [map.cells[i][j].t]
-                    .seed
+                && map.evolution_data.cells_abilities[map.cells[i][j].t].seed
             {
                 painter.circle_filled(
                     canvas_start
