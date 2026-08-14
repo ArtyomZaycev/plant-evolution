@@ -12,8 +12,8 @@ name = "plant_evolution_app"
 path = "src/app/main.rs"
 
 [dependencies]
-eframe = "0.34.2"
-egui = "0.34.2"
+eframe = "0.36.1"
+egui = "0.36.1"
 rand = "0.10.1"
 winit = "0.30.13"
 hotpath = "0.21.2"
@@ -22,6 +22,7 @@ serde = { version = "1.0.228", features = ["derive"] }
 chrono = "0.4.45"
 scoped_threadpool = { version = "0.1.9", optional = true }
 directories-next = "2.0.0"
+egui_plot = "0.37.0"
 
 [features]
 default = ["thread_evolution"]

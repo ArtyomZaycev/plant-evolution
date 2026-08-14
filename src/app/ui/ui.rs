@@ -7,12 +7,8 @@ use plant_evolution_lib::{
 };
 
 use crate::{
-    config::Config,
-    ui::{
-        consts::*,
-        settings::VisualSettings,
-        settings_editor::{editor::*, utils::EditorUi},
-        toast::*,
+    config::Config, ui::{
+        consts::*, map::{draw_map, get_ui_map_size}, settings::VisualSettings, settings_editor::{editor::*, utils::EditorUi}, toast::*, trail::MapsTrail,
     },
 };
 
@@ -28,11 +24,13 @@ pub struct PlantEvolutionApp {
     toast_manager: ToastManager,
     config: Config,
     engine: Engine,
+    trail: MapsTrail,
 
     visual_settings: VisualSettings,
     parameters: EngineParameters,
 
     settings_editor: Option<SettingsEditor>,
+    show_trail: bool,
 
     cell_size: f32,
 
@@ -70,9 +68,11 @@ impl PlantEvolutionApp {
         Self {
             toast_manager: ToastManager::new(),
             config,
+            trail: MapsTrail::new(),
             maps_update_stopwatch: Stopwatch::new(DEFAULT_STOPWATCH_INTERVAL),
             maps,
             visual_settings: VisualSettings::default(),
+            show_trail: false,
             parameters,
             settings_editor: None,
             cell_size: DEFAULT_MIN_CELL_SIZE,
@@ -171,65 +171,13 @@ impl PlantEvolutionApp {
     }
 
     fn get_ui_map_size(&self) -> Vec2 {
-        Vec2::new(
-            MAP_SIZE.0 as f32 * self.cell_size,
-            MAP_SIZE.1 as f32 * self.cell_size,
-        )
+        get_ui_map_size(self.cell_size)
     }
 
     fn draw_map(&mut self, ui: &mut egui::Ui, map_idx: usize, canvas_start: Pos2) {
         let painter = ui.painter_at(Rect::from_min_size(canvas_start, self.get_ui_map_size()));
-
-        for i in 0..MAP_SIZE.1 {
-            for j in 0..MAP_SIZE.0 {
-                let rect = Rect::from_min_size(
-                    canvas_start
-                        + Vec2 {
-                            x: j as f32 * self.cell_size,
-                            y: i as f32 * self.cell_size,
-                        },
-                    Vec2 {
-                        x: self.cell_size,
-                        y: self.cell_size,
-                    },
-                );
-
-                let color = if self.maps[map_idx].cells[i][j].is_some() {
-                    self.visual_settings.plant_color
-                } else {
-                    match self.maps[map_idx].map[i][j] {
-                        MapCell::Air(_) => self.visual_settings.air_color,
-                        MapCell::Soil(_) => self.visual_settings.soil_color,
-                    }
-                };
-
-                let color = if self.visual_settings.highlight_hovered_cell
-                    && self.hovered_cell.or(self.highlighted_cell) == Some((map_idx, j, i))
-                {
-                    Color32::BROWN
-                } else {
-                    color
-                };
-                painter.rect_filled(rect, 0., color);
-
-                if self.maps[map_idx].cells[i][j].is_some()
-                    && self.maps[map_idx].evolution_data.cells_abilities
-                        [self.maps[map_idx].cells[i][j].t]
-                        .seed
-                {
-                    painter.circle_filled(
-                        canvas_start
-                            + Vec2 {
-                                x: j as f32 * self.cell_size + 0.5 * self.cell_size,
-                                y: i as f32 * self.cell_size + 0.5 * self.cell_size,
-                            },
-                        self.cell_size * SEED_RADIUS_MULTIPLIER,
-                        self.visual_settings.seed_color,
-                    );
-                }
-            }
-        }
-
+        draw_map(&self.visual_settings, &painter, &self.maps[map_idx], self.cell_size, self.highlighted_cell.or(self.hovered_cell).and_then(|(idx, j, i)| if idx == map_idx {Some((j, i))} else {None}), canvas_start);
+        
         if self.visual_settings.highlight_pointer {
             ui.ctx().input(|i| i.pointer.interact_pos()).inspect(|pos| {
                 painter.circle_filled(*pos, POINTER_RADIUS, Color32::RED);
@@ -279,9 +227,13 @@ impl PlantEvolutionApp {
             self.highlighted_map = None;
         }
 
+        let mut view_list = self.selected_maps_index.clone();
+        if self.trail.enabled && !view_list.contains(&0) {
+            view_list.push(0);
+        }
         self.engine
             .send_command(EngineCommand::UpdateViewedMaps(
-                self.selected_maps_index.clone(),
+                view_list
             ))
             .unwrap();
     }
@@ -319,6 +271,10 @@ impl PlantEvolutionApp {
         } else {
             self.engine.maps.read().unwrap().update(&mut self.maps);
             self.maps_update_stopwatch.reset();
+        }
+
+        if self.trail.enabled && self.maps[0].calculate_score() > self.trail.last_score().unwrap_or(f32::NEG_INFINITY) {
+            self.trail.push(&self.maps[0], self.engine.state.total_evolutions.load(Ordering::Relaxed));
         }
 
         self.engine
@@ -395,6 +351,17 @@ impl PlantEvolutionApp {
         }
     }
 
+    fn manage_trail_window(&mut self, ui: &mut egui::Ui) {
+        egui::Window::new("Evolution History")
+            .collapsible(false)
+            .resizable(true)
+            .default_width(650.)
+            .open(&mut self.show_trail)
+            .show(ui.ctx(), |ui| {
+                self.trail.show(ui, &self.visual_settings);
+            });
+    }
+
     fn manage_updates_disabled_window(&mut self, ui: &mut egui::Ui) {
         if !self.parameters.performance_parameters.enable_updates {
             let pos = ui.clip_rect().center_top() + UPDATES_DISABLED_WINDOW_OFFSET;
@@ -442,6 +409,7 @@ impl PlantEvolutionApp {
                 if ui.button("Load").clicked() {}
                 ui.separator();
                 if ui.button("Restart").clicked() {
+                    self.trail.clear();
                     if self.config.get_locked_seed().is_none() {
                         self.engine
                             .state
@@ -658,7 +626,15 @@ impl PlantEvolutionApp {
             )
         ));
 
-        ui.heading(format!("Plant {}", map_idx + 1));
+        ui.horizontal(|ui| {
+            ui.heading(format!("Plant {}", map_idx + 1));
+            if map_idx == 0 {
+                // TODO: Looks bad, maybe move
+                if ui.selectable_label(self.show_trail, "History").clicked() {
+                    self.show_trail = !self.show_trail;
+                }
+            }
+        });
 
         ui.horizontal(|ui| {
             ui.label(format!(
@@ -974,6 +950,7 @@ impl eframe::App for PlantEvolutionApp {
 
         self.manage_settings_window(ui);
         self.manage_desicion_tree_window(ui);
+        self.manage_trail_window(ui);
 
         egui::Panel::top("top_panel").show_inside(ui, |ui| {
             self.show_top_panel_content(ui);
