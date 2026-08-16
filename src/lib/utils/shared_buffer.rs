@@ -162,7 +162,7 @@ impl<T> Accessor<T> {
     pub fn read<'a>(&'a self) -> Result<ReadLock<'a, T>, AccessorError> {
         if let Some(swapped) = self.state.start_read() {
             Ok(ReadLock {
-                accessor: &self,
+                accessor: self,
                 data: if swapped {
                     self.buffer.data2.get()
                 } else {
@@ -177,7 +177,7 @@ impl<T> Accessor<T> {
     pub fn write<'a>(&'a self) -> Result<WriteLock<'a, T>, AccessorError> {
         if let Some(swapped) = self.state.start_write() {
             Ok(WriteLock {
-                accessor: &self,
+                accessor: self,
                 data: if swapped {
                     self.buffer.data1.get()
                 } else {

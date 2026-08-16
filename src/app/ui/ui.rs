@@ -140,7 +140,7 @@ impl PlantEvolutionApp {
         let mut str = selected_maps_index_str
             .split(",")
             .map(|s| s.trim())
-            .filter(|s| s.len() > 0);
+            .filter(|s| !s.is_empty());
         let res = str.try_fold(vec![], |mut acc, str| {
             if str.contains("-") {
                 let sp = str.split("-").map(|s| s.trim()).collect::<Vec<_>>();
@@ -228,7 +228,7 @@ impl PlantEvolutionApp {
     }
 
     fn update_selected_maps(&mut self) {
-        if self.selected_maps_index.len() == 0 {
+        if self.selected_maps_index.is_empty() {
             self.selected_maps_index = vec![0];
             self.last_selected_index = 0;
         }
@@ -268,7 +268,7 @@ impl PlantEvolutionApp {
         self.push_save_log(
             save_maps(
                 simulation_save_folder_path(folder, simulation_id),
-                &selection,
+                selection,
                 &self.maps,
             ),
             false,
@@ -458,8 +458,8 @@ impl PlantEvolutionApp {
                         self.save_maps(&SaveSelection::All);
                     }
                 });
-                if ui.button("Save As").clicked() {}
-                if ui.button("Load").clicked() {}
+                ui.button("Save As").clicked();
+                ui.button("Load").clicked();
                 ui.separator();
                 if ui.button("Restart").clicked() {
                     self.trail.clear();
@@ -541,13 +541,8 @@ impl PlantEvolutionApp {
                                 new_idx.push(j);
                             }
                         }
-                        if new_idx.len() == 0 {
-                            self.selected_maps_index = self
-                                .selected_maps_index
-                                .iter()
-                                .filter(|&&j| !range.contains(&j))
-                                .cloned()
-                                .collect();
+                        if new_idx.is_empty() {
+                            self.selected_maps_index.retain(|&j| !range.contains(&j));
                         } else {
                             self.selected_maps_index.extend(new_idx);
                         }
@@ -820,17 +815,15 @@ impl PlantEvolutionApp {
                     )
                 ))
                 .hovered()
-            {
-                if self.maps[map_idx].cells[self.maps[map_idx].next_cell_suicide.2]
+                && self.maps[map_idx].cells[self.maps[map_idx].next_cell_suicide.2]
                     [self.maps[map_idx].next_cell_suicide.1]
                     .is_some()
-                {
-                    self.highlighted_cell = Some((
-                        map_idx,
-                        self.maps[map_idx].next_cell_suicide.1,
-                        self.maps[map_idx].next_cell_suicide.2,
-                    ));
-                }
+            {
+                self.highlighted_cell = Some((
+                    map_idx,
+                    self.maps[map_idx].next_cell_suicide.1,
+                    self.maps[map_idx].next_cell_suicide.2,
+                ));
             }
         });
     }
@@ -871,7 +864,7 @@ impl PlantEvolutionApp {
             Some((map_idx, x, y)) => {
                 ui.label(format!(
                     "({}, {}) => {}",
-                    x, y, &self.maps[map_idx].map[y][x]
+                    x, y, self.maps[map_idx].map[y][x]
                 ));
                 let plant_info = if self.maps[map_idx].cells[y][x].is_some() {
                     format!(

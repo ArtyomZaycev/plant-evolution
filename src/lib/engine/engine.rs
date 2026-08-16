@@ -392,20 +392,19 @@ impl Engine {
                         map.tick(use_local_growth);
                     });
 
-                    if parameters.performance_parameters.enable_updates {
-                        if !parameters.performance_parameters.slow_updates
-                            || maps_update_stopwatch.is_elapsed_reset()
-                        {
-                            maps_accessor.write().unwrap().update_data(|old_maps| {
-                                if let Some(viewed_maps) = &viewed_maps {
-                                    viewed_maps.iter().for_each(|i| {
-                                        old_maps[*i] = maps[*i].clone();
-                                    });
-                                } else {
-                                    *old_maps = (*maps).clone();
-                                }
-                            });
-                        }
+                    if parameters.performance_parameters.enable_updates
+                        && (!parameters.performance_parameters.slow_updates
+                            || maps_update_stopwatch.is_elapsed_reset())
+                    {
+                        maps_accessor.write().unwrap().update_data(|old_maps| {
+                            if let Some(viewed_maps) = &viewed_maps {
+                                viewed_maps.iter().for_each(|i| {
+                                    old_maps[*i] = maps[*i].clone();
+                                });
+                            } else {
+                                *old_maps = (*maps).clone();
+                            }
+                        });
                     }
                 }
                 InnerEngineState::RunSimulation {
@@ -442,20 +441,19 @@ impl Engine {
                     #[cfg(not(feature = "thread_evolution"))]
                     Self::run_ticks(&mut maps, number_of_ticks, use_local_growth, use_tick_many);
 
-                    if parameters.performance_parameters.enable_updates {
-                        if !parameters.performance_parameters.slow_updates
-                            || maps_update_stopwatch.is_elapsed_reset()
-                        {
-                            maps_accessor.write().unwrap().update_data(|old_maps| {
-                                if let Some(viewed_maps) = &viewed_maps {
-                                    viewed_maps.iter().for_each(|i| {
-                                        old_maps[*i] = maps[*i].clone();
-                                    });
-                                } else {
-                                    *old_maps = (*maps).clone();
-                                }
-                            });
-                        }
+                    if parameters.performance_parameters.enable_updates
+                        && (!parameters.performance_parameters.slow_updates
+                            || maps_update_stopwatch.is_elapsed_reset())
+                    {
+                        maps_accessor.write().unwrap().update_data(|old_maps| {
+                            if let Some(viewed_maps) = &viewed_maps {
+                                viewed_maps.iter().for_each(|i| {
+                                    old_maps[*i] = maps[*i].clone();
+                                });
+                            } else {
+                                *old_maps = (*maps).clone();
+                            }
+                        });
                     }
 
                     if maps[0].ticks >= ticks_per_evolution {

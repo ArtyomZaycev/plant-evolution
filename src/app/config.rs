@@ -46,7 +46,7 @@ impl Config {
             if result.is_ok() {
                 self.locked_seed = Some(seed);
             }
-            result.map_err(|err| SeedLockError::IoError(err))
+            result.map_err(SeedLockError::IoError)
         } else {
             Err(SeedLockError::StableRngEnabled)
         }
@@ -59,7 +59,7 @@ impl Config {
             if result.is_ok() {
                 self.locked_seed = None;
             }
-            result.map_err(|err| SeedLockError::IoError(err))
+            result.map_err(SeedLockError::IoError)
         } else {
             Err(SeedLockError::StableRngEnabled)
         }

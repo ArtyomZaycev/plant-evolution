@@ -762,10 +762,8 @@ impl MapData {
         for &(x, y) in &seeds {
             let mut cnt = 0;
             for &(x2, y2) in &seeds {
-                if x != x2 || y != y2 {
-                    if x.abs_diff(x2) + y.abs_diff(y2) < SEEDS_MIN_DISTANCE {
-                        cnt += 1;
-                    }
+                if (x != x2 || y != y2) && x.abs_diff(x2) + y.abs_diff(y2) < SEEDS_MIN_DISTANCE {
+                    cnt += 1;
                 }
             }
             seeds_score += 1. / (cnt + 1) as f32;

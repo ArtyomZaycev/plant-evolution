@@ -29,7 +29,7 @@ fn apply_change_chance<F: FnOnce()>(change_chance: f32, random: f32, f: F) -> bo
 
 fn randomize_value(value: &mut f32, random: f32, entropy: f32) {
     // if entropy = 1, value can be changed from MIN to MAX
-    *value = *value + (random - 0.5) * entropy;
+    *value += (random - 0.5) * entropy;
 }
 
 fn randomize_value_change_chance_volatile(
@@ -203,17 +203,15 @@ impl RandomEvolution for WeightsTree {
                     if let FormulaNode::Operation(op_node) = new_node {
                         let op_node = match op_node {
                             OpNode::Unary(unary_op, idx1) => {
-                                new_leaves = vec![self.nodes[idx].clone()];
+                                new_leaves = vec![self.nodes[idx]];
                                 OpNode::Unary(unary_op, idx1)
                             }
                             OpNode::Binary(binary_op, idx1, idx2) => {
                                 if rng.random_range(0..=1) == 0 {
-                                    new_leaves =
-                                        vec![self.nodes[idx].clone(), new_leaves[1].clone()];
+                                    new_leaves = vec![self.nodes[idx], new_leaves[1]];
                                     OpNode::Binary(binary_op, idx1, idx2)
                                 } else {
-                                    new_leaves =
-                                        vec![new_leaves[0].clone(), self.nodes[idx].clone()];
+                                    new_leaves = vec![new_leaves[0], self.nodes[idx]];
                                     OpNode::Binary(binary_op, idx1, idx2)
                                 }
                             }

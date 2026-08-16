@@ -32,10 +32,10 @@ pub static DXDY3_2D: LazyLock<[[Vec<DxDy2d>; MAP_SIZE.0]; MAP_SIZE.1]> =
 // Where this cell can grow
 // For now it's [up, down, inwards, outwards]
 pub static GROWTH_DIRECTION: LazyLock<[[Vec<GrowthDir>; MAP_SIZE.0]; MAP_SIZE.1]> =
-    LazyLock::new(|| generate_growth_direction());
+    LazyLock::new(generate_growth_direction);
 
 pub static GROWTH_RECALC_NEEDED_FOR: LazyLock<[[HashSet<(usize, usize)>; MAP_SIZE.0]; MAP_SIZE.1]> =
-    LazyLock::new(|| generate_recalc_needed_for());
+    LazyLock::new(generate_recalc_needed_for);
 
 pub fn populate_consts() {
     LazyLock::force(&DXDY1_2D);

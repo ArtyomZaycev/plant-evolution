@@ -20,7 +20,7 @@ impl TrailData {
             _time: SystemTime::now(),
             total_evolutions,
             score,
-            map: map.map(|map| Box::new(map)),
+            map: map.map(Box::new),
         }
     }
 
@@ -128,7 +128,7 @@ impl MapsTrail {
                     index,
                 } = hover
                 {
-                    hover_data.replace(Some((*index, position.clone())));
+                    hover_data.replace(Some((*index, *position)));
                 }
                 None
             })
@@ -148,7 +148,7 @@ impl MapsTrail {
             weak_open = false;
         }
 
-        if let Some((index, position)) = self.show_map.clone() {
+        if let Some((index, position)) = self.show_map {
             let window_id: egui::Id = "plant_history_preview".into();
             let old_window_size = ui.ctx().memory(|mem| mem.area_rect(window_id));
 
@@ -208,22 +208,20 @@ impl MapsTrail {
             .union(response.rect.expand(window_padding));
 
             let new_window_size = ui.ctx().memory(|mem| mem.area_rect(window_id));
-            match (old_window_size, new_window_size) {
-                (Some(old_window_size), Some(new_window_size)) => {
-                    if old_window_size != new_window_size {
-                        weak_open = false;
-                    }
-                }
-                _ => {}
+            if let (Some(old_window_size), Some(new_window_size)) =
+                (old_window_size, new_window_size)
+                && old_window_size != new_window_size
+            {
+                weak_open = false;
             }
             if ui.input(|inp| inp.pointer.is_decidedly_dragging()) {
                 weak_open = false;
             }
 
-            if let Some(hover_pos) = ui.input(|inp| inp.pointer.hover_pos()) {
-                if path_rect.contains(hover_pos) {
-                    weak_open = false;
-                }
+            if let Some(hover_pos) = ui.input(|inp| inp.pointer.hover_pos())
+                && path_rect.contains(hover_pos)
+            {
+                weak_open = false;
             }
         }
 
@@ -249,7 +247,7 @@ impl MapsTrail {
 
 impl MapsTrail {
     fn get_last_map(&self) -> Option<&Box<MapData>> {
-        if self.trail.len() == 0 {
+        if self.trail.is_empty() {
             None
         } else {
             self.get_last_map_from(self.trail.len() - 1)

@@ -130,7 +130,7 @@ pub fn random_evolve(
     change_entropy: f32,
 ) {
     let best_evolution_data = sample_best_maps_evolution(maps, samples);
-    maps.resize_with(plants, || MapData::default());
+    maps.resize_with(plants, MapData::default);
     maps.iter_mut()
         .skip(samples)
         .enumerate()
@@ -157,7 +157,7 @@ pub fn parents_random_evolve(
     change_entropy: f32,
 ) {
     let best_evolution_data = sample_best_maps_evolution(maps, samples);
-    maps.resize_with(plants, || MapData::default());
+    maps.resize_with(plants, MapData::default);
     parent_combine(rng, &best_evolution_data, &mut maps[samples..]);
 
     best_evolution_data
