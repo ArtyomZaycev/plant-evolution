@@ -28,9 +28,9 @@ impl formula::ParameterId for InputNode {
     }
 }
 
-pub type WeightsTreeParameters = (PlantCellInput, f32, f32);
+pub type WeightsTreeParameters<'a> = (&'a PlantCellInput, f32, f32);
 
-impl formula::Parameters<InputNode> for WeightsTreeParameters {
+impl formula::Parameters<InputNode> for WeightsTreeParameters<'_> {
     fn get_value(&self, id: &InputNode) -> f32 {
         let (input, height, xdist) = self;
         match id {
@@ -55,7 +55,7 @@ pub type WeightsTree = Formula<InputNode>;
 
 impl WeightsTree {
     pub fn calculate_safe(&self, input: &PlantCellInput, height: f32, xdist: f32) -> f32 {
-        let value = self.calculate(&(input.clone(), height, xdist));
+        let value = self.calculate(&(input, height, xdist));
         if !value.is_normal() { 0. } else { value }
     }
 }

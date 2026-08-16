@@ -1,5 +1,5 @@
 use std::fmt::Debug;
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum UnaryOp {
@@ -66,7 +66,7 @@ pub enum FormulaNode<PId: ParameterId> {
     Operation(OpNode),
 }
 
-pub trait ParameterId: Debug + Clone + Serialize + DeserializeOwned {
+pub trait ParameterId: Debug + Clone {
     fn get_name(&self) -> String;
 }
 
@@ -224,11 +224,11 @@ pub mod rng {
         }
     }
 
-    impl<P: Parameters> FormulaNode<P> where StandardUniform: Distribution<P::ParameterId> {
+    impl<PId: ParameterId> FormulaNode<PId> where StandardUniform: Distribution<PId> {
         pub fn generate<R: Rng + ?Sized>(rng: &mut R, next_node_idx: usize, allow_op: bool) -> (Self, Vec<Self>) {
             match rng.random_range(if allow_op { 0..=2 } else { 0..=1 }) {
                 0 => (Self::Value((rng.random::<f32>() - 0.5) * 2.), vec![]),
-                1 => (Self::Parameter(rng.random::<P::ParameterId>()), vec![]),
+                1 => (Self::Parameter(rng.random::<PId>()), vec![]),
                 2 => match rng.random_range(0..=1) {
                     0 => (
                         Self::Operation(OpNode::Unary(rng.random::<UnaryOp>(), next_node_idx)),
