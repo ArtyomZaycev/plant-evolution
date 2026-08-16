@@ -398,11 +398,11 @@ impl PlantEvolutionApp {
     }
 
     fn show_trail_disabled_window(&mut self, ui: &mut egui::Ui) {
-        let pos = ui.clip_rect().center_top() + UPDATES_DISABLED_WINDOW_OFFSET;
+        let pos = ui.clip_rect().center_top() + WARNING_WINDOW_OFFSET;
         egui::Window::new("trail_disabled")
-            .max_width(UPDATES_DISABLED_WINDOW_WIDTH)
-            .min_width(UPDATES_DISABLED_WINDOW_WIDTH)
-            .default_width(UPDATES_DISABLED_WINDOW_WIDTH)
+            .max_width(WARNING_WINDOW_WIDTH)
+            .min_width(WARNING_WINDOW_WIDTH)
+            .default_width(WARNING_WINDOW_WIDTH)
             .fixed_pos(pos)
             .pivot(Align2::CENTER_TOP)
             .resizable(false)
@@ -420,11 +420,11 @@ impl PlantEvolutionApp {
     }
 
     fn show_updates_disabled_window(&mut self, ui: &mut egui::Ui) {
-        let pos = ui.clip_rect().center_top() + UPDATES_DISABLED_WINDOW_OFFSET;
+        let pos = ui.clip_rect().center_top() + WARNING_WINDOW_OFFSET;
         egui::Window::new("updates_disabled")
-            .max_width(UPDATES_DISABLED_WINDOW_WIDTH)
-            .min_width(UPDATES_DISABLED_WINDOW_WIDTH)
-            .default_width(UPDATES_DISABLED_WINDOW_WIDTH)
+            .max_width(WARNING_WINDOW_WIDTH)
+            .min_width(WARNING_WINDOW_WIDTH)
+            .default_width(WARNING_WINDOW_WIDTH)
             .fixed_pos(pos)
             .pivot(Align2::CENTER_TOP)
             .resizable(false)

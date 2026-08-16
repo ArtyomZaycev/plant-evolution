@@ -19,6 +19,7 @@ pub const PARENTS_EVOLUTION_EVOLVE_CHANCE: f64 = 0.75;
 
 pub const MAX_WEIGHTS_TREE_SIZE: usize = 40;
 
+// Map parameters
 pub const SUNLIGHT_AIR_MULTIPLIER: f32 = 0.98;
 pub const SUNLIGHT_CELL_MULTIPLIER: f32 = 0.3;
 
@@ -30,12 +31,14 @@ pub const LOW_DEPTH_WATER: f32 = 0.2;
 pub const HIGH_DEPTH_MINERALS: f32 = 0.3;
 pub const HIGH_DEPTH_WATER: f32 = 0.01;
 
+// Scoring parameters
 pub const SEEDS_MIN_DISTANCE: usize = 5;
 
 pub const SEED_SCORE: f32 = 20.;
 pub const SCORE_NUTRITION_MULTIPLIER: f32 = 100.;
 
 pub const ENERGY_PRODUCTION_COST_MULTIPLIER: f32 = 4.;
-pub const SEED_COST: f32 = 50.;
 
+// Cost parameters
+pub const SEED_COST: f32 = 50.;
 pub const PASSIVE_COST_MULTIPLIER: f32 = 1. / 80.;
