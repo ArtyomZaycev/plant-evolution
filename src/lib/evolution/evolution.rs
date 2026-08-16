@@ -4,7 +4,7 @@ use rand::RngExt;
 use serde::{Deserialize, Serialize};
 
 use super::{evolution_volatility::*, parents_evolution::*, random_evolution::*, weights_tree::*};
-use crate::{evolution::consts::*, map::*, precalc::*, utils::Rng};
+use crate::{evolution::consts::*, map::*, precalc::*, utils::{Rng, formula::FormulaNode}};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CellEvolutionData {
@@ -15,7 +15,7 @@ pub struct CellEvolutionData {
 impl WeightsTree {
     fn rand_generate(rng: &mut Rng) -> Self {
         Self {
-            nodes: vec![TreeNode::Input(InputNode::generate(rng))],
+            nodes: vec![FormulaNode::Parameter(rng.random())],
         }
     }
 }
@@ -27,13 +27,13 @@ impl CellEvolutionData {
                 std::array::from_fn(|_| WithVolatility::new(WeightsTree::rand_generate(rng)))
             }),
             suicide_weights: WithVolatility::new(WeightsTree {
-                nodes: vec![TreeNode::Value(0.)],
+                nodes: vec![FormulaNode::Value(0.)],
             }),
         }
     }
 
     pub fn calc_suicide(&self, input: &PlantCellInput, height: f32, xdist: f32) -> f32 {
-        self.suicide_weights.calculate(input, height, xdist)
+        self.suicide_weights.calculate_safe(input, height, xdist)
     }
 }
 

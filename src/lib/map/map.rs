@@ -272,7 +272,7 @@ impl MapData {
         next_cell_growth: &mut [f32; NUMBER_OF_CELLS],
     ) {
         for c in 0..NUMBER_OF_CELLS {
-            let score = weights[c].calculate(&from.input, height, xdist);
+            let score = weights[c].calculate_safe(&from.input, height, xdist);
             // Can't update self.next_cell_growth here
             // That would not account for negative results later
             next_cell_growth[c] += score;

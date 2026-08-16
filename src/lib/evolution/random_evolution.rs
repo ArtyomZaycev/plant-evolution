@@ -6,9 +6,7 @@ use super::{
     CellEvolutionData, PlantEvolutionData, RunningEvolutionData, run_evolution, weights_tree::*,
 };
 use crate::{
-    evolution::{WithVolatility, consts::MAX_WEIGHTS_TREE_SIZE},
-    map::*,
-    utils::*,
+    evolution::{WithVolatility, consts::MAX_WEIGHTS_TREE_SIZE}, map::*, utils::{formula::{FormulaNode, OpNode}, *},
 };
 
 fn apply_change_chance_and<F: FnOnce() -> bool>(change_chance: f32, random: f32, f: F) -> bool {
@@ -170,50 +168,50 @@ impl RandomEvolution for WeightsTree {
             let transform_type = rng.random_range(if allow_add { 0..=2 } else { 0..=1 });
             match transform_type {
                 0 => match &mut self.nodes[idx] {
-                    TreeNode::Value(value) => {
+                    FormulaNode::Value(value) => {
                         apply_change_chance(change_chance, rng.random(), || {
                             randomize_value(value, rng.random(), change_entropy);
                         });
                     }
-                    TreeNode::Input(input_node) => {
-                        *input_node = InputNode::generate(rng);
+                    FormulaNode::Parameter(input_node) => {
+                        *input_node = rng.random();
                     }
-                    TreeNode::Operation(op_node) => match op_node {
+                    FormulaNode::Operation(op_node) => match op_node {
                         OpNode::Unary(unary_op, _) => {
-                            *unary_op = UnaryOp::generate(rng);
+                            *unary_op = rng.random();
                         }
                         OpNode::Binary(binary_op, _, _) => {
-                            *binary_op = BinaryOp::generate(rng);
+                            *binary_op = rng.random();
                         }
                     },
                 },
                 1 => {
                     let (new_node, mut new_leaves) =
-                        TreeNode::generate(rng, self.nodes.len(), allow_add);
+                        FormulaNode::generate(rng, self.nodes.len(), allow_add);
                     self.nodes[idx] = new_node;
                     self.nodes.append(&mut new_leaves);
                     self.compact();
                 }
                 2 => {
                     let (new_node, mut new_leaves) =
-                        TreeNode::generate_operation(rng, self.nodes.len());
-                    if let TreeNode::Operation(op_node) = new_node {
+                        FormulaNode::generate_operation(rng, self.nodes.len());
+                    if let FormulaNode::Operation(op_node) = new_node {
                         let op_node = match op_node {
                             OpNode::Unary(unary_op, idx1) => {
-                                new_leaves = vec![self.nodes[idx]];
+                                new_leaves = vec![self.nodes[idx].clone()];
                                 OpNode::Unary(unary_op, idx1)
                             }
                             OpNode::Binary(binary_op, idx1, idx2) => {
                                 if rng.random_range(0..=1) == 0 {
-                                    new_leaves = vec![self.nodes[idx], new_leaves[1]];
+                                    new_leaves = vec![self.nodes[idx].clone(), new_leaves[1].clone()];
                                     OpNode::Binary(binary_op, idx1, idx2)
                                 } else {
-                                    new_leaves = vec![new_leaves[0], self.nodes[idx]];
+                                    new_leaves = vec![new_leaves[0].clone(), self.nodes[idx].clone()];
                                     OpNode::Binary(binary_op, idx1, idx2)
                                 }
                             }
                         };
-                        self.nodes[idx] = TreeNode::Operation(op_node);
+                        self.nodes[idx] = FormulaNode::Operation(op_node);
                         self.nodes.append(&mut new_leaves);
                         self.compact();
                     }

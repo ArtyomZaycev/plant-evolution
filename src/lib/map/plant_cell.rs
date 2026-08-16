@@ -73,7 +73,7 @@ impl PlantCellAbilities {
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct PlantCellInput {
     pub sunlight: f32,
     pub air: f32,
