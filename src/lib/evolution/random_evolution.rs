@@ -6,7 +6,12 @@ use super::{
     CellEvolutionData, PlantEvolutionData, RunningEvolutionData, run_evolution, weights_tree::*,
 };
 use crate::{
-    evolution::{WithVolatility, consts::MAX_WEIGHTS_TREE_SIZE}, map::*, utils::{formula::{FormulaNode, OpNode}, *},
+    evolution::{WithVolatility, consts::MAX_WEIGHTS_TREE_SIZE},
+    map::*,
+    utils::{
+        formula::{FormulaNode, OpNode},
+        *,
+    },
 };
 
 fn apply_change_chance_and<F: FnOnce() -> bool>(change_chance: f32, random: f32, f: F) -> bool {
@@ -203,10 +208,12 @@ impl RandomEvolution for WeightsTree {
                             }
                             OpNode::Binary(binary_op, idx1, idx2) => {
                                 if rng.random_range(0..=1) == 0 {
-                                    new_leaves = vec![self.nodes[idx].clone(), new_leaves[1].clone()];
+                                    new_leaves =
+                                        vec![self.nodes[idx].clone(), new_leaves[1].clone()];
                                     OpNode::Binary(binary_op, idx1, idx2)
                                 } else {
-                                    new_leaves = vec![new_leaves[0].clone(), self.nodes[idx].clone()];
+                                    new_leaves =
+                                        vec![new_leaves[0].clone(), self.nodes[idx].clone()];
                                     OpNode::Binary(binary_op, idx1, idx2)
                                 }
                             }

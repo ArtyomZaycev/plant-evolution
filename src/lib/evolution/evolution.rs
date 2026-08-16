@@ -4,7 +4,12 @@ use rand::RngExt;
 use serde::{Deserialize, Serialize};
 
 use super::{evolution_volatility::*, parents_evolution::*, random_evolution::*, weights_tree::*};
-use crate::{evolution::consts::*, map::*, precalc::*, utils::{Rng, formula::FormulaNode}};
+use crate::{
+    evolution::consts::*,
+    map::*,
+    precalc::*,
+    utils::{Rng, formula::FormulaNode},
+};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CellEvolutionData {

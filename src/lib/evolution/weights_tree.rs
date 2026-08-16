@@ -1,7 +1,11 @@
 use rand::RngExt;
 use serde::{Deserialize, Serialize};
 
-use crate::{map::PlantCellInput, precalc::NUMBER_OF_CELLS, utils::formula::{self, Formula, FormulaNode}};
+use crate::{
+    map::PlantCellInput,
+    precalc::NUMBER_OF_CELLS,
+    utils::formula::{self, Formula, FormulaNode},
+};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum InputNode {
@@ -75,7 +79,10 @@ impl rand::distr::Distribution<InputNode> for rand::distr::StandardUniform {
             1 => InputNode::Air,
             2 => InputNode::Minerals,
             3 => InputNode::Water,
-            4 => InputNode::Proximity { dir: rng.random_range(0..4), ctype: rng.random_range(0..NUMBER_OF_CELLS) },
+            4 => InputNode::Proximity {
+                dir: rng.random_range(0..4),
+                ctype: rng.random_range(0..NUMBER_OF_CELLS),
+            },
             5 => InputNode::Height,
             6 => InputNode::XDist,
             _ => panic!(),

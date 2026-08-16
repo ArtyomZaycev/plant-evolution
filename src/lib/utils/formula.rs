@@ -1,5 +1,5 @@
-use std::fmt::Debug;
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum UnaryOp {
@@ -82,9 +82,7 @@ pub struct Formula<PId: ParameterId> {
 impl<PId: ParameterId> Formula<PId> {
     pub fn new(nodes: Vec<FormulaNode<PId>>) -> Self {
         assert!(!nodes.is_empty());
-        Self {
-            nodes
-        }
+        Self { nodes }
     }
 
     /// Can return subnormal values
@@ -97,9 +95,7 @@ impl<PId: ParameterId> Formula<PId> {
             FormulaNode::Value(value) => *value,
             FormulaNode::Parameter(id) => parameters.get_value(id),
             FormulaNode::Operation(op_node) => match op_node {
-                OpNode::Unary(unary_op, idx1) => {
-                    unary_op.calc(self.calc_inner(parameters, *idx1))
-                }
+                OpNode::Unary(unary_op, idx1) => unary_op.calc(self.calc_inner(parameters, *idx1)),
                 OpNode::Binary(binary_op, idx1, idx2) => binary_op.calc(
                     self.calc_inner(parameters, *idx1),
                     self.calc_inner(parameters, *idx2),
@@ -196,8 +192,11 @@ impl<PId: ParameterId> Formula<PId> {
 }
 
 pub mod rng {
-    use rand::{Rng, RngExt, distr::{Distribution, StandardUniform}};
-    use crate::utils::formula::*;
+    use super::*;
+    use rand::{
+        Rng, RngExt,
+        distr::{Distribution, StandardUniform},
+    };
 
     impl Distribution<UnaryOp> for StandardUniform {
         fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> UnaryOp {
@@ -224,8 +223,15 @@ pub mod rng {
         }
     }
 
-    impl<PId: ParameterId> FormulaNode<PId> where StandardUniform: Distribution<PId> {
-        pub fn generate<R: Rng + ?Sized>(rng: &mut R, next_node_idx: usize, allow_op: bool) -> (Self, Vec<Self>) {
+    impl<PId: ParameterId> FormulaNode<PId>
+    where
+        StandardUniform: Distribution<PId>,
+    {
+        pub fn generate<R: Rng + ?Sized>(
+            rng: &mut R,
+            next_node_idx: usize,
+            allow_op: bool,
+        ) -> (Self, Vec<Self>) {
             match rng.random_range(if allow_op { 0..=2 } else { 0..=1 }) {
                 0 => (Self::Value((rng.random::<f32>() - 0.5) * 2.), vec![]),
                 1 => (Self::Parameter(rng.random::<PId>()), vec![]),
@@ -245,7 +251,10 @@ pub mod rng {
             }
         }
 
-        pub fn generate_operation<R: Rng + ?Sized>(rng: &mut R, next_node_idx: usize) -> (Self, Vec<Self>) {
+        pub fn generate_operation<R: Rng + ?Sized>(
+            rng: &mut R,
+            next_node_idx: usize,
+        ) -> (Self, Vec<Self>) {
             match rng.random_range(0..=1) {
                 0 => (
                     Self::Operation(OpNode::Unary(rng.random::<UnaryOp>(), next_node_idx)),
