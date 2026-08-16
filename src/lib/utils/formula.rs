@@ -60,9 +60,9 @@ pub enum OpNode {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub enum FormulaNode<P: Parameters> {
+pub enum FormulaNode<PId: ParameterId> {
     Value(f32),
-    Parameter(P::ParameterId),
+    Parameter(PId),
     Operation(OpNode),
 }
 
@@ -70,19 +70,17 @@ pub trait ParameterId: Debug + Clone + Serialize + DeserializeOwned {
     fn get_name(&self) -> String;
 }
 
-pub trait Parameters: Debug {
-    type ParameterId: ParameterId;
-
-    fn get_value(&self, id: &Self::ParameterId) -> f32;
+pub trait Parameters<PId: ParameterId>: Debug {
+    fn get_value(&self, id: &PId) -> f32;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Formula<P: Parameters> {
-    pub nodes: Vec<FormulaNode<P>>,
+pub struct Formula<PId: ParameterId> {
+    pub nodes: Vec<FormulaNode<PId>>,
 }
 
-impl<P: Parameters> Formula<P> {
-    pub fn new(nodes: Vec<FormulaNode<P>>) -> Self {
+impl<PId: ParameterId> Formula<PId> {
+    pub fn new(nodes: Vec<FormulaNode<PId>>) -> Self {
         assert!(!nodes.is_empty());
         Self {
             nodes
@@ -90,11 +88,11 @@ impl<P: Parameters> Formula<P> {
     }
 
     /// Can return subnormal values
-    pub fn calculate(&self, parameters: &P) -> f32 {
+    pub fn calculate<P: Parameters<PId>>(&self, parameters: &P) -> f32 {
         self.calc_inner(parameters, 0)
     }
 
-    fn calc_inner(&self, parameters: &P, idx: usize) -> f32 {
+    fn calc_inner<P: Parameters<PId>>(&self, parameters: &P, idx: usize) -> f32 {
         match &self.nodes[idx] {
             FormulaNode::Value(value) => *value,
             FormulaNode::Parameter(id) => parameters.get_value(id),

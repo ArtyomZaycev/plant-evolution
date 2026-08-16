@@ -30,10 +30,8 @@ impl formula::ParameterId for InputNode {
 
 pub type WeightsTreeParameters = (PlantCellInput, f32, f32);
 
-impl formula::Parameters for WeightsTreeParameters {
-    type ParameterId = InputNode;
-
-    fn get_value(&self, id: &Self::ParameterId) -> f32 {
+impl formula::Parameters<InputNode> for WeightsTreeParameters {
+    fn get_value(&self, id: &InputNode) -> f32 {
         let (input, height, xdist) = self;
         match id {
             InputNode::Sunlight => input.sunlight,
@@ -53,7 +51,7 @@ impl formula::Parameters for WeightsTreeParameters {
     }
 }
 
-pub type WeightsTree = Formula<WeightsTreeParameters>;
+pub type WeightsTree = Formula<InputNode>;
 
 impl WeightsTree {
     pub fn calculate_safe(&self, input: &PlantCellInput, height: f32, xdist: f32) -> f32 {
