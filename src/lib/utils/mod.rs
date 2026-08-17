@@ -1,4 +1,5 @@
 pub mod formula;
+pub mod formula_builder;
 pub mod rng;
 mod shared_buffer;
 mod stopwatch;
