@@ -5,6 +5,8 @@ use std::fmt::Debug;
 pub enum UnaryOp {
     Sqr,
     Sqrt,
+    Pow(f32),
+    Powi(i32),
     Ln,
     Inv,
     Minus,
@@ -15,6 +17,8 @@ impl UnaryOp {
         match &self {
             UnaryOp::Sqr => v1.powi(2),
             UnaryOp::Sqrt => v1.sqrt(),
+            UnaryOp::Pow(n) => v1.powf(*n),
+            UnaryOp::Powi(n) => v1.powi(*n),
             UnaryOp::Ln => {
                 if v1 <= 0. {
                     0.
@@ -157,6 +161,8 @@ impl<PId: ParameterId> Formula<PId> {
                 OpNode::Unary(unary_op, idx1) => match unary_op {
                     UnaryOp::Sqr => format!("{}^2", self.get_subformula(*idx1)),
                     UnaryOp::Sqrt => format!("sqrt({})", self.get_subformula(*idx1)),
+                    UnaryOp::Pow(n) => format!("({})^{}", self.get_subformula(*idx1), n),
+                    UnaryOp::Powi(n) => format!("({})^{}", self.get_subformula(*idx1), n),
                     UnaryOp::Ln => format!("ln({})", self.get_subformula(*idx1)),
                     UnaryOp::Inv => format!("{}^-1", self.get_subformula(*idx1)),
                     UnaryOp::Minus => format!("-{}", self.get_subformula(*idx1)),

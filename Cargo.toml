@@ -37,6 +37,10 @@ debug = true
 
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }
+cranelift-jit = "0.134.3"
+meval = "0.2.0"
+tabulon = "0.1.10"
+evalexpr-jit = "0.2.3"
 
 [dev-dependencies.plant-evolution]
 path = "."
@@ -56,3 +60,7 @@ required-features = ["stable_rng"]
 name = "full"
 harness = false
 required-features = ["stable_rng"]
+
+[[bench]]
+name = "formula"
+harness = false
