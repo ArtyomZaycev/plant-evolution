@@ -1,8 +1,8 @@
 mod builder;
-mod formula;
+mod formulas;
 mod nodes;
 mod utils;
 
 pub use builder::*;
-pub use formula::*;
+pub use formulas::*;
 pub use nodes::*;

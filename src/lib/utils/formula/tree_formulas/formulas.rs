@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::utils::formula::{tree_formula::utils, *};
+use crate::utils::formula::{tree_formulas::utils, *};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TreeFormula<PId: ParameterId> {
