@@ -2,6 +2,7 @@ use std::hint::black_box;
 
 use criterion::{BenchmarkGroup, Criterion, criterion_group, criterion_main};
 use plant_evolution_lib::utils::formula::*;
+use rand::{RngExt, SeedableRng, rngs::SmallRng};
 
 extern crate plant_evolution_lib;
 
@@ -25,13 +26,9 @@ fn get_simple_tree() -> Vec<FormulaNode<ArrayIdx<4>>> {
     .build()
 }
 
-fn simple_input_fn(i: usize) -> [f32; 4] {
-    [
-        1000. - i as f32 * 4.,
-        i as f32 / 2.,
-        ((i + 1) as f32 * 153.).sqrt(),
-        44. + (i as f32 * 0.12),
-    ]
+const RNG_SEED: u64 = 123;
+fn simple_input_fn(rng: &mut SmallRng, _: usize) -> [f32; 4] {
+    rng.random()
 }
 
 fn do_test<'a, M: criterion::measurement::Measurement, F: Formula<[f32; 4]>>(
@@ -41,8 +38,9 @@ fn do_test<'a, M: criterion::measurement::Measurement, F: Formula<[f32; 4]>>(
 ) {
     group.bench_function(name, |b| {
         b.iter(|| {
+            let mut rng = SmallRng::seed_from_u64(RNG_SEED);
             (0..SIMPLE_N).for_each(|i| {
-                black_box(f.calculate(&simple_input_fn(i)));
+                black_box(f.calculate(&simple_input_fn(&mut rng, i)));
             });
         });
     });
@@ -62,8 +60,9 @@ fn benchmark_simple(c: &mut Criterion) {
 
     group.bench_function("native", |b| {
         b.iter(|| {
+            let mut rng = SmallRng::seed_from_u64(RNG_SEED);
             (0..SIMPLE_N).for_each(|i| {
-                let input = simple_input_fn(i);
+                let input = simple_input_fn(&mut rng, i);
                 black_box((input[0] + input[1]) / input[2] * input[3]);
             });
         });
