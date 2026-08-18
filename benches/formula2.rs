@@ -13,20 +13,36 @@ const SIMPLE_N: usize = 1_000_000;
 
 fn get_simple_tree() -> Vec<FormulaNode<ArrayIdx<4>>> {
     let b: FormulaBuilder<ArrayIdx<4>> = FormulaBuilder::new();
-    b.binary_operator(BinaryOp::Mul, 
-        b.binary_operator(BinaryOp::Div, 
-            b.binary_operator(BinaryOp::Add, 
-                b.parameter(0), 
-            b.parameter(1)), 
-        b.parameter(2)), 
-    b.parameter(3)).build()
+    b.binary_operator(
+        BinaryOp::Mul,
+        b.binary_operator(
+            BinaryOp::Div,
+            b.binary_operator(BinaryOp::Add, b.parameter(0), b.parameter(1)),
+            b.parameter(2),
+        ),
+        b.parameter(3),
+    )
+    .build()
 }
 
-fn do_test<'a, M: criterion::measurement::Measurement, F: Formula<[f32; 4]>>(group: &mut BenchmarkGroup<'a, M>, input: &[[f32; 4]; SIMPLE_N], name: &str, f: F) {
+fn simple_input_fn(i: usize) -> [f32; 4] {
+    [
+        1000. - i as f32 * 4.,
+        i as f32 / 2.,
+        ((i + 1) as f32 * 153.).sqrt(),
+        44. + (i as f32 * 0.12),
+    ]
+}
+
+fn do_test<'a, M: criterion::measurement::Measurement, F: Formula<[f32; 4]>>(
+    group: &mut BenchmarkGroup<'a, M>,
+    name: &str,
+    f: F,
+) {
     group.bench_function(name, |b| {
         b.iter(|| {
             (0..SIMPLE_N).for_each(|i| {
-                black_box(f.calculate(&input[i]));
+                black_box(f.calculate(&simple_input_fn(i)));
             });
         });
     });
@@ -34,15 +50,6 @@ fn do_test<'a, M: criterion::measurement::Measurement, F: Formula<[f32; 4]>>(gro
 
 fn benchmark_simple(c: &mut Criterion) {
     let mut group = c.benchmark_group("formula-benches-simple");
-
-    let input: [[f32; 4]; SIMPLE_N] = std::array::from_fn(|i| {
-        [
-            1000. - i as f32 * 4.,
-            i as f32 / 2.,
-            ((i + 1) as f32 * 153.).sqrt(),
-            44. + (i as f32 * 0.12),
-        ]
-    });
 
     let formula_tree = get_simple_tree();
     let formula_str = "(a + b) / c * d".to_owned();
@@ -56,16 +63,17 @@ fn benchmark_simple(c: &mut Criterion) {
     group.bench_function("native", |b| {
         b.iter(|| {
             (0..SIMPLE_N).for_each(|i| {
-                black_box((input[i][0] + input[i][1]) / input[i][2] * input[i][3]);
+                let input = simple_input_fn(i);
+                black_box((input[0] + input[1]) / input[2] * input[3]);
             });
         });
     });
 
-    do_test(&mut group, &input, "tree_formula", tree_formula);
-    do_test(&mut group, &input, "array_formula", array_formula);
-    do_test(&mut group, &input, "meval_formula", meval_formula);
-    do_test(&mut group, &input, "tabulon_formula", tabulon_formula);
-    do_test(&mut group, &input, "mathexpr_formula", mathexpr_formula);
+    do_test(&mut group, "tree_formula", tree_formula);
+    do_test(&mut group, "array_formula", array_formula);
+    do_test(&mut group, "meval_formula", meval_formula);
+    do_test(&mut group, "tabulon_formula", tabulon_formula);
+    do_test(&mut group, "mathexpr_formula", mathexpr_formula);
 
     group.finish();
 }
