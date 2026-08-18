@@ -1,5 +1,7 @@
 use std::cell::RefCell;
 
+use crate::utils::formula::ParameterId;
+
 use super::*;
 
 pub enum FormulaBuilderError {
@@ -96,6 +98,8 @@ impl<PId: ParameterId> FormulaBuilder<PId> {
 
 #[allow(unused_imports, dead_code)]
 mod test {
+    use crate::utils::formula::{Formula, Parameters};
+
     use super::*;
 
     #[derive(Debug, Clone, Copy)]

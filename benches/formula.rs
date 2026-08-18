@@ -41,9 +41,7 @@ fn simple_native(input: &[[f32; 4]]) -> Vec<f32> {
         .collect()
 }
 
-fn simple_formula(
-    input: &[[f32; 4]],
-) -> Vec<f32> {
+fn simple_formula(input: &[[f32; 4]]) -> Vec<f32> {
     use plant_evolution_lib::utils::formula::*;
 
     let formula = TreeFormula::new(vec![
@@ -123,9 +121,7 @@ fn complex_native(input: &[[f32; 4]]) -> Vec<f32> {
         .collect()
 }
 
-fn complex_formula(
-    input: &[[f32; 4]],
-) -> Vec<f32> {
+fn complex_formula(input: &[[f32; 4]]) -> Vec<f32> {
     use plant_evolution_lib::utils::formula::*;
 
     let formula = TreeFormula::new(vec![

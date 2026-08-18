@@ -2,7 +2,9 @@ use rand::RngExt;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    map::PlantCellInput, precalc::NUMBER_OF_CELLS, utils::formula::{self, Formula, FormulaNode, TreeFormula},
+    map::PlantCellInput,
+    precalc::NUMBER_OF_CELLS,
+    utils::formula::{self, Formula, FormulaNode, TreeFormula},
 };
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]

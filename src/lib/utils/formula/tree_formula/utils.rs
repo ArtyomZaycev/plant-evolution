@@ -1,6 +1,10 @@
-use super::parameters::*;
+use crate::utils::formula::*;
 
-fn traverse_inner<PId: ParameterId>(nodes: &mut Vec<FormulaNode<PId>>, f: &mut Vec<bool>, idx: usize) {
+fn traverse_inner<PId: ParameterId>(
+    nodes: &mut Vec<FormulaNode<PId>>,
+    f: &mut Vec<bool>,
+    idx: usize,
+) {
     f[idx] = true;
     match nodes[idx] {
         FormulaNode::Value(_) => {}
