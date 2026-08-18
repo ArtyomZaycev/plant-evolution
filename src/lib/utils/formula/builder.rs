@@ -159,4 +159,62 @@ mod test {
         let f2_array = formula2.clone().with_runtime::<ArrayRuntime>();
         assert_eq!(formula2.calculate(&input), f2_array.calculate(&input));
     }
+
+    // (a.powi(4) / b.sqrt() + (c^-1).ln() - d.powi(2)).sqrt()
+    #[test]
+    pub fn test_complex() {
+        let formula1: Formula<SimplePId, NaiveRuntime> = Formula::new(vec![
+            /*0*/
+            FormulaNode::Operation(OpNode::Unary(UnaryOp::Sqrt, 1)), // (a.powi(4) / b.sqrt() + (c^-1).ln() - d.powi(2)).SQRT()
+            /*1*/
+            FormulaNode::Operation(OpNode::Binary(BinaryOp::Sub, 2, 3)), // a.powi(4) / b.sqrt() + (c^-1).ln() SUB d.powi(2)
+            /*2*/
+            FormulaNode::Operation(OpNode::Binary(BinaryOp::Add, 4, 5)), // a.powi(4) / b.sqrt() ADD (c^-1).ln()
+            /*3*/ FormulaNode::Operation(OpNode::Unary(UnaryOp::Sqr, 6)), // d.POWI(2)
+            /*4*/
+            FormulaNode::Operation(OpNode::Binary(BinaryOp::Div, 7, 8)), // a.powi(4) DIV b.sqrt()
+            /*5*/ FormulaNode::Operation(OpNode::Unary(UnaryOp::Ln, 9)), // (c^-1).LN()
+            /*6*/ FormulaNode::Parameter(SimplePId::D), // D
+            /*7*/
+            FormulaNode::Operation(OpNode::Unary(UnaryOp::Powi(4), 10)), // a.POWI(4)
+            /*8*/ FormulaNode::Operation(OpNode::Unary(UnaryOp::Sqrt, 11)), // b.SQRT()
+            /*9*/ FormulaNode::Operation(OpNode::Unary(UnaryOp::Inv, 12)), // c POW -1
+            /*10*/ FormulaNode::Parameter(SimplePId::A), // A
+            /*11*/ FormulaNode::Parameter(SimplePId::B), // B
+            /*12*/ FormulaNode::Parameter(SimplePId::C), // C
+        ]);
+
+        let b = FormulaBuilder::new();
+        let formula2: Formula<SimplePId, NaiveRuntime> = Formula::new(
+            b.unary_operation(
+                UnaryOp::Sqrt,
+                b.binary_operator(
+                    BinaryOp::Sub,
+                    b.binary_operator(
+                        BinaryOp::Add,
+                        b.binary_operator(
+                            BinaryOp::Div,
+                            b.unary_operation(UnaryOp::Powi(4), b.parameter(SimplePId::A)),
+                            b.unary_operation(UnaryOp::Sqrt, b.parameter(SimplePId::B)),
+                        ),
+                        b.unary_operation(
+                            UnaryOp::Ln,
+                            b.unary_operation(UnaryOp::Inv, b.parameter(SimplePId::C)),
+                        ),
+                    ),
+                    b.unary_operation(UnaryOp::Sqr, b.parameter(SimplePId::D)),
+                ),
+            )
+            .build(),
+        );
+
+        let input = [111., 24., 3., 4.];
+        assert_eq!(formula1.calculate(&input), formula2.calculate(&input));
+
+        let f1_array = formula1.clone().with_runtime::<ArrayRuntime>();
+        assert_eq!(formula1.calculate(&input), f1_array.calculate(&input));
+
+        let f2_array = formula2.clone().with_runtime::<ArrayRuntime>();
+        assert_eq!(formula2.calculate(&input), f2_array.calculate(&input));
+    }
 }
