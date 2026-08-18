@@ -55,6 +55,13 @@ impl<PId: ParameterId, R: FormulaRuntime<PId>> Formula<PId, R> {
         Self { nodes, runtime }
     }
 
+    pub fn boxed(self) -> Formula<PId, BoxedRuntime<PId>>
+    where
+        R: 'static,
+    {
+        Formula::new_wr(self.nodes, BoxedRuntime::new(self.runtime))
+    }
+
     pub fn with_runtime<NR: FormulaRuntime<PId> + BuildableRuntime<PId>>(self) -> Formula<PId, NR> {
         Formula::<PId, NR>::new(self.nodes)
     }
