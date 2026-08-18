@@ -1,96 +1,110 @@
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::Debug,
+    ops::{Deref, DerefMut},
 };
 
-use super::{parameters::*, utils};
+use crate::utils::formula::*;
 
-pub trait Formula<P>: Debug + ToString + Clone {
-    fn calculate(&self, parameters: &P) -> f32;
-}
+use super::parameters::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TreeFormula<PId: ParameterId> {
-    pub nodes: Vec<FormulaNode<PId>>,
+pub struct Formula<PId: ParameterId, R: FormulaRuntime<PId> = NaiveRuntime> {
+    nodes: Vec<FormulaNode<PId>>,
+    runtime: R,
 }
 
-impl<PId: ParameterId> TreeFormula<PId> {
+pub struct FormulaNodesGuard<'a, PId: ParameterId, R: FormulaRuntime<PId>> {
+    formula: &'a mut Formula<PId, R>,
+}
+
+impl<'a, PId: ParameterId, R: FormulaRuntime<PId>> Deref for FormulaNodesGuard<'a, PId, R> {
+    type Target = Vec<FormulaNode<PId>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.formula.nodes
+    }
+}
+
+impl<'a, PId: ParameterId, R: FormulaRuntime<PId>> DerefMut for FormulaNodesGuard<'a, PId, R> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.formula.nodes
+    }
+}
+
+impl<'a, PId: ParameterId, R: FormulaRuntime<PId>> Drop for FormulaNodesGuard<'a, PId, R> {
+    fn drop(&mut self) {
+        self.formula.runtime.update(&mut self.formula.nodes);
+    }
+}
+
+impl<PId: ParameterId, R: FormulaRuntime<PId>> Formula<PId, R> {
     pub fn new(mut nodes: Vec<FormulaNode<PId>>) -> Self
+    where
+        R: BuildableRuntime<PId>,
     {
         assert!(!nodes.is_empty());
-        utils::compact_nodes(&mut nodes);
-        Self { nodes }
+        utils::compact(&mut nodes);
+        let runtime = R::new(&mut nodes);
+        Self { nodes, runtime }
     }
 
-    fn calculate_inner<P: Parameters<PId>>(
-        &self,
-        nodes: &Vec<FormulaNode<PId>>,
-        parameters: &P,
-        idx: usize,
-    ) -> f32 {
-        match &nodes[idx] {
-            FormulaNode::Value(value) => *value,
-            FormulaNode::Parameter(id) => parameters.get_value(id),
-            FormulaNode::Operation(op_node) => match op_node {
-                OpNode::Unary(unary_op, idx1) => {
-                    unary_op.calc(self.calculate_inner::<P>(nodes, parameters, *idx1))
-                }
-                OpNode::Binary(binary_op, idx1, idx2) => binary_op.calc(
-                    self.calculate_inner::<P>(nodes, parameters, *idx1),
-                    self.calculate_inner::<P>(nodes, parameters, *idx2),
-                ),
-            },
-        }
-    }
-}
-
-impl<PId: ParameterId> ToString for TreeFormula<PId> {
-    fn to_string(&self) -> String {
-        utils::nodes_to_string(&self.nodes)
-    }
-}
-
-impl<PId: ParameterId, P: Parameters<PId>> Formula<P> for TreeFormula<PId> {
-    fn calculate(&self, parameters: &P) -> f32 {
-        self.calculate_inner::<P>(&self.nodes, parameters, 0)
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TreeArrayFormula<PId: ParameterId>(TreeFormula<PId>);
-
-impl<PId: ParameterId> TreeArrayFormula<PId> {
-    pub fn new(mut nodes: Vec<FormulaNode<PId>>) -> Self
-    {
+    pub fn new_wr(mut nodes: Vec<FormulaNode<PId>>, runtime: R) -> Self {
         assert!(!nodes.is_empty());
-        utils::compact_nodes(&mut nodes);
-        utils::sort_nodes(&mut nodes);
-        Self(TreeFormula::new(nodes))
+        utils::compact(&mut nodes);
+        Self { nodes, runtime }
     }
-}
 
-impl<PId: ParameterId> ToString for TreeArrayFormula<PId> {
-    fn to_string(&self) -> String {
-        self.0.to_string()
+    pub fn boxed(self) -> Formula<PId, BoxedRuntime<PId>>
+    where
+        R: 'static,
+    {
+        Formula::new_wr(self.nodes, BoxedRuntime::new(self.runtime))
     }
-}
 
-impl<PId: ParameterId, P: Parameters<PId>> Formula<P> for TreeArrayFormula<PId> {
-    fn calculate(&self, parameters: &P) -> f32 {
-        let mut results = vec![f32::NAN; self.0.nodes.len()];
-        (0..self.0.nodes.len()).rev().for_each(|i| {
-            results[i] = match &self.0.nodes[i] {
-                FormulaNode::Value(v) => *v,
-                FormulaNode::Parameter(id) => parameters.get_value(id),
-                FormulaNode::Operation(op_node) => match op_node {
-                    OpNode::Unary(unary_op, idx1) => unary_op.calc(results[*idx1]),
-                    OpNode::Binary(binary_op, idx1, idx2) => {
-                        binary_op.calc(results[*idx1], results[*idx2])
-                    }
-                },
-            }
-        });
-        results[0]
+    pub fn with_runtime<NR: FormulaRuntime<PId> + BuildableRuntime<PId>>(self) -> Formula<PId, NR> {
+        Formula::<PId, NR>::new(self.nodes)
+    }
+
+    pub fn with_custom_runtime<NR: FormulaRuntime<PId>>(self, new_runtime: NR) -> Formula<PId, NR> {
+        Formula::<PId, NR>::new_wr(self.nodes, new_runtime)
+    }
+
+    pub fn swap_runtime<NR: FormulaRuntime<PId> + BuildableRuntime<PId> + 'static>(&mut self)
+    where
+        R: DynamicFormulaRuntime<PId> + 'static,
+    {
+        self.runtime.swap(NR::new(&mut self.nodes));
+    }
+
+    pub fn swap_custom_runtime<NR: FormulaRuntime<PId> + BuildableRuntime<PId> + 'static>(
+        &mut self,
+        new_runtime: NR,
+    ) where
+        R: DynamicFormulaRuntime<PId> + 'static,
+    {
+        self.runtime.swap(new_runtime);
+    }
+
+    pub fn update_runtime<F: FnOnce(&mut R)>(&mut self, f: F) {
+        f(&mut self.runtime)
+    }
+
+    pub fn get_nodes(&self) -> &Vec<FormulaNode<PId>> {
+        &self.nodes
+    }
+
+    pub fn get_nodes_mut<'a>(&'a mut self) -> FormulaNodesGuard<'a, PId, R> {
+        FormulaNodesGuard { formula: self }
+    }
+
+    /// Can return subnormal values
+    pub fn calculate<P: Parameters<PId>>(&self, parameters: &P) -> f32 {
+        self.runtime.calculate(&self.nodes, parameters)
+    }
+
+    pub fn get_formula(&self) -> String {
+        utils::get_formula(&self.nodes)
     }
 }
 

@@ -351,7 +351,7 @@ impl PlantEvolutionApp {
                     "Suicide (v={:.2}): {}",
                     evolution_data.suicide_weights.volatility,
                     // TODO: Why always 0??
-                    evolution_data.suicide_weights.get_formula()
+                    evolution_data.suicide_weights.to_string()
                 ));
                 ["Up", "Down", "Inwards", "Outwards"]
                     .into_iter()
@@ -366,7 +366,7 @@ impl PlantEvolutionApp {
                                             "{} (v={:.2}): {}",
                                             i + 1,
                                             w.volatility,
-                                            w.get_formula()
+                                            w.to_string()
                                         ));
                                     },
                                 );

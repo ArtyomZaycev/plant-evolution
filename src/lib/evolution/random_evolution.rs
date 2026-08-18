@@ -158,7 +158,7 @@ impl RandomEvolution for PlantCellAbilities {
 impl RandomEvolution for WeightsTree {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
         apply_change_chance(change_chance, rng.random(), || {
-            let mut nodes = self.get_nodes_mut();
+            let nodes = &mut self.nodes;
             let idx = rng.random_range(0..nodes.len());
             let allow_add = nodes.len() < MAX_WEIGHTS_TREE_SIZE;
             /*

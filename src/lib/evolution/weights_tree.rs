@@ -2,9 +2,7 @@ use rand::RngExt;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    map::PlantCellInput,
-    precalc::NUMBER_OF_CELLS,
-    utils::formula::{self, Formula, FormulaNode},
+    map::PlantCellInput, precalc::NUMBER_OF_CELLS, utils::formula::{self, Formula, FormulaNode, TreeFormula},
 };
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -55,7 +53,7 @@ impl formula::Parameters<InputNode> for WeightsTreeParameters<'_> {
     }
 }
 
-pub type WeightsTree = Formula<InputNode>;
+pub type WeightsTree = TreeFormula<InputNode>;
 
 impl WeightsTree {
     pub fn calculate_safe(&self, input: &PlantCellInput, height: f32, xdist: f32) -> f32 {

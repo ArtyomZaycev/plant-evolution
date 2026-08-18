@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use super::*;
+use crate::utils::formula::*;
 
 pub enum FormulaBuilderError {
     Invalid,
@@ -96,7 +96,7 @@ impl<PId: ParameterId> FormulaBuilder<PId> {
 
 #[allow(unused_imports, dead_code)]
 mod test {
-    use super::*;
+    use crate::utils::formula::*;
 
     #[derive(Debug, Clone, Copy)]
     #[repr(usize)]
@@ -122,7 +122,7 @@ mod test {
     /// (a + b) / c * d
     #[test]
     pub fn test_simple() {
-        let formula1: TreeFormula<SimplePId> = TreeFormula::new(vec![
+        let formula1: Formula<SimplePId, NaiveRuntime> = Formula::new(vec![
             FormulaNode::Operation(OpNode::Binary(BinaryOp::Mul, 1, 2)),
             FormulaNode::Operation(OpNode::Binary(BinaryOp::Div, 3, 4)),
             FormulaNode::Parameter(SimplePId::D),
@@ -133,7 +133,7 @@ mod test {
         ]);
 
         let b = FormulaBuilder::new();
-        let formula2: TreeFormula<SimplePId> = TreeFormula::new(
+        let formula2: Formula<SimplePId, NaiveRuntime> = Formula::new(
             b.binary_operator(
                 BinaryOp::Mul,
                 b.binary_operator(
@@ -152,12 +152,18 @@ mod test {
 
         let input = [1., 2., 3., 4.];
         assert_eq!(formula1.calculate(&input), formula2.calculate(&input));
+
+        let f1_array = formula1.clone().with_runtime::<ArrayRuntime>();
+        assert_eq!(formula1.calculate(&input), f1_array.calculate(&input));
+
+        let f2_array = formula2.clone().with_runtime::<ArrayRuntime>();
+        assert_eq!(formula2.calculate(&input), f2_array.calculate(&input));
     }
 
     // (a.powi(4) / b.sqrt() + (c^-1).ln() - d.powi(2)).sqrt()
     #[test]
     pub fn test_complex() {
-        let formula1: TreeFormula<SimplePId> = TreeFormula::new(vec![
+        let formula1: Formula<SimplePId, NaiveRuntime> = Formula::new(vec![
             /*0*/
             FormulaNode::Operation(OpNode::Unary(UnaryOp::Sqrt, 1)), // (a.powi(4) / b.sqrt() + (c^-1).ln() - d.powi(2)).SQRT()
             /*1*/
@@ -179,7 +185,7 @@ mod test {
         ]);
 
         let b = FormulaBuilder::new();
-        let formula2: TreeFormula<SimplePId> = TreeFormula::new(
+        let formula2: Formula<SimplePId, NaiveRuntime> = Formula::new(
             b.unary_operation(
                 UnaryOp::Sqrt,
                 b.binary_operator(
@@ -204,5 +210,11 @@ mod test {
 
         let input = [111., 24., 3., 4.];
         assert_eq!(formula1.calculate(&input), formula2.calculate(&input));
+
+        let f1_array = formula1.clone().with_runtime::<ArrayRuntime>();
+        assert_eq!(formula1.calculate(&input), f1_array.calculate(&input));
+
+        let f2_array = formula2.clone().with_runtime::<ArrayRuntime>();
+        assert_eq!(formula2.calculate(&input), f2_array.calculate(&input));
     }
 }
