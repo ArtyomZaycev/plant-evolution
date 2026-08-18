@@ -97,7 +97,7 @@ impl<PId: ParameterId> FormulaBuilder<PId> {
 
 #[allow(unused_imports, dead_code)]
 mod test {
-    use crate::utils::{formula::*, formula_builder::FormulaBuilder};
+    use crate::utils::formula::*;
 
     #[derive(Debug, Clone, Copy)]
     #[repr(usize)]
@@ -123,7 +123,7 @@ mod test {
     /// (a + b) / c * d
     #[test]
     pub fn test_simple() {
-        let mut formula1 = Formula::new(vec![
+        let formula1: Formula<SimplePId, NaiveFormulaRuntime> = Formula::new(vec![
             FormulaNode::Operation(OpNode::Binary(BinaryOp::Mul, 1, 2)),
             FormulaNode::Operation(OpNode::Binary(BinaryOp::Div, 3, 4)),
             FormulaNode::Parameter(SimplePId::D),
@@ -134,7 +134,7 @@ mod test {
         ]);
 
         let b = FormulaBuilder::new();
-        let mut formula2 = b
+        let formula2 = b
             .binary_operator(
                 BinaryOp::Mul,
                 b.binary_operator(
@@ -152,7 +152,11 @@ mod test {
 
         let input = [1., 2., 3., 4.];
         assert_eq!(formula1.calculate(&input), formula2.calculate(&input));
-        assert_eq!(formula1.calculate_tree(&input), formula1.calculate_array(&input));
-        assert_eq!(formula2.calculate_tree(&input), formula2.calculate_array(&input));
+
+        let f1_array = formula1.clone().with_runtime::<ArrayFormulaRuntime>();
+        assert_eq!(formula1.calculate(&input), f1_array.calculate(&input));
+        
+        let f2_array = formula2.clone().with_runtime::<ArrayFormulaRuntime>();
+        assert_eq!(formula2.calculate(&input), f2_array.calculate(&input));
     }
 }

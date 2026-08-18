@@ -1,7 +1,7 @@
 use std::hint::black_box;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use plant_evolution_lib::utils::formula;
+use plant_evolution_lib::utils::formula::{self, ArrayFormulaRuntime, FormulaRuntime, NaiveFormulaRuntime};
 
 extern crate plant_evolution_lib;
 
@@ -41,10 +41,10 @@ fn simple_native(input: &[[f32; 4]]) -> Vec<f32> {
         .collect()
 }
 
-fn simple_formula_tree(input: &[[f32; 4]]) -> Vec<f32> {
+fn simple_formula<R: FormulaRuntime<SimplePId>>(input: &[[f32; 4]]) -> Vec<f32> {
     use plant_evolution_lib::utils::formula::*;
 
-    let formula = Formula::new(vec![
+    let formula: Formula<SimplePId, R> = Formula::new(vec![
         FormulaNode::Operation(OpNode::Binary(BinaryOp::Mul, 1, 2)),
         FormulaNode::Operation(OpNode::Binary(BinaryOp::Div, 3, 4)),
         FormulaNode::Parameter(SimplePId::D),
@@ -55,25 +55,7 @@ fn simple_formula_tree(input: &[[f32; 4]]) -> Vec<f32> {
     ]);
     input
         .iter()
-        .map(|inp| black_box(formula.calculate_tree(inp)))
-        .collect()
-}
-
-fn simple_formula_array(input: &[[f32; 4]]) -> Vec<f32> {
-    use plant_evolution_lib::utils::formula::*;
-
-    let formula = Formula::new(vec![
-        FormulaNode::Operation(OpNode::Binary(BinaryOp::Mul, 1, 2)),
-        FormulaNode::Operation(OpNode::Binary(BinaryOp::Div, 3, 4)),
-        FormulaNode::Parameter(SimplePId::D),
-        FormulaNode::Operation(OpNode::Binary(BinaryOp::Add, 5, 6)),
-        FormulaNode::Parameter(SimplePId::C),
-        FormulaNode::Parameter(SimplePId::A),
-        FormulaNode::Parameter(SimplePId::B),
-    ]);
-    input
-        .iter()
-        .map(|inp| black_box(formula.calculate_array(inp)))
+        .map(|inp| black_box(formula.calculate(inp)))
         .collect()
 }
 
@@ -139,10 +121,10 @@ fn complex_native(input: &[[f32; 4]]) -> Vec<f32> {
         .collect()
 }
 
-fn complex_formula_tree(input: &[[f32; 4]]) -> Vec<f32> {
+fn complex_formula<R: FormulaRuntime<SimplePId>>(input: &[[f32; 4]]) -> Vec<f32> {
     use plant_evolution_lib::utils::formula::*;
 
-    let formula = Formula::new(vec![
+    let formula: Formula<SimplePId, R> = Formula::new(vec![
         /*0*/
         FormulaNode::Operation(OpNode::Unary(UnaryOp::Sqrt, 1)), // (a.powi(4) / b.sqrt() + (c^-1).ln() - d.powi(2)).SQRT()
         /*1*/
@@ -163,35 +145,7 @@ fn complex_formula_tree(input: &[[f32; 4]]) -> Vec<f32> {
     ]);
     input
         .iter()
-        .map(|inp| black_box(formula.calculate_tree(inp)))
-        .collect()
-}
-
-fn complex_formula_array(input: &[[f32; 4]]) -> Vec<f32> {
-    use plant_evolution_lib::utils::formula::*;
-
-    let formula = Formula::new(vec![
-        /*0*/
-        FormulaNode::Operation(OpNode::Unary(UnaryOp::Sqrt, 1)), // (a.powi(4) / b.sqrt() + (c^-1).ln() - d.powi(2)).SQRT()
-        /*1*/
-        FormulaNode::Operation(OpNode::Binary(BinaryOp::Sub, 2, 3)), // a.powi(4) / b.sqrt() + (c^-1).ln() SUB d.powi(2)
-        /*2*/
-        FormulaNode::Operation(OpNode::Binary(BinaryOp::Add, 4, 5)), // a.powi(4) / b.sqrt() ADD (c^-1).ln()
-        /*3*/ FormulaNode::Operation(OpNode::Unary(UnaryOp::Sqr, 6)), // d.POWI(2)
-        /*4*/
-        FormulaNode::Operation(OpNode::Binary(BinaryOp::Div, 7, 8)), // a.powi(4) DIV b.sqrt()
-        /*5*/ FormulaNode::Operation(OpNode::Unary(UnaryOp::Ln, 9)), // (c^-1).LN()
-        /*6*/ FormulaNode::Parameter(SimplePId::D), // D
-        /*7*/ FormulaNode::Operation(OpNode::Unary(UnaryOp::Powi(4), 10)), // a.POWI(4)
-        /*8*/ FormulaNode::Operation(OpNode::Unary(UnaryOp::Sqrt, 11)), // b.SQRT()
-        /*9*/ FormulaNode::Operation(OpNode::Unary(UnaryOp::Inv, 12)), // c POW -1
-        /*10*/ FormulaNode::Parameter(SimplePId::A), // A
-        /*11*/ FormulaNode::Parameter(SimplePId::B), // B
-        /*12*/ FormulaNode::Parameter(SimplePId::C), // C
-    ]);
-    input
-        .iter()
-        .map(|inp| black_box(formula.calculate_array(inp)))
+        .map(|inp| black_box(formula.calculate(inp)))
         .collect()
 }
 
@@ -255,8 +209,8 @@ fn benchmark_simple(c: &mut Criterion) {
                 }
             });
         };
-        compare(&result, &simple_formula_tree(test_input));
-        compare(&result, &simple_formula_array(test_input));
+        compare(&result, &simple_formula::<NaiveFormulaRuntime>(test_input));
+        compare(&result, &simple_formula::<ArrayFormulaRuntime>(test_input));
         compare(&result, &simple_meval(test_input));
         compare(&result, &simple_tabulon(test_input));
         compare(&result, &simple_evalexprjit(test_input));
@@ -269,8 +223,8 @@ fn benchmark_simple(c: &mut Criterion) {
     };
 
     test("simple-native", &simple_native);
-    test("simple-formula-tree", &simple_formula_tree);
-    test("simple-formula-array", &simple_formula_array);
+    test("simple-formula-tree", &simple_formula::<NaiveFormulaRuntime>);
+    test("simple-formula-array", &simple_formula::<ArrayFormulaRuntime>);
     test("simple-meval", &simple_meval);
     test("simple-tabulon", &simple_tabulon);
     test("simple-evalexprjit", &simple_evalexprjit);
@@ -302,8 +256,8 @@ fn benchmark_complex(c: &mut Criterion) {
                 }
             });
         };
-        compare(&result, &complex_formula_tree(test_input));
-        compare(&result, &complex_formula_array(test_input));
+        compare(&result, &complex_formula::<NaiveFormulaRuntime>(test_input));
+        compare(&result, &complex_formula::<ArrayFormulaRuntime>(test_input));
         compare(&result, &complex_meval(test_input));
         compare(&result, &complex_evalexprjit(test_input));
     }
@@ -315,8 +269,8 @@ fn benchmark_complex(c: &mut Criterion) {
     };
 
     test("complex-native", &complex_native);
-    test("complex-formula-tree", &complex_formula_tree);
-    test("complex-formula-array", &complex_formula_array);
+    test("complex-formula-tree", &complex_formula::<NaiveFormulaRuntime>);
+    test("complex-formula-array", &complex_formula::<ArrayFormulaRuntime>);
     test("complex-meval", &complex_meval);
     test("complex-evalexprjit", &complex_evalexprjit);
 
