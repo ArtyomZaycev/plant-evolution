@@ -166,31 +166,35 @@ mod array {
 }
 
 mod stat {
-    use crate::utils::formula::utils;
+    use crate::utils::formula::{Formula, utils};
 
     use super::*;
 
-    pub struct StaticRuntime<PId: ParameterId> {
+    pub struct StaticRuntime<'a, PId: ParameterId> {
         nodes: Vec<FormulaNode<PId>>,
-        f: Box<dyn Fn(&dyn Parameters<PId>) -> f32>,
+        f: Box<dyn Fn(&dyn Parameters<PId>) -> f32 + 'a>,
     }
 
-    impl<PId: ParameterId> Debug for StaticRuntime<PId> {
+    impl<PId: ParameterId> Debug for StaticRuntime<'_, PId> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("StaticRuntime").field("nodes", &self.nodes).field("f", &utils::get_formula(&self.nodes)).finish()
         }
     }
 
-    impl<PId: ParameterId> StaticRuntime<PId> {
-        pub fn new<F: Fn(&dyn Parameters<PId>) -> f32 + 'static>(formula: Vec<FormulaNode<PId>>, f: F) -> Self {
+    impl<'a, PId: ParameterId> StaticRuntime<'a, PId> {
+        pub fn new<F: Fn(&dyn Parameters<PId>) -> f32 + 'a>(formula: Vec<FormulaNode<PId>>, f: F) -> Self {
             Self {
                 nodes: formula,
                 f: Box::new(f),
             }
         }
+
+        pub fn formula(self) -> Formula<PId, Self> {
+            Formula::new_wr(self.nodes.clone(), self)
+        }
     }
 
-    impl<PId: ParameterId> FormulaRuntime<PId> for StaticRuntime<PId> {
+    impl<PId: ParameterId> FormulaRuntime<PId> for StaticRuntime<'_, PId> {
         fn calculate(&self, _: &Vec<FormulaNode<PId>>, parameters: &dyn Parameters<PId>) -> f32 {
             (self.f)(parameters)
         }
