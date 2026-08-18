@@ -136,12 +136,14 @@ fn complex_formula(input: &[[f32; 4]]) -> Vec<f32> {
         FormulaNode::Operation(OpNode::Binary(BinaryOp::Div, 7, 8)), // a.powi(4) DIV b.sqrt()
         /*5*/ FormulaNode::Operation(OpNode::Unary(UnaryOp::Ln, 9)), // (c^-1).LN()
         /*6*/ FormulaNode::Parameter(SimplePId::D), // D
-        /*7*/ FormulaNode::Operation(OpNode::Unary(UnaryOp::Powi(4), 10)), // a.POWI(4)
+        /*7*/
+        FormulaNode::Operation(OpNode::Binary(BinaryOp::Powi, 10, 13)), // a.POWI(4)
         /*8*/ FormulaNode::Operation(OpNode::Unary(UnaryOp::Sqrt, 11)), // b.SQRT()
         /*9*/ FormulaNode::Operation(OpNode::Unary(UnaryOp::Inv, 12)), // c POW -1
         /*10*/ FormulaNode::Parameter(SimplePId::A), // A
         /*11*/ FormulaNode::Parameter(SimplePId::B), // B
         /*12*/ FormulaNode::Parameter(SimplePId::C), // C
+        /*13*/ FormulaNode::Value(4.),
     ]);
     input
         .iter()

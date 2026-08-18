@@ -174,12 +174,13 @@ mod test {
             /*5*/ FormulaNode::Operation(OpNode::Unary(UnaryOp::Ln, 9)), // (c^-1).LN()
             /*6*/ FormulaNode::Parameter(SimplePId::D), // D
             /*7*/
-            FormulaNode::Operation(OpNode::Unary(UnaryOp::Powi(4), 10)), // a.POWI(4)
+            FormulaNode::Operation(OpNode::Binary(BinaryOp::Powi, 10, 13)), // a.POWI(4)
             /*8*/ FormulaNode::Operation(OpNode::Unary(UnaryOp::Sqrt, 11)), // b.SQRT()
             /*9*/ FormulaNode::Operation(OpNode::Unary(UnaryOp::Inv, 12)), // c POW -1
             /*10*/ FormulaNode::Parameter(SimplePId::A), // A
             /*11*/ FormulaNode::Parameter(SimplePId::B), // B
             /*12*/ FormulaNode::Parameter(SimplePId::C), // C
+            /*13*/ FormulaNode::Value(4.),
         ]);
 
         let b = FormulaBuilder::new();
@@ -192,7 +193,11 @@ mod test {
                         BinaryOp::Add,
                         b.binary_operator(
                             BinaryOp::Div,
-                            b.unary_operation(UnaryOp::Powi(4), b.parameter(SimplePId::A)),
+                            b.binary_operator(
+                                BinaryOp::Powi,
+                                b.parameter(SimplePId::A),
+                                b.value(4.),
+                            ),
                             b.unary_operation(UnaryOp::Sqrt, b.parameter(SimplePId::B)),
                         ),
                         b.unary_operation(

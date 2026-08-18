@@ -57,8 +57,6 @@ fn get_subformula<PId: ParameterId>(nodes: &Vec<FormulaNode<PId>>, idx: usize) -
             OpNode::Unary(unary_op, idx1) => match unary_op {
                 UnaryOp::Sqr => format!("{}^2", get_subformula(nodes, *idx1)),
                 UnaryOp::Sqrt => format!("sqrt({})", get_subformula(nodes, *idx1)),
-                UnaryOp::Pow(n) => format!("({})^{}", get_subformula(nodes, *idx1), n),
-                UnaryOp::Powi(n) => format!("({})^{}", get_subformula(nodes, *idx1), n),
                 UnaryOp::Ln => format!("ln({})", get_subformula(nodes, *idx1)),
                 UnaryOp::Inv => format!("{}^-1", get_subformula(nodes, *idx1)),
                 UnaryOp::Minus => format!("-{}", get_subformula(nodes, *idx1)),
@@ -81,6 +79,16 @@ fn get_subformula<PId: ParameterId>(nodes: &Vec<FormulaNode<PId>>, idx: usize) -
                 ),
                 BinaryOp::Div => format!(
                     "({} / {})",
+                    get_subformula(nodes, *idx1),
+                    get_subformula(nodes, *idx2)
+                ),
+                BinaryOp::Pow => format!(
+                    "({} ^ {})",
+                    get_subformula(nodes, *idx1),
+                    get_subformula(nodes, *idx2)
+                ),
+                BinaryOp::Powi => format!(
+                    "powi({}, {})",
                     get_subformula(nodes, *idx1),
                     get_subformula(nodes, *idx2)
                 ),

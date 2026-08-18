@@ -33,8 +33,23 @@ impl<'a, PId: ParameterIdAll> BaseContext<'a, PId> {
 
     fn create_functions() -> HashMap<String, Box<dyn Fn(&[f64]) -> f64 + 'a>> {
         let mut functions = HashMap::new();
-        let f: Box<dyn Fn(&[f64]) -> f64 + 'a> = Box::new(|v: &[f64]| v[0].sqrt());
-        functions.insert("sqrt".to_owned(), f);
+
+        let mut insert = |name: &str, f| {
+            let f: Box<dyn Fn(&[f64]) -> f64 + 'a> = f;
+            functions.insert(name.to_owned(), f);
+        };
+
+        insert("sqr", Box::new(|v: &[f64]| v[0].powi(2)));
+        insert("sqrt", Box::new(|v: &[f64]| v[0].sqrt()));
+        insert("ln", Box::new(|v: &[f64]| v[0].ln()));
+        insert("inv", Box::new(|v: &[f64]| 1. / v[0]));
+        insert("minus", Box::new(|v: &[f64]| -v[0]));
+        insert("add", Box::new(|v: &[f64]| v[0] + v[1]));
+        insert("sub", Box::new(|v: &[f64]| v[0] - v[1]));
+        insert("mul", Box::new(|v: &[f64]| v[0] * v[1]));
+        insert("div", Box::new(|v: &[f64]| v[0] / v[1]));
+        insert("pow", Box::new(|v: &[f64]| v[0].powf(v[1])));
+        insert("powi", Box::new(|v: &[f64]| v[0].powi(v[1] as i32)));
 
         functions
     }
@@ -46,6 +61,7 @@ impl<'a, PId: ParameterIdAll> BaseContext<'a, PId> {
         }
     }
 }
+
 struct Context<'a, PId: ParameterIdAll, P: Parameters<PId>> {
     base: &'a BaseContext<'a, PId>,
     parameters: &'a P,
@@ -110,8 +126,7 @@ mod test {
         let formula: MEvalFormula<'_, ArrayIdx<3>> =
             MEvalFormula::new(str_formula.to_string()).unwrap();
 
-        let parameters: &[f32; 3] = &[1., 2., 3.];
-        let value = formula.calculate(parameters);
+        let value = formula.calculate(&[1., 2., 3.]);
 
         assert_eq!(1. + 2. + 3. * 1_f32.sqrt(), value)
     }

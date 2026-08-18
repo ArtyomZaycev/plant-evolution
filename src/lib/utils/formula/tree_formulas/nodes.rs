@@ -6,8 +6,6 @@ use crate::utils::formula::ParameterId;
 pub enum UnaryOp {
     Sqr,
     Sqrt,
-    Pow(f32),
-    Powi(i32),
     Ln,
     Inv,
     Minus,
@@ -18,8 +16,6 @@ impl UnaryOp {
         match &self {
             UnaryOp::Sqr => v1.powi(2),
             UnaryOp::Sqrt => v1.sqrt(),
-            UnaryOp::Pow(n) => v1.powf(*n),
-            UnaryOp::Powi(n) => v1.powi(*n),
             UnaryOp::Ln => {
                 if v1 <= 0. {
                     0.
@@ -39,6 +35,8 @@ pub enum BinaryOp {
     Sub,
     Mul,
     Div,
+    Pow,
+    Powi,
 }
 
 impl BinaryOp {
@@ -54,6 +52,8 @@ impl BinaryOp {
                     v1 / v2
                 }
             }
+            BinaryOp::Pow => v1.powf(v2),
+            BinaryOp::Powi => v1.powi(v2 as i32),
         }
     }
 }
