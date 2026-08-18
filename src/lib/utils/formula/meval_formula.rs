@@ -34,8 +34,7 @@ impl<'a, PId: ParameterIdAll> BaseContext<'a, PId> {
     fn create_functions() -> HashMap<String, Box<dyn Fn(&[f64]) -> f64 + 'a>> {
         let mut functions = HashMap::new();
 
-        let mut insert = |name: &str, f| {
-            let f: Box<dyn Fn(&[f64]) -> f64 + 'a> = f;
+        let mut insert = |name: &str, f: Box<dyn Fn(&[f64]) -> f64 + 'a>| {
             functions.insert(name.to_owned(), f);
         };
 
