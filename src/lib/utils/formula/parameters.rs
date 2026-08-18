@@ -6,6 +6,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 // TODO: &str
+// TODO: Eq
 pub trait ParameterId: Debug + Clone {
     fn get_name(&self) -> String;
 }
@@ -32,7 +33,7 @@ impl Parameters<usize> for [f32] {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ArrayIdx<const N: usize>(usize);
 
 impl<const N: usize> Deref for ArrayIdx<N> {

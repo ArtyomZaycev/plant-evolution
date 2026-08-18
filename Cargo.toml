@@ -24,9 +24,10 @@ scoped_threadpool = { version = "0.1.9", optional = true }
 directories-next = "2.0.0"
 egui_plot = "0.37.0"
 meval = { version = "0.2.0", optional = true }
+tabulon = { version = "0.1.10", optional = true }
 
 [features]
-default = ["thread_evolution","meval_formula"]
+default = ["thread_evolution", "meval_formula", "tabulon_formula"]
 stable_rng = []
 thread_evolution = ["dep:scoped_threadpool"]
 hotpath = ["hotpath/hotpath", "stable_rng"]
@@ -34,6 +35,7 @@ hotpath-cpu = ["hotpath/hotpath-cpu", "stable_rng"]
 hotpath-alloc = ["hotpath/hotpath-alloc", "stable_rng"]
 
 meval_formula = ["dep:meval"]
+tabulon_formula = ["dep:tabulon"]
 
 [profile.bench]
 debug = true
