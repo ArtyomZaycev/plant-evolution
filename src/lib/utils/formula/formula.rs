@@ -63,6 +63,22 @@ impl<PId: ParameterId, R: FormulaRuntime<PId>> Formula<PId, R> {
         Formula::<PId, NR>::new_wr(self.nodes, new_runtime)
     }
 
+    pub fn swap_runtime<NR: FormulaRuntime<PId> + BuildableRuntime<PId> + 'static>(&mut self)
+    where
+        R: DynamicFormulaRuntime<PId> + 'static,
+    {
+        self.runtime.swap(NR::new(&mut self.nodes));
+    }
+
+    pub fn swap_custom_runtime<NR: FormulaRuntime<PId> + BuildableRuntime<PId> + 'static>(
+        &mut self,
+        new_runtime: NR,
+    ) where
+        R: DynamicFormulaRuntime<PId> + 'static,
+    {
+        self.runtime.swap(new_runtime);
+    }
+
     pub fn update_runtime<F: FnOnce(&mut R)>(&mut self, f: F) {
         f(&mut self.runtime)
     }

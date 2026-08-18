@@ -10,6 +10,10 @@ pub trait FormulaRuntime<PId: ParameterId>: Debug {
     fn get_name(&self) -> String;
 }
 
+pub trait DynamicFormulaRuntime<PId: ParameterId>: FormulaRuntime<PId> {
+    fn swap<NR: FormulaRuntime<PId> + 'static>(&mut self, nr: NR);
+}
+
 pub trait BuildableRuntime<PId: ParameterId>: FormulaRuntime<PId> {
     fn new(nodes: &mut Vec<FormulaNode<PId>>) -> Self;
 }
@@ -161,15 +165,15 @@ mod array {
     }
 }
 
-mod dynamic {
+mod boxed {
     use super::*;
 
     #[derive(Debug)]
-    pub struct DynamicRuntime<PId: ParameterId> {
+    pub struct BoxedRuntime<PId: ParameterId> {
         runtime: Box<dyn FormulaRuntime<PId>>,
     }
 
-    impl<PId: ParameterId> DynamicRuntime<PId> {
+    impl<PId: ParameterId> BoxedRuntime<PId> {
         pub fn new<R: FormulaRuntime<PId> + 'static>(runtime: R) -> Self {
             Self {
                 runtime: Box::new(runtime),
@@ -177,7 +181,7 @@ mod dynamic {
         }
     }
 
-    impl<PId: ParameterId> FormulaRuntime<PId> for DynamicRuntime<PId> {
+    impl<PId: ParameterId> FormulaRuntime<PId> for BoxedRuntime<PId> {
         fn calculate(
             &self,
             nodes: &Vec<FormulaNode<PId>>,
@@ -194,8 +198,14 @@ mod dynamic {
             self.runtime.get_name()
         }
     }
+
+    impl<PId: ParameterId> DynamicFormulaRuntime<PId> for BoxedRuntime<PId> {
+        fn swap<NR: FormulaRuntime<PId> + 'static>(&mut self, nr: NR) {
+            self.runtime = Box::new(nr);
+        }
+    }
 }
 
 pub use array::*;
-pub use dynamic::*;
+pub use boxed::*;
 pub use naive::*;
