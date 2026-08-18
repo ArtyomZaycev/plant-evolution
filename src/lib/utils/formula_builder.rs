@@ -18,7 +18,34 @@ pub struct FormulaBuilderNode<'a, PId: ParameterId> {
 
 impl<'a, PId: ParameterId> FormulaBuilderNode<'a, PId> {
     pub fn build(self) -> Formula<PId> {
-        self.builder.nodes.borrow_mut().swap(0, self.idx);
+        let mut nodes = self.builder.nodes.borrow_mut();
+        nodes.swap(0, self.idx);
+        nodes.iter_mut().for_each(|node| {
+            if let FormulaNode::Operation(op_node) = node {
+                match op_node {
+                    OpNode::Unary(_, idx1) => {
+                        if *idx1 == 0 {
+                            *idx1 = self.idx;
+                        } else if *idx1 == self.idx {
+                            *idx1 = 0;
+                        }
+                    }
+                    OpNode::Binary(_, idx1, idx2) => {
+                        if *idx1 == 0 {
+                            *idx1 = self.idx;
+                        } else if *idx1 == self.idx {
+                            *idx1 = 0;
+                        }
+                        if *idx2 == 0 {
+                            *idx2 = self.idx;
+                        } else if *idx2 == self.idx {
+                            *idx2 = 0;
+                        }
+                    }
+                }
+            }
+        });
+        drop(nodes);
         Formula::new(self.builder.nodes.take())
     }
 }
@@ -96,7 +123,7 @@ mod test {
     /// (a + b) / c * d
     #[test]
     pub fn test_simple() {
-        let formula1 = Formula::new(vec![
+        let mut formula1 = Formula::new(vec![
             FormulaNode::Operation(OpNode::Binary(BinaryOp::Mul, 1, 2)),
             FormulaNode::Operation(OpNode::Binary(BinaryOp::Div, 3, 4)),
             FormulaNode::Parameter(SimplePId::D),
@@ -107,22 +134,25 @@ mod test {
         ]);
 
         let b = FormulaBuilder::new();
-        let formula2 = b.binary_operator(
-            BinaryOp::Mul,
-            b.binary_operator(
-                BinaryOp::Div,
+        let mut formula2 = b
+            .binary_operator(
+                BinaryOp::Mul,
                 b.binary_operator(
-                    BinaryOp::Add,
-                    b.parameter(SimplePId::A),
-                    b.parameter(SimplePId::B),
+                    BinaryOp::Div,
+                    b.binary_operator(
+                        BinaryOp::Add,
+                        b.parameter(SimplePId::A),
+                        b.parameter(SimplePId::B),
+                    ),
+                    b.parameter(SimplePId::C),
                 ),
-                b.parameter(SimplePId::C),
-            ),
-            b.parameter(SimplePId::D),
-        )
-        .build();
+                b.parameter(SimplePId::D),
+            )
+            .build();
 
         let input = [1., 2., 3., 4.];
         assert_eq!(formula1.calculate(&input), formula2.calculate(&input));
+        assert_eq!(formula1.calculate_tree(&input), formula1.calculate_array(&input));
+        assert_eq!(formula2.calculate_tree(&input), formula2.calculate_array(&input));
     }
 }

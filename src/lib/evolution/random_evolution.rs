@@ -158,8 +158,9 @@ impl RandomEvolution for PlantCellAbilities {
 impl RandomEvolution for WeightsTree {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
         apply_change_chance(change_chance, rng.random(), || {
-            let idx = rng.random_range(0..self.nodes.len());
-            let allow_add = self.nodes.len() < MAX_WEIGHTS_TREE_SIZE;
+            let mut nodes = self.get_nodes_mut();
+            let idx = rng.random_range(0..nodes.len());
+            let allow_add = nodes.len() < MAX_WEIGHTS_TREE_SIZE;
             /*
                 0 - tweak
                     Value - adjust Value
@@ -172,7 +173,7 @@ impl RandomEvolution for WeightsTree {
             */
             let transform_type = rng.random_range(if allow_add { 0..=2 } else { 0..=1 });
             match transform_type {
-                0 => match &mut self.nodes[idx] {
+                0 => match &mut nodes[idx] {
                     FormulaNode::Value(value) => {
                         apply_change_chance(change_chance, rng.random(), || {
                             randomize_value(value, rng.random(), change_entropy);
@@ -192,33 +193,31 @@ impl RandomEvolution for WeightsTree {
                 },
                 1 => {
                     let (new_node, mut new_leaves) =
-                        FormulaNode::generate(rng, self.nodes.len(), allow_add);
-                    self.nodes[idx] = new_node;
-                    self.nodes.append(&mut new_leaves);
-                    self.compact();
+                        FormulaNode::generate(rng, nodes.len(), allow_add);
+                    nodes[idx] = new_node;
+                    nodes.append(&mut new_leaves);
                 }
                 2 => {
                     let (new_node, mut new_leaves) =
-                        FormulaNode::generate_operation(rng, self.nodes.len());
+                        FormulaNode::generate_operation(rng, nodes.len());
                     if let FormulaNode::Operation(op_node) = new_node {
                         let op_node = match op_node {
                             OpNode::Unary(unary_op, idx1) => {
-                                new_leaves = vec![self.nodes[idx]];
+                                new_leaves = vec![nodes[idx]];
                                 OpNode::Unary(unary_op, idx1)
                             }
                             OpNode::Binary(binary_op, idx1, idx2) => {
                                 if rng.random_range(0..=1) == 0 {
-                                    new_leaves = vec![self.nodes[idx], new_leaves[1]];
+                                    new_leaves = vec![nodes[idx], new_leaves[1]];
                                     OpNode::Binary(binary_op, idx1, idx2)
                                 } else {
-                                    new_leaves = vec![new_leaves[0], self.nodes[idx]];
+                                    new_leaves = vec![new_leaves[0], nodes[idx]];
                                     OpNode::Binary(binary_op, idx1, idx2)
                                 }
                             }
                         };
-                        self.nodes[idx] = FormulaNode::Operation(op_node);
-                        self.nodes.append(&mut new_leaves);
-                        self.compact();
+                        nodes[idx] = FormulaNode::Operation(op_node);
+                        nodes.append(&mut new_leaves);
                     }
                 }
                 _ => {

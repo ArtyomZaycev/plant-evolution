@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::fmt::Debug;
+use std::{fmt::Debug, ops::{Deref, DerefMut}};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum UnaryOp {
@@ -80,29 +80,151 @@ pub trait Parameters<PId: ParameterId>: Debug {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Formula<PId: ParameterId> {
-    pub nodes: Vec<FormulaNode<PId>>,
+    nodes: Vec<FormulaNode<PId>>,
+    is_sorted: bool,
+}
+
+pub struct FormulaNodesGuard<'a, PId: ParameterId> {
+    formula: &'a mut Formula<PId>,
+}
+
+impl<'a, PId: ParameterId> Deref for FormulaNodesGuard<'a, PId> {
+    type Target = Vec<FormulaNode<PId>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.formula.nodes
+    }
+}
+
+impl<'a, PId: ParameterId> DerefMut for FormulaNodesGuard<'a, PId> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.formula.is_sorted = false;
+        &mut self.formula.nodes
+    }
+}
+
+impl<'a, PId: ParameterId> Drop for FormulaNodesGuard<'a, PId> {
+    fn drop(&mut self) {
+        if !self.formula.is_sorted {
+            self.formula.sort_nodes();
+        }
+    }
 }
 
 impl<PId: ParameterId> Formula<PId> {
     pub fn new(nodes: Vec<FormulaNode<PId>>) -> Self {
         assert!(!nodes.is_empty());
-        Self { nodes }
+        let mut s = Self {
+            nodes,
+            is_sorted: false,
+        };
+        s.sort_nodes();
+        s
+    }
+    
+    pub fn get_nodes(&self) -> &Vec<FormulaNode<PId>> {
+        &self.nodes
+    }
+
+    pub fn get_nodes_mut<'a>(&'a mut self) -> FormulaNodesGuard<'a, PId> {
+        FormulaNodesGuard {
+            formula: self,
+        }
     }
 
     /// Can return subnormal values
     pub fn calculate<P: Parameters<PId>>(&self, parameters: &P) -> f32 {
-        self.calc_inner(parameters, 0)
+        // calculate_array seems to be always faster
+        self.calculate_array(parameters)
     }
 
-    fn calc_inner<P: Parameters<PId>>(&self, parameters: &P, idx: usize) -> f32 {
+    pub fn calculate_tree<P: Parameters<PId>>(&self, parameters: &P) -> f32 {
+        self.calc_tree_inner(parameters, 0)
+    }
+
+    pub fn calculate_array<P: Parameters<PId>>(&self, parameters: &P) -> f32 {
+        assert!(self.is_sorted);
+
+        let mut results = vec![f32::NAN; self.nodes.len()];
+        (0..self.nodes.len()).rev().for_each(|i| {
+            results[i] = match &self.nodes[i] {
+                FormulaNode::Value(v) => *v,
+                FormulaNode::Parameter(id) => parameters.get_value(id),
+                FormulaNode::Operation(op_node) => match op_node {
+                    OpNode::Unary(unary_op, idx1) => unary_op.calc(results[*idx1]),
+                    OpNode::Binary(binary_op, idx1, idx2) => {
+                        binary_op.calc(results[*idx1], results[*idx2])
+                    }
+                },
+            }
+        });
+        results[0]
+    }
+
+    // TODO: Optimize
+    fn sort_nodes(&mut self) {
+        self.compact();
+
+        let mut true_idx = vec![0; self.nodes.len()];
+        self.index_nodes(&mut true_idx, 0, 0);
+
+        let mut new_nodes = vec![FormulaNode::Value(0.); self.nodes.len()];
+        true_idx
+            .iter()
+            .enumerate()
+            .for_each(|(old, new)| new_nodes[*new] = self.nodes[old].clone());
+        self.nodes = new_nodes;
+
+        self.nodes.iter_mut().for_each(|node| {
+            if let FormulaNode::Operation(op_node) = node {
+                match op_node {
+                    OpNode::Unary(_, idx1) => {
+                        *idx1 = true_idx[*idx1];
+                    }
+                    OpNode::Binary(_, idx1, idx2) => {
+                        *idx1 = true_idx[*idx1];
+                        *idx2 = true_idx[*idx2];
+                    }
+                }
+            }
+        });
+
+        self.is_sorted = true;
+    }
+
+    fn index_nodes(
+        &self,
+        true_idx: &mut Vec<usize>,
+        node_idx: usize,
+        mut next_idx: usize,
+    ) -> usize {
+        true_idx[node_idx] = next_idx;
+        next_idx += 1;
+        if let FormulaNode::Operation(op_node) = &self.nodes[node_idx] {
+            match op_node {
+                OpNode::Unary(_, idx1) => {
+                    next_idx = self.index_nodes(true_idx, *idx1, next_idx);
+                }
+                OpNode::Binary(_, idx1, idx2) => {
+                    next_idx = self.index_nodes(true_idx, *idx1, next_idx);
+                    next_idx = self.index_nodes(true_idx, *idx2, next_idx);
+                }
+            }
+        }
+        next_idx
+    }
+
+    fn calc_tree_inner<P: Parameters<PId>>(&self, parameters: &P, idx: usize) -> f32 {
         match &self.nodes[idx] {
             FormulaNode::Value(value) => *value,
             FormulaNode::Parameter(id) => parameters.get_value(id),
             FormulaNode::Operation(op_node) => match op_node {
-                OpNode::Unary(unary_op, idx1) => unary_op.calc(self.calc_inner(parameters, *idx1)),
+                OpNode::Unary(unary_op, idx1) => {
+                    unary_op.calc(self.calc_tree_inner(parameters, *idx1))
+                }
                 OpNode::Binary(binary_op, idx1, idx2) => binary_op.calc(
-                    self.calc_inner(parameters, *idx1),
-                    self.calc_inner(parameters, *idx2),
+                    self.calc_tree_inner(parameters, *idx1),
+                    self.calc_tree_inner(parameters, *idx2),
                 ),
             },
         }
@@ -125,7 +247,7 @@ impl<PId: ParameterId> Formula<PId> {
         }
     }
 
-    pub fn compact(&mut self) {
+    fn compact(&mut self) {
         let mut f = vec![false; self.nodes.len()];
         self.traverse_inner(&mut f, 0);
         let mut new_idx = vec![0; self.nodes.len()];

@@ -19,9 +19,7 @@ pub struct CellEvolutionData {
 
 impl WeightsTree {
     fn rand_generate(rng: &mut Rng) -> Self {
-        Self {
-            nodes: vec![FormulaNode::Parameter(rng.random())],
-        }
+        Self::new(vec![FormulaNode::Parameter(rng.random())])
     }
 }
 
@@ -31,9 +29,7 @@ impl CellEvolutionData {
             weights: std::array::from_fn(|_| {
                 std::array::from_fn(|_| WithVolatility::new(WeightsTree::rand_generate(rng)))
             }),
-            suicide_weights: WithVolatility::new(WeightsTree {
-                nodes: vec![FormulaNode::Value(0.)],
-            }),
+            suicide_weights: WithVolatility::new(WeightsTree::new(vec![FormulaNode::Value(0.)])),
         }
     }
 

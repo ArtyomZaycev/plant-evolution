@@ -66,9 +66,7 @@ impl WeightsTree {
 
 impl Default for WeightsTree {
     fn default() -> Self {
-        Self {
-            nodes: vec![FormulaNode::Value(Default::default())],
-        }
+        Self::new(vec![FormulaNode::Value(Default::default())])
     }
 }
 
