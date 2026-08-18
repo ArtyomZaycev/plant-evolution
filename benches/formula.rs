@@ -1,7 +1,9 @@
 use std::hint::black_box;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use plant_evolution_lib::utils::formula::{self, ArrayRuntime, BuildableRuntime, FormulaRuntime, NaiveRuntime};
+use plant_evolution_lib::utils::formula::{
+    self, ArrayRuntime, BuildableRuntime, FormulaRuntime, NaiveRuntime,
+};
 
 extern crate plant_evolution_lib;
 
@@ -41,7 +43,9 @@ fn simple_native(input: &[[f32; 4]]) -> Vec<f32> {
         .collect()
 }
 
-fn simple_formula<R: FormulaRuntime<SimplePId> + BuildableRuntime<SimplePId>>(input: &[[f32; 4]]) -> Vec<f32> {
+fn simple_formula<R: FormulaRuntime<SimplePId> + BuildableRuntime<SimplePId>>(
+    input: &[[f32; 4]],
+) -> Vec<f32> {
     use plant_evolution_lib::utils::formula::*;
 
     let formula: Formula<SimplePId, R> = Formula::new(vec![
@@ -121,7 +125,9 @@ fn complex_native(input: &[[f32; 4]]) -> Vec<f32> {
         .collect()
 }
 
-fn complex_formula<R: FormulaRuntime<SimplePId> + BuildableRuntime<SimplePId>>(input: &[[f32; 4]]) -> Vec<f32> {
+fn complex_formula<R: FormulaRuntime<SimplePId> + BuildableRuntime<SimplePId>>(
+    input: &[[f32; 4]],
+) -> Vec<f32> {
     use plant_evolution_lib::utils::formula::*;
 
     let formula: Formula<SimplePId, R> = Formula::new(vec![

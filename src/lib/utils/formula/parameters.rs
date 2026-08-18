@@ -2,7 +2,6 @@ use std::fmt::Debug;
 
 use serde::{Deserialize, Serialize};
 
-
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum UnaryOp {
     Sqr,

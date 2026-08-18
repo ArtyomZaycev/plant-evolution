@@ -1,5 +1,5 @@
-use std::{any::type_name, fmt::Debug};
 use serde::{Deserialize, Serialize};
+use std::{any::type_name, fmt::Debug};
 
 use super::parameters::*;
 
@@ -27,7 +27,12 @@ mod naive {
     pub struct NaiveRuntime {}
 
     impl NaiveRuntime {
-        fn calculate_inner<PId: ParameterId>(&self, nodes: &Vec<FormulaNode<PId>>, parameters: &dyn Parameters<PId>, idx: usize) -> f32 {
+        fn calculate_inner<PId: ParameterId>(
+            &self,
+            nodes: &Vec<FormulaNode<PId>>,
+            parameters: &dyn Parameters<PId>,
+            idx: usize,
+        ) -> f32 {
             match &nodes[idx] {
                 FormulaNode::Value(value) => *value,
                 FormulaNode::Parameter(id) => parameters.get_value(id),
@@ -45,7 +50,11 @@ mod naive {
     }
 
     impl<PId: ParameterId> FormulaRuntime<PId> for NaiveRuntime {
-        fn calculate(&self, nodes: &Vec<FormulaNode<PId>>, parameters: &dyn Parameters<PId>) -> f32 {
+        fn calculate(
+            &self,
+            nodes: &Vec<FormulaNode<PId>>,
+            parameters: &dyn Parameters<PId>,
+        ) -> f32 {
             self.calculate_inner(nodes, parameters, 0)
         }
 
@@ -89,7 +98,7 @@ mod array {
                 }
             });
         }
-        
+
         fn index_nodes<PId: ParameterId>(
             nodes: &Vec<FormulaNode<PId>>,
             true_idx: &mut Vec<usize>,
@@ -116,12 +125,16 @@ mod array {
     impl<PId: ParameterId> BuildableRuntime<PId> for ArrayRuntime {
         fn new(nodes: &mut Vec<FormulaNode<PId>>) -> Self {
             Self::sort_nodes(nodes);
-            Self { }
+            Self {}
         }
     }
 
     impl<PId: ParameterId> FormulaRuntime<PId> for ArrayRuntime {
-        fn calculate(&self, nodes: &Vec<FormulaNode<PId>>, parameters: &dyn Parameters<PId>) -> f32 {
+        fn calculate(
+            &self,
+            nodes: &Vec<FormulaNode<PId>>,
+            parameters: &dyn Parameters<PId>,
+        ) -> f32 {
             let mut results = vec![f32::NAN; nodes.len()];
             (0..nodes.len()).rev().for_each(|i| {
                 results[i] = match &nodes[i] {
@@ -159,26 +172,30 @@ mod dynamic {
     impl<PId: ParameterId> DynamicRuntime<PId> {
         pub fn new<R: FormulaRuntime<PId> + 'static>(runtime: R) -> Self {
             Self {
-                runtime: Box::new(runtime)
+                runtime: Box::new(runtime),
             }
         }
     }
 
     impl<PId: ParameterId> FormulaRuntime<PId> for DynamicRuntime<PId> {
-        fn calculate(&self, nodes: &Vec<FormulaNode<PId>>, parameters: &dyn Parameters<PId>) -> f32 {
+        fn calculate(
+            &self,
+            nodes: &Vec<FormulaNode<PId>>,
+            parameters: &dyn Parameters<PId>,
+        ) -> f32 {
             self.runtime.calculate(nodes, parameters)
         }
-    
+
         fn update(&mut self, nodes: &mut Vec<FormulaNode<PId>>) {
             self.runtime.update(nodes);
         }
-    
+
         fn get_name(&self) -> String {
             self.runtime.get_name()
         }
     }
 }
 
-pub use naive::*;
 pub use array::*;
 pub use dynamic::*;
+pub use naive::*;

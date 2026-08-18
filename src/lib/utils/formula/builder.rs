@@ -133,8 +133,8 @@ mod test {
         ]);
 
         let b = FormulaBuilder::new();
-        let formula2: Formula<SimplePId, NaiveRuntime> = Formula::new(b
-            .binary_operator(
+        let formula2: Formula<SimplePId, NaiveRuntime> = Formula::new(
+            b.binary_operator(
                 BinaryOp::Mul,
                 b.binary_operator(
                     BinaryOp::Div,
@@ -147,14 +147,15 @@ mod test {
                 ),
                 b.parameter(SimplePId::D),
             )
-            .build());
+            .build(),
+        );
 
         let input = [1., 2., 3., 4.];
         assert_eq!(formula1.calculate(&input), formula2.calculate(&input));
 
         let f1_array = formula1.clone().with_runtime::<ArrayRuntime>();
         assert_eq!(formula1.calculate(&input), f1_array.calculate(&input));
-        
+
         let f2_array = formula2.clone().with_runtime::<ArrayRuntime>();
         assert_eq!(formula2.calculate(&input), f2_array.calculate(&input));
     }

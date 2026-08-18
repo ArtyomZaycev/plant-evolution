@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
-use std::{fmt::Debug, ops::{Deref, DerefMut}};
+use std::{
+    fmt::Debug,
+    ops::{Deref, DerefMut},
+};
 
 use crate::utils::formula::*;
 
@@ -36,23 +39,20 @@ impl<'a, PId: ParameterId, R: FormulaRuntime<PId>> Drop for FormulaNodesGuard<'a
 }
 
 impl<PId: ParameterId, R: FormulaRuntime<PId>> Formula<PId, R> {
-    pub fn new(mut nodes: Vec<FormulaNode<PId>>) -> Self where R: BuildableRuntime<PId> {
+    pub fn new(mut nodes: Vec<FormulaNode<PId>>) -> Self
+    where
+        R: BuildableRuntime<PId>,
+    {
         assert!(!nodes.is_empty());
         Self::compact(&mut nodes);
         let runtime = R::new(&mut nodes);
-        Self {
-            nodes,
-            runtime,
-        }
+        Self { nodes, runtime }
     }
 
     pub fn new_wr(mut nodes: Vec<FormulaNode<PId>>, runtime: R) -> Self {
         assert!(!nodes.is_empty());
         Self::compact(&mut nodes);
-        Self {
-            nodes,
-            runtime,
-        }
+        Self { nodes, runtime }
     }
 
     pub fn with_runtime<NR: FormulaRuntime<PId> + BuildableRuntime<PId>>(self) -> Formula<PId, NR> {
@@ -66,15 +66,13 @@ impl<PId: ParameterId, R: FormulaRuntime<PId>> Formula<PId, R> {
     pub fn update_runtime<F: FnOnce(&mut R)>(&mut self, f: F) {
         f(&mut self.runtime)
     }
-    
+
     pub fn get_nodes(&self) -> &Vec<FormulaNode<PId>> {
         &self.nodes
     }
 
     pub fn get_nodes_mut<'a>(&'a mut self) -> FormulaNodesGuard<'a, PId, R> {
-        FormulaNodesGuard {
-            formula: self,
-        }
+        FormulaNodesGuard { formula: self }
     }
 
     /// Can return subnormal values
