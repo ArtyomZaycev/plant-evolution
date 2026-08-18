@@ -45,19 +45,26 @@ impl<PId: ParameterId, R: FormulaRuntime<PId>> Formula<PId, R> {
             runtime,
         }
     }
-    
-    pub fn new_dynamic(mut nodes: Vec<FormulaNode<PId>>) -> Formula<PId, DynamicRuntime<PId>> where R: BuildableRuntime<PId> + 'static {
+
+    pub fn new_wr(mut nodes: Vec<FormulaNode<PId>>, runtime: R) -> Self {
         assert!(!nodes.is_empty());
         Self::compact(&mut nodes);
-        let runtime = R::new(&mut nodes);
-        Formula {
+        Self {
             nodes,
-            runtime: DynamicRuntime::new(runtime),
+            runtime,
         }
     }
 
     pub fn with_runtime<NR: FormulaRuntime<PId> + BuildableRuntime<PId>>(self) -> Formula<PId, NR> {
         Formula::<PId, NR>::new(self.nodes)
+    }
+
+    pub fn with_custom_runtime<NR: FormulaRuntime<PId>>(self, new_runtime: NR) -> Formula<PId, NR> {
+        Formula::<PId, NR>::new_wr(self.nodes, new_runtime)
+    }
+
+    pub fn update_runtime<F: FnOnce(&mut R)>(&mut self, f: F) {
+        f(&mut self.runtime)
     }
     
     pub fn get_nodes(&self) -> &Vec<FormulaNode<PId>> {
