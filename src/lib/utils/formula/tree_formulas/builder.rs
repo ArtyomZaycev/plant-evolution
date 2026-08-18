@@ -72,8 +72,8 @@ impl<PId: ParameterId> FormulaBuilder<PId> {
         self.node(FormulaNode::Value(value))
     }
 
-    pub fn parameter<'a>(&'a self, id: PId) -> FormulaBuilderNode<'a, PId> {
-        self.node(FormulaNode::Parameter(id))
+    pub fn parameter<'a>(&'a self, id: impl Into<PId>) -> FormulaBuilderNode<'a, PId> {
+        self.node(FormulaNode::Parameter(id.into()))
     }
 
     pub fn unary_operation<'a>(

@@ -50,6 +50,18 @@ impl<const N: usize> DerefMut for ArrayIdx<N> {
     }
 }
 
+impl<const N: usize> Into<usize> for ArrayIdx<N> {
+    fn into(self) -> usize {
+        self.0
+    }
+}
+
+impl<const N: usize> From<usize> for ArrayIdx<N> {
+    fn from(value: usize) -> Self {
+        Self(value)
+    }
+}
+
 impl<const N: usize> ParameterId for ArrayIdx<N> {
     fn get_name(&self) -> String {
         char::from_u32('a' as u32 + self.0 as u32)

@@ -72,3 +72,8 @@ required-features = ["stable_rng"]
 [[bench]]
 name = "formula"
 harness = false
+
+[[bench]]
+name = "formula2"
+harness = false
+required-features = ["meval_formula", "tabulon_formula", "mathexpr_formula"]
