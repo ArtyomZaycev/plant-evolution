@@ -17,3 +17,12 @@ pub use meval_formula::*;
 mod tabulon_formula;
 #[cfg(feature = "tabulon_formula")]
 pub use tabulon_formula::*;
+
+// Other options
+// !mathexpr
+// !mexe
+// xprs 
+// mexprp
+// evalexpr
+// evalexpr_jit
+// dslcompile
