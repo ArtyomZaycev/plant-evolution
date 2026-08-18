@@ -96,7 +96,7 @@ impl<PId: ParameterId> FormulaBuilder<PId> {
     }
 }
 
-#[allow(unused_imports, dead_code)]
+#[cfg(test)]
 mod test {
     use crate::utils::formula::{Formula, Parameters};
 

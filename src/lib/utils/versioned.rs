@@ -143,7 +143,7 @@ impl<T, V: Version> DerefMut for VersionedData<T, V> {
     }
 }
 
-#[allow(unused_imports)]
+#[cfg(test)]
 mod test {
     use crate::utils::{TimestampVersion, Versioned};
 

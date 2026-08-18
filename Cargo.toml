@@ -28,7 +28,7 @@ tabulon = { version = "0.1.10", optional = true }
 mathexpr = { version = "0.1.1", optional = true }
 
 [features]
-default = ["thread_evolution", "meval_formula", "tabulon_formula"]
+default = ["thread_evolution", "meval_formula", "tabulon_formula", "mathexpr_formula"]
 stable_rng = []
 thread_evolution = ["dep:scoped_threadpool"]
 hotpath = ["hotpath/hotpath", "stable_rng"]
@@ -37,7 +37,7 @@ hotpath-alloc = ["hotpath/hotpath-alloc", "stable_rng"]
 
 meval_formula = ["dep:meval"]
 tabulon_formula = ["dep:tabulon"]
-mathexpr = ["dep:mathexpr"]
+mathexpr_formula = ["dep:mathexpr"]
 
 [profile.bench]
 debug = true
@@ -48,6 +48,7 @@ cranelift-jit = "0.134.3"
 meval = "0.2.0"
 tabulon = "0.1.10"
 evalexpr-jit = "0.2.3"
+approx = "0.5.1"
 
 [dev-dependencies.plant-evolution]
 path = "."

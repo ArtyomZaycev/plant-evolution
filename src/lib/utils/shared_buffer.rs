@@ -252,7 +252,7 @@ impl<'a, T> Drop for WriteLock<'a, T> {
     }
 }
 
-#[allow(unused_imports)]
+#[cfg(test)]
 mod test {
     use std::{sync::Barrier, thread};
 

@@ -69,7 +69,7 @@ impl<PId: ParameterIdAll + Eq + Hash, P: Parameters<PId>> Formula<P> for Tabulon
     }
 }
 
-#[allow(dead_code, unused_imports)]
+#[cfg(test)]
 mod test {
     use crate::utils::formula::ArrayIdx;
 

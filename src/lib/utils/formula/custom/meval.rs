@@ -113,7 +113,7 @@ impl<PId: ParameterIdAll, P: Parameters<PId>> Formula<P> for MEvalFormula<'_, PI
     }
 }
 
-#[allow(dead_code, unused_imports)]
+#[cfg(test)]
 mod test {
     use crate::utils::formula::ArrayIdx;
 
