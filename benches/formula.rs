@@ -1,7 +1,7 @@
 use std::hint::black_box;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use plant_evolution_lib::utils::formula::{self, ArrayFormulaRuntime, FormulaRuntime, NaiveFormulaRuntime};
+use plant_evolution_lib::utils::formula::{self, ArrayRuntime, BuildableRuntime, FormulaRuntime, NaiveRuntime};
 
 extern crate plant_evolution_lib;
 
@@ -41,7 +41,7 @@ fn simple_native(input: &[[f32; 4]]) -> Vec<f32> {
         .collect()
 }
 
-fn simple_formula<R: FormulaRuntime<SimplePId>>(input: &[[f32; 4]]) -> Vec<f32> {
+fn simple_formula<R: FormulaRuntime<SimplePId> + BuildableRuntime<SimplePId>>(input: &[[f32; 4]]) -> Vec<f32> {
     use plant_evolution_lib::utils::formula::*;
 
     let formula: Formula<SimplePId, R> = Formula::new(vec![
@@ -121,7 +121,7 @@ fn complex_native(input: &[[f32; 4]]) -> Vec<f32> {
         .collect()
 }
 
-fn complex_formula<R: FormulaRuntime<SimplePId>>(input: &[[f32; 4]]) -> Vec<f32> {
+fn complex_formula<R: FormulaRuntime<SimplePId> + BuildableRuntime<SimplePId>>(input: &[[f32; 4]]) -> Vec<f32> {
     use plant_evolution_lib::utils::formula::*;
 
     let formula: Formula<SimplePId, R> = Formula::new(vec![
@@ -209,8 +209,8 @@ fn benchmark_simple(c: &mut Criterion) {
                 }
             });
         };
-        compare(&result, &simple_formula::<NaiveFormulaRuntime>(test_input));
-        compare(&result, &simple_formula::<ArrayFormulaRuntime>(test_input));
+        compare(&result, &simple_formula::<NaiveRuntime>(test_input));
+        compare(&result, &simple_formula::<ArrayRuntime>(test_input));
         compare(&result, &simple_meval(test_input));
         compare(&result, &simple_tabulon(test_input));
         compare(&result, &simple_evalexprjit(test_input));
@@ -223,8 +223,8 @@ fn benchmark_simple(c: &mut Criterion) {
     };
 
     test("simple-native", &simple_native);
-    test("simple-formula-tree", &simple_formula::<NaiveFormulaRuntime>);
-    test("simple-formula-array", &simple_formula::<ArrayFormulaRuntime>);
+    test("simple-formula-tree", &simple_formula::<NaiveRuntime>);
+    test("simple-formula-array", &simple_formula::<ArrayRuntime>);
     test("simple-meval", &simple_meval);
     test("simple-tabulon", &simple_tabulon);
     test("simple-evalexprjit", &simple_evalexprjit);
@@ -256,8 +256,8 @@ fn benchmark_complex(c: &mut Criterion) {
                 }
             });
         };
-        compare(&result, &complex_formula::<NaiveFormulaRuntime>(test_input));
-        compare(&result, &complex_formula::<ArrayFormulaRuntime>(test_input));
+        compare(&result, &complex_formula::<NaiveRuntime>(test_input));
+        compare(&result, &complex_formula::<ArrayRuntime>(test_input));
         compare(&result, &complex_meval(test_input));
         compare(&result, &complex_evalexprjit(test_input));
     }
@@ -269,8 +269,8 @@ fn benchmark_complex(c: &mut Criterion) {
     };
 
     test("complex-native", &complex_native);
-    test("complex-formula-tree", &complex_formula::<NaiveFormulaRuntime>);
-    test("complex-formula-array", &complex_formula::<ArrayFormulaRuntime>);
+    test("complex-formula-tree", &complex_formula::<NaiveRuntime>);
+    test("complex-formula-array", &complex_formula::<ArrayRuntime>);
     test("complex-meval", &complex_meval);
     test("complex-evalexprjit", &complex_evalexprjit);
 

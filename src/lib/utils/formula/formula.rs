@@ -6,7 +6,7 @@ use crate::utils::formula::*;
 use super::parameters::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Formula<PId: ParameterId, R: FormulaRuntime<PId> = NaiveFormulaRuntime> {
+pub struct Formula<PId: ParameterId, R: FormulaRuntime<PId> = NaiveRuntime> {
     nodes: Vec<FormulaNode<PId>>,
     runtime: R,
 }
@@ -36,7 +36,7 @@ impl<'a, PId: ParameterId, R: FormulaRuntime<PId>> Drop for FormulaNodesGuard<'a
 }
 
 impl<PId: ParameterId, R: FormulaRuntime<PId>> Formula<PId, R> {
-    pub fn new(mut nodes: Vec<FormulaNode<PId>>) -> Self {
+    pub fn new(mut nodes: Vec<FormulaNode<PId>>) -> Self where R: BuildableRuntime<PId> {
         assert!(!nodes.is_empty());
         Self::compact(&mut nodes);
         let runtime = R::new(&mut nodes);
@@ -45,8 +45,18 @@ impl<PId: ParameterId, R: FormulaRuntime<PId>> Formula<PId, R> {
             runtime,
         }
     }
+    
+    pub fn new_dynamic(mut nodes: Vec<FormulaNode<PId>>) -> Formula<PId, DynamicRuntime<PId>> where R: BuildableRuntime<PId> + 'static {
+        assert!(!nodes.is_empty());
+        Self::compact(&mut nodes);
+        let runtime = R::new(&mut nodes);
+        Formula {
+            nodes,
+            runtime: DynamicRuntime::new(runtime),
+        }
+    }
 
-    pub fn with_runtime<NR: FormulaRuntime<PId>>(self) -> Formula<PId, NR> {
+    pub fn with_runtime<NR: FormulaRuntime<PId> + BuildableRuntime<PId>>(self) -> Formula<PId, NR> {
         Formula::<PId, NR>::new(self.nodes)
     }
     

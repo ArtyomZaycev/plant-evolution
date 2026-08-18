@@ -17,8 +17,8 @@ pub struct FormulaBuilderNode<'a, PId: ParameterId> {
 }
 
 impl<'a, PId: ParameterId> FormulaBuilderNode<'a, PId> {
-    pub fn build(self) -> Formula<PId> {
-        let mut nodes = self.builder.nodes.borrow_mut();
+    pub fn build(self) -> Vec<FormulaNode<PId>> {
+        let mut nodes = self.builder.nodes.take();
         nodes.swap(0, self.idx);
         nodes.iter_mut().for_each(|node| {
             if let FormulaNode::Operation(op_node) = node {
@@ -45,8 +45,7 @@ impl<'a, PId: ParameterId> FormulaBuilderNode<'a, PId> {
                 }
             }
         });
-        drop(nodes);
-        Formula::new(self.builder.nodes.take())
+        nodes
     }
 }
 
@@ -123,7 +122,7 @@ mod test {
     /// (a + b) / c * d
     #[test]
     pub fn test_simple() {
-        let formula1: Formula<SimplePId, NaiveFormulaRuntime> = Formula::new(vec![
+        let formula1: Formula<SimplePId, NaiveRuntime> = Formula::new(vec![
             FormulaNode::Operation(OpNode::Binary(BinaryOp::Mul, 1, 2)),
             FormulaNode::Operation(OpNode::Binary(BinaryOp::Div, 3, 4)),
             FormulaNode::Parameter(SimplePId::D),
@@ -134,7 +133,7 @@ mod test {
         ]);
 
         let b = FormulaBuilder::new();
-        let formula2 = b
+        let formula2: Formula<SimplePId, NaiveRuntime> = Formula::new(b
             .binary_operator(
                 BinaryOp::Mul,
                 b.binary_operator(
@@ -148,15 +147,15 @@ mod test {
                 ),
                 b.parameter(SimplePId::D),
             )
-            .build();
+            .build());
 
         let input = [1., 2., 3., 4.];
         assert_eq!(formula1.calculate(&input), formula2.calculate(&input));
 
-        let f1_array = formula1.clone().with_runtime::<ArrayFormulaRuntime>();
+        let f1_array = formula1.clone().with_runtime::<ArrayRuntime>();
         assert_eq!(formula1.calculate(&input), f1_array.calculate(&input));
         
-        let f2_array = formula2.clone().with_runtime::<ArrayFormulaRuntime>();
+        let f2_array = formula2.clone().with_runtime::<ArrayRuntime>();
         assert_eq!(formula2.calculate(&input), f2_array.calculate(&input));
     }
 }
