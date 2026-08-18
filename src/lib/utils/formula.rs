@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::{fmt::Debug, ops::{Deref, DerefMut}};
+use std::{any::type_name, fmt::Debug, ops::{Deref, DerefMut}};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum UnaryOp {
@@ -76,6 +76,32 @@ pub trait ParameterId: Debug + Clone {
 
 pub trait Parameters<PId: ParameterId>: Debug {
     fn get_value(&self, id: &PId) -> f32;
+}
+
+pub trait FormulaRuntime<PId: ParameterId>: Debug {
+    fn new(nodes: &Vec<FormulaNode<PId>>) -> Self;
+    fn calculate(&self, nodes: &Vec<FormulaNode<PId>>) -> f32;
+    fn update(&mut self, nodes: &mut Vec<FormulaNode<PId>>);
+
+    fn get_name(&self) -> String;
+}
+
+#[derive(Debug)]
+pub struct NaiveFormulaRuntime {}
+impl<PId: ParameterId> FormulaRuntime<PId> for NaiveFormulaRuntime {
+    fn new(_: &Vec<FormulaNode<PId>>) -> Self {
+        Self {}
+    }
+
+    fn calculate(&self, nodes: &Vec<FormulaNode<PId>>) -> f32 {
+        todo!()
+    }
+
+    fn update(&mut self, _: &mut Vec<FormulaNode<PId>>) {}
+
+    fn get_name(&self) -> String {
+        type_name::<Self>().to_owned()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
