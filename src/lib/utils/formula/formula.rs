@@ -44,14 +44,14 @@ impl<PId: ParameterId, R: FormulaRuntime<PId>> Formula<PId, R> {
         R: BuildableRuntime<PId>,
     {
         assert!(!nodes.is_empty());
-        Self::compact(&mut nodes);
+        utils::compact(&mut nodes);
         let runtime = R::new(&mut nodes);
         Self { nodes, runtime }
     }
 
     pub fn new_wr(mut nodes: Vec<FormulaNode<PId>>, runtime: R) -> Self {
         assert!(!nodes.is_empty());
-        Self::compact(&mut nodes);
+        utils::compact(&mut nodes);
         Self { nodes, runtime }
     }
 
@@ -103,93 +103,8 @@ impl<PId: ParameterId, R: FormulaRuntime<PId>> Formula<PId, R> {
         self.runtime.calculate(&self.nodes, parameters)
     }
 
-    fn traverse_inner(nodes: &mut Vec<FormulaNode<PId>>, f: &mut Vec<bool>, idx: usize) {
-        f[idx] = true;
-        match nodes[idx] {
-            FormulaNode::Value(_) => {}
-            FormulaNode::Parameter(_) => {}
-            FormulaNode::Operation(op_node) => match op_node {
-                OpNode::Unary(_, idx1) => {
-                    Self::traverse_inner(nodes, f, idx1);
-                }
-                OpNode::Binary(_, idx1, idx2) => {
-                    Self::traverse_inner(nodes, f, idx1);
-                    Self::traverse_inner(nodes, f, idx2);
-                }
-            },
-        }
-    }
-
-    fn compact(nodes: &mut Vec<FormulaNode<PId>>) {
-        let mut f = vec![false; nodes.len()];
-        Self::traverse_inner(nodes, &mut f, 0);
-        let mut new_idx = vec![0; nodes.len()];
-        f.iter().enumerate().fold(0, |cnt, (i, v)| {
-            new_idx[i] = i - cnt;
-            if *v {
-                cnt
-            } else {
-                nodes.remove(i - cnt);
-                cnt + 1
-            }
-        });
-        nodes.iter_mut().for_each(|node| {
-            if let FormulaNode::Operation(op_node) = node {
-                match op_node {
-                    OpNode::Unary(_, idx1) => {
-                        *idx1 = new_idx[*idx1];
-                    }
-                    OpNode::Binary(_, idx1, idx2) => {
-                        *idx1 = new_idx[*idx1];
-                        *idx2 = new_idx[*idx2];
-                    }
-                }
-            }
-        });
-    }
-
-    fn get_subformula(&self, idx: usize) -> String {
-        match &self.nodes[idx] {
-            FormulaNode::Value(value) => format!("{:.2}", value),
-            FormulaNode::Parameter(id) => id.get_name().clone(),
-            FormulaNode::Operation(op_node) => match op_node {
-                OpNode::Unary(unary_op, idx1) => match unary_op {
-                    UnaryOp::Sqr => format!("{}^2", self.get_subformula(*idx1)),
-                    UnaryOp::Sqrt => format!("sqrt({})", self.get_subformula(*idx1)),
-                    UnaryOp::Pow(n) => format!("({})^{}", self.get_subformula(*idx1), n),
-                    UnaryOp::Powi(n) => format!("({})^{}", self.get_subformula(*idx1), n),
-                    UnaryOp::Ln => format!("ln({})", self.get_subformula(*idx1)),
-                    UnaryOp::Inv => format!("{}^-1", self.get_subformula(*idx1)),
-                    UnaryOp::Minus => format!("-{}", self.get_subformula(*idx1)),
-                },
-                OpNode::Binary(binary_op, idx1, idx2) => match binary_op {
-                    BinaryOp::Add => format!(
-                        "({} + {})",
-                        self.get_subformula(*idx1),
-                        self.get_subformula(*idx2)
-                    ),
-                    BinaryOp::Sub => format!(
-                        "({} - {})",
-                        self.get_subformula(*idx1),
-                        self.get_subformula(*idx2)
-                    ),
-                    BinaryOp::Mul => format!(
-                        "({} * {})",
-                        self.get_subformula(*idx1),
-                        self.get_subformula(*idx2)
-                    ),
-                    BinaryOp::Div => format!(
-                        "({} / {})",
-                        self.get_subformula(*idx1),
-                        self.get_subformula(*idx2)
-                    ),
-                },
-            },
-        }
-    }
-
     pub fn get_formula(&self) -> String {
-        self.get_subformula(0)
+        utils::get_formula(&self.nodes)
     }
 }
 

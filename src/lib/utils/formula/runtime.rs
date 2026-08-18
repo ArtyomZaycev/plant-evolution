@@ -18,17 +18,17 @@ pub trait BuildableRuntime<PId: ParameterId>: FormulaRuntime<PId> {
     fn new(nodes: &mut Vec<FormulaNode<PId>>) -> Self;
 }
 
-impl<PId: ParameterId, R: FormulaRuntime<PId> + Default> BuildableRuntime<PId> for R {
-    fn new(_: &mut Vec<FormulaNode<PId>>) -> Self {
-        Self::default()
-    }
-}
-
 mod naive {
     use super::*;
 
     #[derive(Debug, Default, Clone, Serialize, Deserialize)]
     pub struct NaiveRuntime {}
+
+    impl<PId: ParameterId> BuildableRuntime<PId> for NaiveRuntime {
+        fn new(_: &mut Vec<FormulaNode<PId>>) -> Self {
+            Self {}
+        }
+    }
 
     impl NaiveRuntime {
         fn calculate_inner<PId: ParameterId>(
@@ -165,6 +165,46 @@ mod array {
     }
 }
 
+mod stat {
+    use crate::utils::formula::utils;
+
+    use super::*;
+
+    pub struct StaticRuntime<PId: ParameterId> {
+        nodes: Vec<FormulaNode<PId>>,
+        f: Box<dyn Fn(&dyn Parameters<PId>) -> f32>,
+    }
+
+    impl<PId: ParameterId> Debug for StaticRuntime<PId> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("StaticRuntime").field("nodes", &self.nodes).field("f", &utils::get_formula(&self.nodes)).finish()
+        }
+    }
+
+    impl<PId: ParameterId> StaticRuntime<PId> {
+        pub fn new<F: Fn(&dyn Parameters<PId>) -> f32 + 'static>(formula: Vec<FormulaNode<PId>>, f: F) -> Self {
+            Self {
+                nodes: formula,
+                f: Box::new(f),
+            }
+        }
+    }
+
+    impl<PId: ParameterId> FormulaRuntime<PId> for StaticRuntime<PId> {
+        fn calculate(&self, _: &Vec<FormulaNode<PId>>, parameters: &dyn Parameters<PId>) -> f32 {
+            (self.f)(parameters)
+        }
+    
+        fn update(&mut self, nodes: &mut Vec<FormulaNode<PId>>) {
+            *nodes = self.nodes.clone();
+        }
+    
+        fn get_name(&self) -> String {
+            type_name::<Self>().to_owned()
+        }
+    }
+}
+
 mod boxed {
     use super::*;
 
@@ -195,7 +235,7 @@ mod boxed {
         }
 
         fn get_name(&self) -> String {
-            self.runtime.get_name()
+            format!("Boxed {}", self.runtime.get_name())
         }
     }
 
@@ -209,3 +249,4 @@ mod boxed {
 pub use array::*;
 pub use boxed::*;
 pub use naive::*;
+pub use stat::*;
