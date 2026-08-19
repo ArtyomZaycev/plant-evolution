@@ -5,8 +5,6 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-// TODO: &str
-// TODO: Eq
 pub trait ParameterId: Debug + Clone {
     fn get_name(&self) -> String;
 }

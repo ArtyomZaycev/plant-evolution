@@ -2,7 +2,6 @@ use mathexpr::{CompileError, Executable, Expr, Expression, ParseError};
 
 use crate::utils::formula::{Formula, ParameterIdAll, Parameters};
 
-// TODO: Remove ParameterIdAll
 #[derive(Debug)]
 pub struct MathexprFormula<PId: ParameterIdAll> {
     raw: String,
