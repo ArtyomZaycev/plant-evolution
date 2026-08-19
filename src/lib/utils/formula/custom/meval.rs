@@ -115,7 +115,7 @@ impl<PId: ParameterIdAll, P: Parameters<PId>> Formula<P> for MEvalFormula<'_, PI
 
 #[cfg(test)]
 mod test {
-    use crate::utils::formula::ArrayIdx;
+    use crate::utils::formula::{ArrayIdx, BoxedFormula};
 
     use super::*;
 
@@ -127,6 +127,11 @@ mod test {
 
         let value = formula.calculate(&[1., 2., 3.]);
 
+        assert_eq!(1. + 2. + 3. * 1_f32.sqrt(), value);
+
+        let formula: BoxedFormula<[f32; 3]> = BoxedFormula::new(formula);
+        let value = formula.calculate(&[1., 2., 3.]);
+        
         assert_eq!(1. + 2. + 3. * 1_f32.sqrt(), value);
     }
 }
