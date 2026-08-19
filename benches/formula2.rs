@@ -57,6 +57,7 @@ fn benchmark_simple(c: &mut Criterion) {
     let meval_formula = MEvalFormula::<ArrayIdx<4>>::new(formula_str.clone()).unwrap();
     let tabulon_formula = TabulonFormula::<ArrayIdx<4>>::new(formula_str.clone()).unwrap();
     let mathexpr_formula = MathexprFormula::<ArrayIdx<4>>::new(formula_str.clone()).unwrap();
+    let xprs_formula = XprsFormula::<ArrayIdx<4>>::new(formula_str.clone()).unwrap();
 
     group.bench_function("native", |b| {
         b.iter(|| {
@@ -73,6 +74,7 @@ fn benchmark_simple(c: &mut Criterion) {
     do_test(&mut group, "meval_formula", meval_formula);
     do_test(&mut group, "tabulon_formula", tabulon_formula);
     do_test(&mut group, "mathexpr_formula", mathexpr_formula);
+    do_test(&mut group, "xprs_formula", xprs_formula);
 
     group.finish();
 }

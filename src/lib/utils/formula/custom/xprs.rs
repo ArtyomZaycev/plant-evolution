@@ -27,15 +27,15 @@ impl<PId: ParameterIdAll> Debug for XprsFormula<PId> {
 }
 
 impl<PId: ParameterIdAll> XprsFormula<PId> {
-    pub fn new(formula: String) -> Self {
-        let inner = XprsOwned::new(formula, |formula| Xprs::try_from(formula.as_str()).unwrap());
+    pub fn new(formula: String) -> Result<Self, xprs::ParseError> {
+        let inner = XprsOwned::try_new(formula, |formula| Xprs::try_from(formula.as_str()))?;
         let ids = {
             let xprs = inner.borrow_dependent();
             PId::get_all()
                 .filter(|(name, _)| xprs.vars.contains(name.as_str()))
                 .collect()
         };
-        Self { inner, ids }
+        Ok(Self { inner, ids })
     }
 }
 
@@ -78,7 +78,7 @@ mod test {
     #[test]
     pub fn test() {
         let str_formula = "a + b + c * sqrt(a)";
-        let formula: XprsFormula<ArrayIdx<3>> = XprsFormula::new(str_formula.to_string());
+        let formula: XprsFormula<ArrayIdx<3>> = XprsFormula::new(str_formula.to_string()).unwrap();
 
         let value = formula.calculate(&[6., 2., 3.]);
 
