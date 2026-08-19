@@ -9,14 +9,16 @@ pub struct BoxedFormula<P> {
 impl<P> BoxedFormula<P> {
     pub fn new<F: Formula<P> + 'static>(formula: F) -> Self {
         Self {
-            formula: Box::new(formula)
+            formula: Box::new(formula),
         }
     }
 }
 
 impl<P> Debug for BoxedFormula<P> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("BoxedFormula").field("formula", &self.formula).finish()
+        f.debug_struct("BoxedFormula")
+            .field("formula", &self.formula)
+            .finish()
     }
 }
 

@@ -131,7 +131,7 @@ mod test {
 
         let formula: BoxedFormula<[f32; 3]> = BoxedFormula::new(formula);
         let value = formula.calculate(&[1., 2., 3.]);
-        
+
         assert_eq!(1. + 2. + 3. * 1_f32.sqrt(), value);
     }
 }

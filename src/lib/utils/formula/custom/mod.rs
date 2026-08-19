@@ -13,10 +13,12 @@ mod mathexpr;
 #[cfg(feature = "mathexpr_formula")]
 pub use mathexpr::*;
 
+#[cfg(feature = "xprs_formula")]
+mod xprs;
+#[cfg(feature = "xprs_formula")]
+pub use xprs::*;
+
 // Other options
-// !mathexpr
-// !mexe
-// xprs
 // mexprp
 // evalexpr
 // evalexpr_jit
