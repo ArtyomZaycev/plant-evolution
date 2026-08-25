@@ -1,5 +1,7 @@
 use std::{
+    collections::HashMap,
     fmt::Debug,
+    hash::Hash,
     ops::{Deref, DerefMut},
 };
 
@@ -88,5 +90,16 @@ impl<const N: usize> Parameters<ArrayIdx<N>> for [f32] {
 impl<const N: usize> Parameters<ArrayIdx<N>> for [f32; N] {
     fn get_value(&self, id: &ArrayIdx<N>) -> f32 {
         self[**id]
+    }
+}
+
+impl<PId: ParameterId + Hash + Eq, F: Into<f32> + Copy + Debug> Parameters<PId>
+    for HashMap<PId, F>
+{
+    fn get_value(&self, id: &PId) -> f32 {
+        match self.get(id) {
+            Some(v) => (*v).into(),
+            None => f32::NAN,
+        }
     }
 }

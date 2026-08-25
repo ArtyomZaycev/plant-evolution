@@ -11,6 +11,7 @@ use super::{
     visual_settings_editor::*,
 };
 
+// TODO: Box to avoid moving the value
 pub enum SettingsEditorState {
     Active(SettingsEditor),
     Applied(VisualSettings, EngineParameters),

@@ -1,6 +1,8 @@
+pub mod bench;
 mod custom;
 mod formula;
 mod formulas;
+pub mod input_gen;
 mod parameters;
 mod tree_formulas;
 
