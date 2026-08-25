@@ -1,5 +1,6 @@
 use std::sync::mpsc;
 
+use formula::FormulaNode;
 use rand::RngExt;
 use serde::{Deserialize, Serialize};
 
@@ -8,7 +9,7 @@ use crate::{
     evolution::consts::*,
     map::*,
     precalc::*,
-    utils::{Rng, formula::FormulaNode},
+    utils::Rng,
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

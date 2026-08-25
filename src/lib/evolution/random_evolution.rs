@@ -1,5 +1,6 @@
 use std::sync::mpsc;
 
+use formula::{FormulaNode, OpNode};
 use rand::RngExt;
 
 use super::{
@@ -8,10 +9,7 @@ use super::{
 use crate::{
     evolution::{WithVolatility, consts::MAX_WEIGHTS_TREE_SIZE},
     map::*,
-    utils::{
-        formula::{FormulaNode, OpNode},
-        *,
-    },
+    utils::*,
 };
 
 fn apply_change_chance_and<F: FnOnce() -> bool>(change_chance: f32, random: f32, f: F) -> bool {
@@ -158,7 +156,7 @@ impl RandomEvolution for PlantCellAbilities {
 impl RandomEvolution for WeightsTree {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
         apply_change_chance(change_chance, rng.random(), || {
-            let nodes = &mut self.nodes;
+            let nodes = &mut self.formula.nodes.nodes;
             let idx = rng.random_range(0..nodes.len());
             let allow_add = nodes.len() < MAX_WEIGHTS_TREE_SIZE;
             /*

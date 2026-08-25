@@ -1,10 +1,12 @@
+use std::fmt::{Debug, Display};
+
+use formula::{Formula, FormulaNode, Nodes, TreeFormula};
 use rand::RngExt;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     map::PlantCellInput,
     precalc::NUMBER_OF_CELLS,
-    utils::formula::{self, Formula, FormulaNode, TreeFormula},
 };
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -55,12 +57,27 @@ impl formula::Parameters<InputNode> for WeightsTreeParameters<'_> {
     }
 }
 
-pub type WeightsTree = TreeFormula<InputNode>;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WeightsTree {
+    pub formula: TreeFormula<InputNode>,
+}
 
 impl WeightsTree {
+    pub fn new(nodes: Vec<FormulaNode<InputNode>>) -> Self {
+        Self {
+            formula: TreeFormula::new(Nodes::new(nodes).unwrap())
+        }
+    }
+
     pub fn calculate_safe(&self, input: &PlantCellInput, height: f32, xdist: f32) -> f32 {
-        let value = self.calculate(&(input, height, xdist));
+        let value = self.formula.calculate(&(input, height, xdist));
         if !value.is_normal() { 0. } else { value }
+    }
+}
+
+impl Display for WeightsTree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.formula.nodes.fmt(f)
     }
 }
 

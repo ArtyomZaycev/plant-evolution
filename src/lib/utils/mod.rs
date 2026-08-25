@@ -1,4 +1,3 @@
-pub mod formula;
 pub mod rng;
 mod shared_buffer;
 mod stopwatch;

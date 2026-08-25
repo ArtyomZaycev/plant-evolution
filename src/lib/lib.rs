@@ -1,5 +1,4 @@
 #![feature(sync_unsafe_cell)]
-#![feature(duration_integer_division)]
 
 pub mod consts;
 pub mod engine;
