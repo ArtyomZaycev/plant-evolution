@@ -34,6 +34,11 @@ pub static DXDY3_2D: LazyLock<[[Vec<DxDy2d>; MAP_SIZE.0]; MAP_SIZE.1]> =
 pub static GROWTH_DIRECTION: LazyLock<[[Vec<GrowthDir>; MAP_SIZE.0]; MAP_SIZE.1]> =
     LazyLock::new(generate_growth_direction);
 
+// Inverse of GROWTH_DIRECTION: for each target cell, the source cells (and
+// their direction) that can grow into it.
+pub static GROWTH_SOURCES: LazyLock<[[Vec<GrowthDir>; MAP_SIZE.0]; MAP_SIZE.1]> =
+    LazyLock::new(generate_growth_sources);
+
 pub static GROWTH_RECALC_NEEDED_FOR: LazyLock<[[HashSet<(usize, usize)>; MAP_SIZE.0]; MAP_SIZE.1]> =
     LazyLock::new(generate_recalc_needed_for);
 
@@ -42,6 +47,7 @@ pub fn populate_consts() {
     LazyLock::force(&DXDY2_2D);
     LazyLock::force(&DXDY3_2D);
     LazyLock::force(&GROWTH_DIRECTION);
+    LazyLock::force(&GROWTH_SOURCES);
     LazyLock::force(&GROWTH_RECALC_NEEDED_FOR);
 }
 
@@ -100,6 +106,21 @@ fn generate_growth_direction() -> [[Vec<GrowthDir>; MAP_SIZE.0]; MAP_SIZE.1] {
             dirs
         })
     })
+}
+
+fn generate_growth_sources() -> [[Vec<GrowthDir>; MAP_SIZE.0]; MAP_SIZE.1] {
+    // Invert GROWTH_DIRECTION: every (source -> target, dir) becomes a
+    // (source, dir) entry under the target.
+    let mut sources: [[Vec<GrowthDir>; MAP_SIZE.0]; MAP_SIZE.1] =
+        core::array::from_fn(|_| core::array::from_fn(|_| Vec::new()));
+    for i in 0..MAP_SIZE.1 {
+        for j in 0..MAP_SIZE.0 {
+            for &(tx, ty, d) in &GROWTH_DIRECTION[i][j] {
+                sources[ty][tx].push((j, i, d));
+            }
+        }
+    }
+    sources
 }
 
 fn generate_recalc_needed_for() -> [[HashSet<(usize, usize)>; MAP_SIZE.0]; MAP_SIZE.1] {

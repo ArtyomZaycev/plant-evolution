@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::LazyLock};
+use std::{collections::{HashMap, HashSet}, sync::LazyLock};
 
 use super::{map_cell::*, plant_cell::*};
 use crate::{
@@ -27,6 +27,18 @@ impl PlantNutrition {
     };
 }
 
+/// One growable target cell with its summed growth scores per cell type.
+///
+/// Sparse: only empty cells reachable from plant cells are stored. `max_score`
+/// is the largest score in `scores`, precomputed to speed up the max scan.
+#[derive(Debug, Clone)]
+pub struct NextCellGrowthEntry {
+    pub x: usize,
+    pub y: usize,
+    pub scores: [f32; NUMBER_OF_CELLS],
+    pub max_score: f32,
+}
+
 // TODO: Separate for into MapData (for ui) and FullMapData (for engine)
 #[derive(Debug, Clone)]
 pub struct MapData {
@@ -41,9 +53,15 @@ pub struct MapData {
     pub total_passive_cost: f32,
     pub nutrition_per_tick: PlantNutrition,
 
-    pub all_next_cell_growth: HashMap<usize, [f32; NUMBER_OF_CELLS]>,
+    /// Sparse, contiguous list of growable target cells (empty cells reachable
+    /// from plant cells) with their summed growth scores. Order is unspecified;
+    /// the max scan iterates it linearly.
+    pub all_next_cell_growth: Vec<NextCellGrowthEntry>,
     /// Active cells with their environment input.
     pub cells_pos: Vec<PlantCellPos>,
+    /// Packed position (`y * MAP_SIZE.0 + x`) -> slot in `cells_pos`, for O(1)
+    /// input lookup when iterating cells by position.
+    pub cell_slots: HashMap<usize, usize>,
     /// Sunlight per air cell (`y * MAP_SIZE.0 + x`, only rows below `GROUND_LEVEL` are stored).
     pub sunlight: Vec<f32>,
     /// Minerals per soil row (indexed by `y - GROUND_LEVEL`).
@@ -65,8 +83,9 @@ impl Default for MapData {
             plant_nutrition: PlantNutrition::STARTING,
             total_passive_cost: 0.,
             nutrition_per_tick: PlantNutrition::default(),
-            all_next_cell_growth: HashMap::new(),
+            all_next_cell_growth: Vec::new(),
             cells_pos: vec![PlantCellPos::new(PLANT_CENTER.0, PLANT_CENTER.1)],
+            cell_slots: HashMap::from([(PLANT_CENTER.1 * MAP_SIZE.0 + PLANT_CENTER.0, 0)]),
             sunlight: basic_terrain.sunlight.clone(),
             soil_minerals: basic_terrain.soil_minerals.clone(),
             soil_water: basic_terrain.soil_water.clone(),
@@ -307,21 +326,6 @@ impl MapData {
             .unwrap()
     }
 
-    #[inline]
-    fn growth_key(x: usize, y: usize) -> usize {
-        y * MAP_SIZE.0 + x
-    }
-
-    #[inline]
-    fn growth_x(key: usize) -> usize {
-        key % MAP_SIZE.0
-    }
-
-    #[inline]
-    fn growth_y(key: usize) -> usize {
-        key / MAP_SIZE.0
-    }
-
     fn update_next_cell_growth_array(
         from: &PlantCellInput,
         height: f32,
@@ -339,13 +343,17 @@ impl MapData {
 
     fn update_next_cell_growth_from_calc(&mut self) {
         self.next_cell_growth = (f32::NEG_INFINITY, 0, 0, 0);
-        for (&key, carr) in &self.all_next_cell_growth {
-            let x = Self::growth_x(key);
-            let y = Self::growth_y(key);
-            for (c, &w) in carr.iter().enumerate() {
+        for entry in &self.all_next_cell_growth {
+            // Skip the whole entry if no cell type's score can beat the current
+            // best weight. A score equal to it could still win via the
+            // distance/type/x/y tie-breaks, so we require strictly less.
+            if entry.max_score < self.next_cell_growth.0 {
+                continue;
+            }
+            for (c, &w) in entry.scores.iter().enumerate() {
                 if Self::compare_next_cell_growth(
-                    x,
-                    y,
+                    entry.x,
+                    entry.y,
                     c,
                     w,
                     self.next_cell_growth.1,
@@ -355,38 +363,138 @@ impl MapData {
                 )
                 .is_gt()
                 {
-                    self.next_cell_growth = (w, x, y, c);
+                    self.next_cell_growth = (w, entry.x, entry.y, c);
                 }
             }
         }
     }
 
-    #[hotpath::measure]
-    fn recalc_all_next_cell_growth(&mut self) {
-        self.all_next_cell_growth.clear();
-        for idx in 0..self.cells_pos.len() {
-            let (j, i, t) = {
-                let pos = &self.cells_pos[idx];
-                (pos.x, pos.y, self.cells[pos.y * MAP_SIZE.0 + pos.x])
-            };
-            let evolution = &self.evolution_data.cells_evolution_data[t as usize];
-            for &(nj, ni, d) in &GROWTH_DIRECTION[i][j] {
-                if self.cells[ni * MAP_SIZE.0 + nj] == u8::MAX {
-                    let weights = &evolution.weights[d as usize];
-                    let next_cell_growth = self
-                        .all_next_cell_growth
-                        .entry(Self::growth_key(nj, ni))
-                        .or_default();
-                    Self::update_next_cell_growth_array(
-                        &self.cells_pos[idx].input,
-                        (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
-                        (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
-                        weights,
-                        next_cell_growth,
-                    );
+    /// Collects growth-score contributions from every plant cell towards its
+    /// empty neighbor cells. `recalc_needed` optionally limits targets (local
+    /// recalculation): when set, the loop is reversed - for each target in the
+    /// (small) set it checks the 4 cardinal neighbor cells for sources, using
+    /// the persistent `cell_slots` index for O(1) source input lookup instead
+    /// of scanning every plant cell. Contributions are returned unsorted, one
+    /// per (cell, direction) pair, packed as `(pos, scores)`.
+    fn collect_next_cell_growth_contributions(
+        &self,
+        recalc_needed: Option<&HashSet<(usize, usize)>>,
+    ) -> Vec<(usize, [f32; NUMBER_OF_CELLS])> {
+        let Some(needed) = recalc_needed else {
+            // Full rebuild: every empty neighbor cell of every plant cell.
+            let mut contributions = Vec::with_capacity(self.cells_pos.len() * 4);
+            for idx in 0..self.cells_pos.len() {
+                let (j, i, t) = {
+                    let pos = &self.cells_pos[idx];
+                    (pos.x, pos.y, self.cells[pos.y * MAP_SIZE.0 + pos.x])
+                };
+                let evolution = &self.evolution_data.cells_evolution_data[t as usize];
+                // Height/xdist depend only on the source cell, not the direction.
+                let height = (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.;
+                let xdist = (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.);
+                for &(nj, ni, d) in &GROWTH_DIRECTION[i][j] {
+                    if self.cells[ni * MAP_SIZE.0 + nj] == u8::MAX {
+                        let mut scores = [0.; NUMBER_OF_CELLS];
+                        Self::update_next_cell_growth_array(
+                            &self.cells_pos[idx].input,
+                            height,
+                            xdist,
+                            &evolution.weights[d as usize],
+                            &mut scores,
+                        );
+                        contributions.push((ni * MAP_SIZE.0 + nj, scores));
+                    }
+                }
+            }
+            return contributions;
+        };
+
+        // Local rebuild: true reversal - iterate the (small) recalc-needed
+        // target set and enumerate its sources via the precomputed inverse
+        // `GROWTH_SOURCES` (no bounds checks needed).
+        let mut contributions = Vec::with_capacity(needed.len() * 4);
+        for &(nj, ni) in needed {
+            if self.cells[ni * MAP_SIZE.0 + nj] != u8::MAX {
+                continue; // occupied cells are not growth targets
+            }
+            for &(sx, sy, d) in &GROWTH_SOURCES[ni][nj] {
+                self.push_source_contribution(sx, sy, d, nj, ni, &mut contributions);
+            }
+        }
+        contributions
+    }
+
+    /// Pushes the growth contribution from source cell `(sx, sy)` into target
+    /// `(tx, ty)` using the precomputed direction `d`. No-op if the source is
+    /// not occupied. The source `input` is resolved in O(1) via `cell_slots`.
+    fn push_source_contribution(
+        &self,
+        sx: usize,
+        sy: usize,
+        d: GrowthDirection,
+        tx: usize,
+        ty: usize,
+        contributions: &mut Vec<(usize, [f32; NUMBER_OF_CELLS])>,
+    ) {
+        let source_packed = sy * MAP_SIZE.0 + sx;
+        let t = self.cells[source_packed];
+        if t == u8::MAX {
+            return;
+        }
+        let slot = self.cell_slots[&source_packed];
+        let pos = &self.cells_pos[slot];
+        let evolution = &self.evolution_data.cells_evolution_data[t as usize];
+        let mut scores = [0.; NUMBER_OF_CELLS];
+        Self::update_next_cell_growth_array(
+            &pos.input,
+            (1. - sy as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
+            (sx as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
+            &evolution.weights[d as usize],
+            &mut scores,
+        );
+        contributions.push((ty * MAP_SIZE.0 + tx, scores));
+    }
+
+    /// Sorts contributions by position and merges duplicates in place
+    /// (summing scores).
+    fn merge_next_cell_growth_contributions(
+        contributions: Vec<(usize, [f32; NUMBER_OF_CELLS])>,
+    ) -> Vec<NextCellGrowthEntry> {
+        let mut contributions = contributions;
+        contributions.sort_unstable_by_key(|&(pos, _)| pos);
+
+        // Compact duplicates in place: adjacent equal positions are summed
+        // into the first occurrence.
+        let mut write = 0usize;
+        for read in 0..contributions.len() {
+            let (pos, scores) = contributions[read];
+            if write == 0 || contributions[write - 1].0 != pos {
+                contributions[write] = (pos, scores);
+                write += 1;
+            } else {
+                let target = &mut contributions[write - 1].1;
+                for c in 0..NUMBER_OF_CELLS {
+                    target[c] += scores[c];
                 }
             }
         }
+        contributions.truncate(write);
+
+        contributions
+            .into_iter()
+            .map(|(pos, scores)| NextCellGrowthEntry {
+                x: pos % MAP_SIZE.0,
+                y: pos / MAP_SIZE.0,
+                scores,
+                max_score: scores.iter().copied().fold(f32::NEG_INFINITY, f32::max),
+            })
+            .collect()
+    }
+
+    #[hotpath::measure]
+    fn recalc_all_next_cell_growth(&mut self) {
+        let contributions = self.collect_next_cell_growth_contributions(None);
+        self.all_next_cell_growth = Self::merge_next_cell_growth_contributions(contributions);
         self.update_next_cell_growth_from_calc();
     }
 
@@ -394,37 +502,15 @@ impl MapData {
     fn recalc_next_cell_growth(&mut self, x: usize, y: usize) {
         let recalc_needed = &GROWTH_RECALC_NEEDED_FOR[y][x];
 
-        self.all_next_cell_growth.remove(&Self::growth_key(x, y));
-        recalc_needed.iter().for_each(|&(nx, ny)| {
-            if let Some(value) = self.all_next_cell_growth.get_mut(&Self::growth_key(nx, ny)) {
-                *value = Default::default();
-            }
+        // Drop the grown cell and every target that needs recalculation; their
+        // scores are rebuilt from scratch below.
+        self.all_next_cell_growth.retain(|entry| {
+            !((entry.x == x && entry.y == y) || recalc_needed.contains(&(entry.x, entry.y)))
         });
 
-        // TODO: only check adjacent to recalc_needed cells
-        for idx in 0..self.cells_pos.len() {
-            let (j, i, t) = {
-                let pos = &self.cells_pos[idx];
-                (pos.x, pos.y, self.cells[pos.y * MAP_SIZE.0 + pos.x])
-            };
-            let evolution = &self.evolution_data.cells_evolution_data[t as usize];
-            for &(nj, ni, d) in &GROWTH_DIRECTION[i][j] {
-                if self.cells[ni * MAP_SIZE.0 + nj] == u8::MAX && recalc_needed.contains(&(nj, ni)) {
-                    let weights = &evolution.weights[d as usize];
-                    let next_cell_growth = self
-                        .all_next_cell_growth
-                        .entry(Self::growth_key(nj, ni))
-                        .or_default();
-                    Self::update_next_cell_growth_array(
-                        &self.cells_pos[idx].input,
-                        (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
-                        (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
-                        weights,
-                        next_cell_growth,
-                    );
-                }
-            }
-        }
+        let contributions = self.collect_next_cell_growth_contributions(Some(recalc_needed));
+        self.all_next_cell_growth
+            .extend(Self::merge_next_cell_growth_contributions(contributions));
         self.update_next_cell_growth_from_calc();
     }
 
@@ -478,6 +564,10 @@ impl MapData {
             self.set_cell_t(pos.x, pos.y, u8::MAX);
         }
         self.cells_pos = kept;
+        self.cell_slots.clear();
+        for (slot, pos) in self.cells_pos.iter().enumerate() {
+            self.cell_slots.insert(pos.y * MAP_SIZE.0 + pos.x, slot);
+        }
     }
 
     fn do_grow_plant_cell(
@@ -490,6 +580,8 @@ impl MapData {
         self.plant_nutrition.energy -= self.evolution_data.cells_abilities[cell_type].grow_cost;
         self.set_cell_t(x, y, cell_type as u8);
         self.cells_pos.push(PlantCellPos::new(x, y));
+        self.cell_slots
+            .insert(y * MAP_SIZE.0 + x, self.cells_pos.len() - 1);
         self.update_sunlight(x, y);
         self.populate_plant_inputs();
         self.recalc_plant_nutrition();
@@ -617,6 +709,9 @@ impl MapData {
         self.cells_pos.clear();
         self.cells_pos
             .push(PlantCellPos::new(PLANT_CENTER.0, PLANT_CENTER.1));
+        self.cell_slots.clear();
+        self.cell_slots
+            .insert(PLANT_CENTER.1 * MAP_SIZE.0 + PLANT_CENTER.0, 0);
 
         self.populate_plant_inputs();
         self.recalc_plant_nutrition();
