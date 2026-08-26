@@ -1,4 +1,4 @@
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc};
 
 use formula::{FormulaNode, OpNode};
 use rand::RngExt;
@@ -156,7 +156,8 @@ impl RandomEvolution for PlantCellAbilities {
 impl RandomEvolution for WeightsTree {
     fn evolve_random(&mut self, rng: &mut Rng, change_chance: f32, change_entropy: f32) -> bool {
         apply_change_chance(change_chance, rng.random(), || {
-            let nodes = &mut self.formula.nodes.nodes;
+            let formula = Arc::make_mut(&mut self.formula);
+            let nodes = &mut formula.nodes.nodes;
             let idx = rng.random_range(0..nodes.len());
             let allow_add = nodes.len() < MAX_WEIGHTS_TREE_SIZE;
             /*

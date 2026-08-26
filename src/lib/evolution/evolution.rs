@@ -107,11 +107,18 @@ fn sample_best_maps_evolution(maps: &mut Vec<MapData>, samples: usize) -> Vec<Pl
         .enumerate()
         .map(|(i, map)| (map.calculate_score(), i))
         .collect::<Vec<_>>();
-    best_maps_idx.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap().reverse());
+
+    // Select the top `samples` scores with an O(n) partition instead of a
+    // full O(n log n) sort.
+    let count = best_maps_idx.len().min(samples);
+    if count > 0 && count < best_maps_idx.len() {
+        let _ = best_maps_idx
+            .select_nth_unstable_by(count - 1, |a, b| b.0.partial_cmp(&a.0).unwrap());
+    }
 
     best_maps_idx
         .iter()
-        .take(samples)
+        .take(count)
         .map(|(_, i)| maps[*i].evolution_data.clone())
         .collect::<Vec<_>>()
 }

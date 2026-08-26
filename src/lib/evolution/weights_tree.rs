@@ -1,4 +1,5 @@
 use std::fmt::{Debug, Display};
+use std::sync::Arc;
 
 use formula::{Formula, FormulaNode, Nodes, TreeFormula};
 use rand::RngExt;
@@ -59,13 +60,13 @@ impl formula::Parameters<InputNode> for WeightsTreeParameters<'_> {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WeightsTree {
-    pub formula: TreeFormula<InputNode>,
+    pub formula: Arc<TreeFormula<InputNode>>,
 }
 
 impl WeightsTree {
     pub fn new(nodes: Vec<FormulaNode<InputNode>>) -> Self {
         Self {
-            formula: TreeFormula::new(Nodes::new(nodes).unwrap())
+            formula: Arc::new(TreeFormula::new(Nodes::new(nodes).unwrap()))
         }
     }
 

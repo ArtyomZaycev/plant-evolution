@@ -18,7 +18,7 @@ rand = "0.10.2"
 winit = "0.30.13"
 hotpath = "0.23.3"
 serde_json = "1.0.151"
-serde = { version = "1.0.229", features = ["derive"] }
+serde = { version = "1.0.229", features = ["derive", "rc"] }
 chrono = "0.4.45"
 scoped_threadpool = { version = "0.1.9", optional = true }
 directories-next = "2.0.0"
