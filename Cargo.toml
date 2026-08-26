@@ -56,6 +56,11 @@ harness = false
 required-features = ["stable_rng"]
 
 [[bench]]
-name = "full"
+name = "full_short"
+harness = false
+required-features = ["stable_rng"]
+
+[[bench]]
+name = "full_long"
 harness = false
 required-features = ["stable_rng"]
