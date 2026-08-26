@@ -41,7 +41,7 @@ pub struct MapData {
     pub total_passive_cost: f32,
     pub nutrition_per_tick: PlantNutrition,
 
-    pub all_next_cell_growth: HashMap<(usize, usize), [f32; NUMBER_OF_CELLS]>,
+    pub all_next_cell_growth: HashMap<usize, [f32; NUMBER_OF_CELLS]>,
     /// Active cells with their environment input.
     pub cells_pos: Vec<PlantCellPos>,
     /// Sunlight per air cell (`y * MAP_SIZE.0 + x`, only rows below `GROUND_LEVEL` are stored).
@@ -307,6 +307,21 @@ impl MapData {
             .unwrap()
     }
 
+    #[inline]
+    fn growth_key(x: usize, y: usize) -> usize {
+        y * MAP_SIZE.0 + x
+    }
+
+    #[inline]
+    fn growth_x(key: usize) -> usize {
+        key % MAP_SIZE.0
+    }
+
+    #[inline]
+    fn growth_y(key: usize) -> usize {
+        key / MAP_SIZE.0
+    }
+
     fn update_next_cell_growth_array(
         from: &PlantCellInput,
         height: f32,
@@ -324,7 +339,9 @@ impl MapData {
 
     fn update_next_cell_growth_from_calc(&mut self) {
         self.next_cell_growth = (f32::NEG_INFINITY, 0, 0, 0);
-        for (&(x, y), carr) in &self.all_next_cell_growth {
+        for (&key, carr) in &self.all_next_cell_growth {
+            let x = Self::growth_x(key);
+            let y = Self::growth_y(key);
             for (c, &w) in carr.iter().enumerate() {
                 if Self::compare_next_cell_growth(
                     x,
@@ -356,7 +373,10 @@ impl MapData {
             for &(nj, ni, d) in &GROWTH_DIRECTION[i][j] {
                 if self.cells[ni * MAP_SIZE.0 + nj] == u8::MAX {
                     let weights = &evolution.weights[d as usize];
-                    let next_cell_growth = self.all_next_cell_growth.entry((nj, ni)).or_default();
+                    let next_cell_growth = self
+                        .all_next_cell_growth
+                        .entry(Self::growth_key(nj, ni))
+                        .or_default();
                     Self::update_next_cell_growth_array(
                         &self.cells_pos[idx].input,
                         (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
@@ -374,9 +394,9 @@ impl MapData {
     fn recalc_next_cell_growth(&mut self, x: usize, y: usize) {
         let recalc_needed = &GROWTH_RECALC_NEEDED_FOR[y][x];
 
-        self.all_next_cell_growth.remove(&(x, y));
+        self.all_next_cell_growth.remove(&Self::growth_key(x, y));
         recalc_needed.iter().for_each(|&(nx, ny)| {
-            if let Some(value) = self.all_next_cell_growth.get_mut(&(nx, ny)) {
+            if let Some(value) = self.all_next_cell_growth.get_mut(&Self::growth_key(nx, ny)) {
                 *value = Default::default();
             }
         });
@@ -391,7 +411,10 @@ impl MapData {
             for &(nj, ni, d) in &GROWTH_DIRECTION[i][j] {
                 if self.cells[ni * MAP_SIZE.0 + nj] == u8::MAX && recalc_needed.contains(&(nj, ni)) {
                     let weights = &evolution.weights[d as usize];
-                    let next_cell_growth = self.all_next_cell_growth.entry((nj, ni)).or_default();
+                    let next_cell_growth = self
+                        .all_next_cell_growth
+                        .entry(Self::growth_key(nj, ni))
+                        .or_default();
                     Self::update_next_cell_growth_array(
                         &self.cells_pos[idx].input,
                         (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
