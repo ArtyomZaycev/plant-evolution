@@ -168,13 +168,6 @@ impl MapData {
     }
 
     #[hotpath::measure]
-    fn update_sunlight_all(&mut self) {
-        for x in 0..MAP_SIZE.0 {
-            self.update_sunlight(x, 0);
-        }
-    }
-
-    #[hotpath::measure]
     fn calc_nutrition(&self, x: usize, y: usize) -> (f32, f32, f32) {
         let dxdy = &DXDY2_2D[y][x];
 
@@ -248,6 +241,35 @@ impl MapData {
                 water,
                 cells_proximity_data,
             };
+        }
+    }
+
+    fn populate_plant_input_at(&mut self, x: usize, y: usize) {
+        let slot = self.cell_slots[&(y * MAP_SIZE.0 + x)];
+        let (air, minerals, water) = self.calc_nutrition(x, y);
+        let cells_proximity_data = self.calc_cells_proximity_data(x, y);
+        let sunlight = if y < GROUND_LEVEL {
+            self.sunlight[y * MAP_SIZE.0 + x]
+        } else {
+            0.
+        };
+        self.cells_pos[slot].input = PlantCellInput {
+            sunlight,
+            air,
+            minerals,
+            water,
+            cells_proximity_data,
+        };
+    }
+
+    /// Recomputes only the inputs that can change after a cell grows at
+    /// `(x, y)`: the new cell and every cell in `GROWTH_RECALC_NEEDED_FOR`.
+    fn populate_plant_inputs_local(&mut self, x: usize, y: usize) {
+        self.populate_plant_input_at(x, y);
+        for &(jx, jy) in &GROWTH_RECALC_NEEDED_FOR[y][x] {
+            if self.cell_is_some(jx, jy) {
+                self.populate_plant_input_at(jx, jy);
+            }
         }
     }
 
@@ -523,40 +545,82 @@ impl MapData {
         self.update_next_cell_growth_from_calc();
     }
 
-    #[hotpath::measure]
-    fn recalc_next_cell_suicide(&mut self) {
+    fn update_suicide_score_at(&mut self, x: usize, y: usize) {
+        let slot = self.cell_slots[&(y * MAP_SIZE.0 + x)];
+        if x == PLANT_CENTER.0 && y == PLANT_CENTER.1 {
+            // The seed never suicides.
+            self.cells_pos[slot].suicide_score = f32::NEG_INFINITY;
+            return;
+        }
+        let t = self.cells[y * MAP_SIZE.0 + x];
+        let evolution = &self.evolution_data.cells_evolution_data[t as usize];
+        let score = evolution.calc_suicide(
+            &self.cells_pos[slot].input,
+            (1. - y as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
+            (x as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
+        );
+        self.cells_pos[slot].suicide_score = score;
+    }
+
+    fn rescan_suicide(&mut self) {
         self.next_cell_suicide = (f32::NEG_INFINITY, 0, 0);
         for pos in &self.cells_pos {
-            let (j, i) = (pos.x, pos.y);
-            if j != PLANT_CENTER.0 || i != PLANT_CENTER.1 {
-                let t = self.cells[pos.y * MAP_SIZE.0 + pos.x];
-                let evolution = &self.evolution_data.cells_evolution_data[t as usize];
-                let score = evolution.calc_suicide(
-                    &pos.input,
-                    (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.,
-                    (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.),
-                );
-                if score > self.next_cell_suicide.0 {
-                    self.next_cell_suicide = (score, j, i);
-                }
+            if pos.suicide_score > self.next_cell_suicide.0 {
+                self.next_cell_suicide = (pos.suicide_score, pos.x, pos.y);
             }
         }
     }
 
     #[hotpath::measure]
-    fn search_cells(&self, x: usize, y: usize, ex_plants: &mut [[bool; MAP_SIZE.0]; MAP_SIZE.1]) {
-        ex_plants[y][x] = true;
-        if x > 0 && !ex_plants[y][x - 1] && self.cell_is_some(x - 1, y) {
-            self.search_cells(x - 1, y, ex_plants);
+    fn recalc_next_cell_suicide(&mut self) {
+        for idx in 0..self.cells_pos.len() {
+            let (j, i) = {
+                let pos = &self.cells_pos[idx];
+                (pos.x, pos.y)
+            };
+            self.update_suicide_score_at(j, i);
         }
-        if x + 1 < MAP_SIZE.0 && !ex_plants[y][x + 1] && self.cell_is_some(x + 1, y) {
-            self.search_cells(x + 1, y, ex_plants);
+        self.rescan_suicide();
+    }
+
+    /// Recomputes only the suicide scores that can change after a cell grows
+    /// at `(x, y)`, then rescans the cached scores for the new maximum.
+    fn recalc_next_cell_suicide_local(&mut self, x: usize, y: usize) {
+        self.update_suicide_score_at(x, y);
+        for &(jx, jy) in &GROWTH_RECALC_NEEDED_FOR[y][x] {
+            if self.cell_is_some(jx, jy) {
+                self.update_suicide_score_at(jx, jy);
+            }
         }
-        if y > 0 && !ex_plants[y - 1][x] && self.cell_is_some(x, y - 1) {
-            self.search_cells(x, y - 1, ex_plants);
-        }
-        if y + 1 < MAP_SIZE.1 && !ex_plants[y + 1][x] && self.cell_is_some(x, y + 1) {
-            self.search_cells(x, y + 1, ex_plants);
+        self.rescan_suicide();
+    }
+
+    #[hotpath::measure]
+    fn search_cells(
+        &self,
+        start_x: usize,
+        start_y: usize,
+        ex_plants: &mut [[bool; MAP_SIZE.0]; MAP_SIZE.1],
+    ) {
+        let mut stack = vec![(start_x, start_y)];
+        ex_plants[start_y][start_x] = true;
+        while let Some((x, y)) = stack.pop() {
+            if x > 0 && !ex_plants[y][x - 1] && self.cell_is_some(x - 1, y) {
+                ex_plants[y][x - 1] = true;
+                stack.push((x - 1, y));
+            }
+            if x + 1 < MAP_SIZE.0 && !ex_plants[y][x + 1] && self.cell_is_some(x + 1, y) {
+                ex_plants[y][x + 1] = true;
+                stack.push((x + 1, y));
+            }
+            if y > 0 && !ex_plants[y - 1][x] && self.cell_is_some(x, y - 1) {
+                ex_plants[y - 1][x] = true;
+                stack.push((x, y - 1));
+            }
+            if y + 1 < MAP_SIZE.1 && !ex_plants[y + 1][x] && self.cell_is_some(x, y + 1) {
+                ex_plants[y + 1][x] = true;
+                stack.push((x, y + 1));
+            }
         }
     }
 
@@ -592,14 +656,14 @@ impl MapData {
         self.cell_slots
             .insert(y * MAP_SIZE.0 + x, self.cells_pos.len() - 1);
         self.update_sunlight(x, y);
-        self.populate_plant_inputs();
+        self.populate_plant_inputs_local(x, y);
         self.recalc_plant_nutrition();
         if use_local_growth_recalculation {
             self.recalc_next_cell_growth(x, y);
         } else {
             self.recalc_all_next_cell_growth();
         }
-        self.recalc_next_cell_suicide();
+        self.recalc_next_cell_suicide_local(x, y);
     }
 
     fn grow_plant(&mut self, use_local_growth_recalculation: bool) {
@@ -608,7 +672,7 @@ impl MapData {
                 let (_, x, y) = self.next_cell_suicide;
                 if x != PLANT_CENTER.0 || y != PLANT_CENTER.1 {
                     self.remove_cell(x, y);
-                    self.update_sunlight_all();
+                    self.update_sunlight(x, 0);
                     self.populate_plant_inputs();
                     self.recalc_plant_nutrition();
                     self.recalc_all_next_cell_growth();

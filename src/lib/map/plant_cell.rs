@@ -86,11 +86,14 @@ pub struct PlantCellInput {
 ///
 /// Cell types live in `MapData::cells` (dense `u8` grid); inputs are stored
 /// SoA-style only for active cells so empty grid cells cost a single byte.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct PlantCellPos {
     pub x: usize,
     pub y: usize,
     pub input: PlantCellInput,
+    /// Cached suicide score (`f32::NEG_INFINITY` for cells that never suicide,
+    /// e.g. the seed). Recomputed incrementally by `MapData`.
+    pub suicide_score: f32,
 }
 
 impl PlantCellPos {
@@ -99,6 +102,18 @@ impl PlantCellPos {
             x,
             y,
             input: PlantCellInput::default(),
+            suicide_score: f32::NEG_INFINITY,
+        }
+    }
+}
+
+impl Default for PlantCellPos {
+    fn default() -> Self {
+        Self {
+            x: 0,
+            y: 0,
+            input: PlantCellInput::default(),
+            suicide_score: f32::NEG_INFINITY,
         }
     }
 }
