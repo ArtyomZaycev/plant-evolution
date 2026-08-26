@@ -20,7 +20,7 @@ fn engine_bencmark(engine: &mut Engine, autoevolve_at: u32, total_evolution: u32
     }
 }
 
-fn criterion_benchmark(c: &mut Criterion) {
+fn bench_short(c: &mut Criterion) {
     populate_consts();
 
     let mut rng = rng::get_rng();
@@ -84,6 +84,37 @@ fn criterion_benchmark(c: &mut Criterion) {
         });
     });
 
+    group.finish();
+}
+
+fn bench_long(c: &mut Criterion) {
+    populate_consts();
+
+    let mut rng = rng::get_rng();
+    let maps = Vec::from_fn(200, |_| MapData::generate(&mut rng));
+    let parameters = EngineParameters {
+        saving_parameters: SavingParameters::DISABLED,
+        evolution_parameters: EvolutionParameters {
+            plants: 200,
+            samples: 10,
+            parent_evolution: true,
+            change_chance: 0.05,
+            change_entropy: 0.8,
+            run_evolution_parameters: RunEvolutionParameters {
+                ticks_per_slow_write: 500,
+            },
+        },
+        performance_parameters: PerformanceParameters::default(),
+    };
+
+    let mut engine = Engine::new(rng::get_seed(), maps, parameters.clone());
+
+    let mut group = c.benchmark_group("engine-benchmarks");
+    group
+        .sampling_mode(criterion::SamplingMode::Flat)
+        .sample_size(10)
+        .measurement_time(Duration::from_secs(180));
+
     group.bench_function("accuracy_long", |b| {
         engine
             .send_command(EngineCommand::UpdateParameters(EngineParameters {
@@ -123,5 +154,5 @@ fn criterion_benchmark(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, criterion_benchmark);
+criterion_group!(benches, bench_short, bench_long);
 criterion_main!(benches);

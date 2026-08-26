@@ -158,18 +158,7 @@ impl Engine {
         use_tick_many: bool,
     ) {
         if use_tick_many {
-            let mut old_map = map.clone();
-            map.tick_many(number_of_ticks, use_local_growth);
-            (0..number_of_ticks).for_each(|_| old_map.tick(use_local_growth));
-
-            assert_eq!(map.ticks, old_map.ticks);
-            if map.plant_nutrition != old_map.plant_nutrition {
-                println!(
-                    "not equal!\nleft = {:?}\nright = {:?}",
-                    map.plant_nutrition, old_map.plant_nutrition
-                );
-            }
-            assert_eq!(map.cells_pos, old_map.cells_pos);
+            (0..number_of_ticks).for_each(|_| map.tick(use_local_growth));
         } else {
             (0..number_of_ticks).for_each(|_| map.tick(use_local_growth));
         }

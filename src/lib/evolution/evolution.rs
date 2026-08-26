@@ -91,7 +91,6 @@ pub fn run_evolution<F: FnMut(&mut Vec<MapData>)>(
                     evolution,
                     tick,
                 };
-                println!("Data: {data:?}");
                 if let Some(sender) = &sender {
                     let _ = sender.send(data);
                 }
