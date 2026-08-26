@@ -155,12 +155,12 @@ impl Engine {
         map: &mut MapData,
         number_of_ticks: u32,
         use_local_growth: bool,
-        use_tick_many: bool,
     ) {
-        if use_tick_many {
-            (0..number_of_ticks).for_each(|_| map.tick(use_local_growth));
-        } else {
-            (0..number_of_ticks).for_each(|_| map.tick(use_local_growth));
+        for _ in 0..number_of_ticks {
+            map.tick(use_local_growth);
+            if map.plant_nutrition.energy < 0. {
+                break;
+            }
         }
     }
 
@@ -171,10 +171,9 @@ impl Engine {
         thread_count: usize,
         number_of_ticks: u32,
         use_local_growth: bool,
-        use_tick_many: bool,
     ) {
         pool.for_each_map_mut(maps, thread_count, |_, map| {
-            Self::do_tick_many(map, number_of_ticks, use_local_growth, use_tick_many)
+            Self::do_tick_many(map, number_of_ticks, use_local_growth)
         });
     }
 
@@ -391,7 +390,6 @@ impl Engine {
                         .min(ticks_per_evolution.saturating_sub(maps[0].ticks));
 
                     let use_local_growth = parameters.performance_parameters.use_local_growth;
-                    let use_tick_many = parameters.performance_parameters.use_tick_many;
 
                     let thread_count = parameters.performance_parameters.thread_count();
                     Self::run_ticks(
@@ -400,7 +398,6 @@ impl Engine {
                         thread_count,
                         number_of_ticks,
                         use_local_growth,
-                        use_tick_many,
                     );
 
                     if parameters.performance_parameters.enable_updates

@@ -86,7 +86,6 @@ pub struct PerformanceParameters {
     pub number_of_threads: u32,
 
     pub use_local_growth: bool,
-    pub use_tick_many: bool,
 
     pub enable_updates: bool,
     pub slow_updates: bool,
@@ -98,7 +97,6 @@ impl PerformanceParameters {
         multithreading_enabled: false,
         number_of_threads: DEFAULT_THREAD_COUNT,
         use_local_growth: false,
-        use_tick_many: false,
         enable_updates: true,
         slow_updates: false,
         slow_update_interval: DEFAULT_STOPWATCH_INTERVAL,
@@ -108,7 +106,6 @@ impl PerformanceParameters {
         multithreading_enabled: cfg!(feature = "thread_evolution"),
         number_of_threads: DEFAULT_THREAD_COUNT,
         use_local_growth: true,
-        use_tick_many: false,
         enable_updates: false,
         slow_updates: true,
         slow_update_interval: DEFAULT_STOPWATCH_INTERVAL,
@@ -139,7 +136,6 @@ impl Default for PerformanceParameters {
             number_of_threads: DEFAULT_THREAD_COUNT,
 
             use_local_growth: true,
-            use_tick_many: false,
 
             enable_updates: true,
             slow_updates: false,
