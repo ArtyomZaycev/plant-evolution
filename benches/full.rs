@@ -42,7 +42,7 @@ fn bench_short(c: &mut Criterion) {
 
     let mut engine = Engine::new(rng::get_seed(), maps, parameters.clone());
 
-    let mut group = c.benchmark_group("engine-benchmarks");
+    let mut group = c.benchmark_group("engine-benchmark-short");
     group
         .sampling_mode(criterion::SamplingMode::Flat)
         .sample_size(10)
@@ -109,7 +109,7 @@ fn bench_long(c: &mut Criterion) {
 
     let mut engine = Engine::new(rng::get_seed(), maps, parameters.clone());
 
-    let mut group = c.benchmark_group("engine-benchmarks");
+    let mut group = c.benchmark_group("engine-benchmark-long");
     group
         .sampling_mode(criterion::SamplingMode::Flat)
         .sample_size(10)
