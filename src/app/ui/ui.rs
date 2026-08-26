@@ -410,7 +410,7 @@ impl PlantEvolutionApp {
             .order(egui::Order::Foreground)
             .show(ui.ctx(), |ui| {
                 ui.vertical_centered_justified(|ui| {
-                    ui.label("History is disabled");
+                    ui.label("History recording is disabled");
                     if ui.button("Enable").clicked() {
                         self.visual_settings.record_history = true;
                         self.trail.record = true;
@@ -431,7 +431,7 @@ impl PlantEvolutionApp {
             .title_bar(false)
             .show(ui.ctx(), |ui| {
                 ui.vertical_centered_justified(|ui| {
-                    ui.label("History recording is disabled");
+                    ui.label("Updates are disabled");
                     if ui.button("Enable").clicked() {
                         self.parameters.performance_parameters.enable_updates = true;
                         self.engine
