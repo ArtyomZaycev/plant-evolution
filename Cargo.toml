@@ -39,10 +39,6 @@ debug = true
 
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }
-cranelift-jit = "0.134.3"
-meval = "0.2.0"
-tabulon = "0.1.10"
-evalexpr-jit = "0.2.3"
 approx = "0.5.1"
 
 [dev-dependencies.plant-evolution]
