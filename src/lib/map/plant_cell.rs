@@ -82,26 +82,23 @@ pub struct PlantCellInput {
     pub cells_proximity_data: [[bool; NUMBER_OF_CELLS]; 4],
 }
 
-#[derive(Debug, Clone)]
-pub struct PlantCell {
-    pub t: usize,
+/// An active (grown) plant cell: its position plus its environment input.
+///
+/// Cell types live in `MapData::cells` (dense `u8` grid); inputs are stored
+/// SoA-style only for active cells so empty grid cells cost a single byte.
+#[derive(Debug, Clone, Default)]
+pub struct PlantCellPos {
+    pub x: usize,
+    pub y: usize,
     pub input: PlantCellInput,
 }
 
-impl PlantCell {
-    pub fn is_none(&self) -> bool {
-        self.t == usize::MAX
-    }
-    pub fn is_some(&self) -> bool {
-        !self.is_none()
-    }
-}
-
-impl Default for PlantCell {
-    fn default() -> Self {
+impl PlantCellPos {
+    pub fn new(x: usize, y: usize) -> Self {
         Self {
-            t: usize::MAX,
-            input: Default::default(),
+            x,
+            y,
+            input: PlantCellInput::default(),
         }
     }
 }

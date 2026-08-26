@@ -32,7 +32,7 @@ pub fn draw_map(
                 },
             );
 
-            let color = if map.cells[i][j].is_some() {
+            let color = if map.cell_is_some(j, i) {
                 visual_settings.plant_color
             } else {
                 match map.map[i][j] {
@@ -49,8 +49,8 @@ pub fn draw_map(
                 };
             painter.rect_filled(rect, 0., color);
 
-            if map.cells[i][j].is_some()
-                && map.evolution_data.cells_abilities[map.cells[i][j].t].seed
+            if map.cell_is_some(j, i)
+                && map.evolution_data.cells_abilities[map.cell_t(j, i) as usize].seed
             {
                 painter.circle_filled(
                     canvas_start

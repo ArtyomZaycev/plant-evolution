@@ -79,8 +79,8 @@ impl MapsTrail {
                     Some(last_map) => {
                         let same_cells = last_map.cells_pos.len() == map.cells_pos.len()
                             && last_map.cells_pos.iter().zip(map.cells_pos.iter()).all(
-                                |(&(x1, y1), &(x2, y2))| {
-                                    last_map.cells[y1][x1].t == map.cells[y2][x2].t
+                                |(last, cur)| {
+                                    last_map.cell_t(last.x, last.y) == map.cell_t(cur.x, cur.y)
                                 },
                             );
                         if same_cells {

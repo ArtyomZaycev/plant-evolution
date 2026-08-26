@@ -815,9 +815,10 @@ impl PlantEvolutionApp {
                     )
                 ))
                 .hovered()
-                && self.maps[map_idx].cells[self.maps[map_idx].next_cell_suicide.2]
-                    [self.maps[map_idx].next_cell_suicide.1]
-                    .is_some()
+                && self.maps[map_idx].cell_is_some(
+                    self.maps[map_idx].next_cell_suicide.1,
+                    self.maps[map_idx].next_cell_suicide.2,
+                )
             {
                 self.highlighted_cell = Some((
                     map_idx,
@@ -866,15 +867,19 @@ impl PlantEvolutionApp {
                     "({}, {}) => {}",
                     x, y, self.maps[map_idx].map[y][x]
                 ));
-                let plant_info = if self.maps[map_idx].cells[y][x].is_some() {
-                    format!(
-                        "Plant cell {}, sunlight: {:.2}, air: {:.2}, minerals: {:.2}, water: {:.2}",
-                        self.maps[map_idx].cells[y][x].t + 1,
-                        self.maps[map_idx].cells[y][x].input.sunlight,
-                        self.maps[map_idx].cells[y][x].input.air,
-                        self.maps[map_idx].cells[y][x].input.minerals,
-                        self.maps[map_idx].cells[y][x].input.water
-                    )
+                let map = &self.maps[map_idx];
+                let plant_info = if map.cell_is_some(x, y) {
+                    match map.cell_input(x, y) {
+                        Some(input) => format!(
+                            "Plant cell {}, sunlight: {:.2}, air: {:.2}, minerals: {:.2}, water: {:.2}",
+                            map.cell_t(x, y) + 1,
+                            input.sunlight,
+                            input.air,
+                            input.minerals,
+                            input.water
+                        ),
+                        None => format!("Plant cell {}", map.cell_t(x, y) + 1),
+                    }
                 } else {
                     "".to_owned()
                 };
