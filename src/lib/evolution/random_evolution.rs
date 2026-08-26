@@ -148,7 +148,9 @@ impl RandomEvolution for PlantCellAbilities {
             0.,
             1.,
         ) | randomize_bool_value_change_chance(&mut self.seed, rng, change_chance);
-        self.populate_cost();
+        if changed {
+            self.populate_cost();
+        }
         changed
     }
 }
