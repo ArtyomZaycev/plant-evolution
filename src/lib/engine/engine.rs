@@ -164,45 +164,31 @@ impl Engine {
         }
     }
 
-    #[cfg(feature = "thread_evolution")]
     #[hotpath::measure]
-    fn run_ticks_threaded(
-        threadpool: &mut scoped_threadpool::Pool,
+    fn run_ticks<P: EvolutionPool>(
+        pool: &mut P,
         maps: &mut Vec<MapData>,
-        thread_count: u32,
+        thread_count: usize,
         number_of_ticks: u32,
         use_local_growth: bool,
         use_tick_many: bool,
     ) {
-        let chunk_size = maps
-            .len()
-            .div_ceil(threadpool.thread_count().min(thread_count) as usize);
-        threadpool.scoped(|scope| {
-            for chunk in maps.chunks_mut(chunk_size) {
-                scope.execute(|| {
-                    chunk.iter_mut().for_each(|map| {
-                        Self::do_tick_many(map, number_of_ticks, use_local_growth, use_tick_many);
-                    });
-                });
-            }
-        });
-    }
-
-    #[hotpath::measure]
-    fn run_ticks(
-        maps: &mut Vec<MapData>,
-        number_of_ticks: u32,
-        use_local_growth: bool,
-        use_tick_many: bool,
-    ) {
-        maps.iter_mut().for_each(|map| {
+        pool.for_each_map_mut(maps, thread_count, |_, map| {
             Self::do_tick_many(map, number_of_ticks, use_local_growth, use_tick_many)
         });
     }
 
-    fn do_evolution(rng: &mut Rng, parameters: &EvolutionParameters, maps: &mut Vec<MapData>) {
+    fn do_evolution<P: EvolutionPool>(
+        pool: &mut P,
+        max_threads: usize,
+        rng: &mut Rng,
+        parameters: &EvolutionParameters,
+        maps: &mut Vec<MapData>,
+    ) {
         if parameters.parent_evolution {
             parents_random_evolve(
+                pool,
+                max_threads,
                 rng,
                 maps,
                 parameters.plants,
@@ -212,6 +198,8 @@ impl Engine {
             );
         } else {
             random_evolve(
+                pool,
+                max_threads,
                 rng,
                 maps,
                 parameters.plants,
@@ -237,6 +225,9 @@ impl Engine {
             let thread_count = crate::evolution::consts::DEFAULT_THREAD_COUNT;
             scoped_threadpool::Pool::new(thread_count)
         };
+
+        #[cfg(not(feature = "thread_evolution"))]
+        let mut threadpool = SequentialPool;
 
         let mut maps_update_stopwatch = Stopwatch::new(Duration::from_millis(100));
         let mut maps = maps_accessor.as_inner().read().unwrap().get_data();
@@ -285,25 +276,14 @@ impl Engine {
                         maps_update_stopwatch.reset();
                     }
                     EngineCommand::Evolve => {
-                        if parameters.evolution_parameters.parent_evolution {
-                            parents_random_evolve(
-                                &mut rng,
-                                &mut maps,
-                                parameters.evolution_parameters.plants,
-                                parameters.evolution_parameters.samples,
-                                parameters.evolution_parameters.change_chance,
-                                parameters.evolution_parameters.change_entropy,
-                            );
-                        } else {
-                            random_evolve(
-                                &mut rng,
-                                &mut maps,
-                                parameters.evolution_parameters.plants,
-                                parameters.evolution_parameters.samples,
-                                parameters.evolution_parameters.change_chance,
-                                parameters.evolution_parameters.change_entropy,
-                            );
-                        }
+                        let thread_count = parameters.performance_parameters.thread_count();
+                        Self::do_evolution(
+                            &mut threadpool,
+                            thread_count,
+                            &mut rng,
+                            &parameters.evolution_parameters,
+                            &mut maps,
+                        );
                         shared_state.total_evolutions.update(
                             Ordering::Relaxed,
                             Ordering::Relaxed,
@@ -408,27 +388,15 @@ impl Engine {
                     let use_local_growth = parameters.performance_parameters.use_local_growth;
                     let use_tick_many = parameters.performance_parameters.use_tick_many;
 
-                    #[cfg(feature = "thread_evolution")]
-                    if parameters.performance_parameters.multithreading_enabled {
-                        Self::run_ticks_threaded(
-                            &mut threadpool,
-                            &mut maps,
-                            parameters.performance_parameters.number_of_threads,
-                            number_of_ticks,
-                            use_local_growth,
-                            use_tick_many,
-                        );
-                    } else {
-                        Self::run_ticks(
-                            &mut maps,
-                            number_of_ticks,
-                            use_local_growth,
-                            use_tick_many,
-                        );
-                    }
-
-                    #[cfg(not(feature = "thread_evolution"))]
-                    Self::run_ticks(&mut maps, number_of_ticks, use_local_growth, use_tick_many);
+                    let thread_count = parameters.performance_parameters.thread_count();
+                    Self::run_ticks(
+                        &mut threadpool,
+                        &mut maps,
+                        thread_count,
+                        number_of_ticks,
+                        use_local_growth,
+                        use_tick_many,
+                    );
 
                     if parameters.performance_parameters.enable_updates
                         && (!parameters.performance_parameters.slow_updates
@@ -446,7 +414,13 @@ impl Engine {
                     }
 
                     if maps[0].ticks >= ticks_per_evolution {
-                        Self::do_evolution(&mut rng, &parameters.evolution_parameters, &mut maps);
+                        Self::do_evolution(
+                            &mut threadpool,
+                            thread_count,
+                            &mut rng,
+                            &parameters.evolution_parameters,
+                            &mut maps,
+                        );
                         shared_state.total_evolutions.update(
                             Ordering::Relaxed,
                             Ordering::Relaxed,

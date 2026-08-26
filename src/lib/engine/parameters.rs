@@ -120,6 +120,16 @@ impl PerformanceParameters {
     };
 
     pub const BALANCE: Self = Self::UI_PERFORMANCE;
+
+    /// Number of worker threads to use: 1 when multithreading is disabled,
+    /// otherwise the configured `number_of_threads`.
+    pub fn thread_count(&self) -> usize {
+        if self.multithreading_enabled {
+            self.number_of_threads as usize
+        } else {
+            1
+        }
+    }
 }
 
 impl Default for PerformanceParameters {

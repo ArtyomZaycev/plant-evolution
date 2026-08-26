@@ -1,7 +1,7 @@
 use std::sync::mpsc;
 
 use formula::FormulaNode;
-use rand::RngExt;
+use rand::{RngExt, SeedableRng, rngs::SmallRng};
 use serde::{Deserialize, Serialize};
 
 use super::{evolution_volatility::*, parents_evolution::*, random_evolution::*, weights_tree::*};
@@ -123,8 +123,67 @@ fn sample_best_maps_evolution(maps: &mut Vec<MapData>, samples: usize) -> Vec<Pl
         .collect::<Vec<_>>()
 }
 
+/// Executes per-map work, passing each map's index. `max_threads` bounds the
+/// parallelism (`usize::MAX` to use all available threads); sequential pools
+/// ignore it. The engine supplies its persistent worker pool so threads are
+/// reused across calls instead of being spawned per call.
+pub trait EvolutionPool {
+    fn for_each_map_mut(
+        &mut self,
+        maps: &mut [MapData],
+        max_threads: usize,
+        f: impl Fn(usize, &mut MapData) + Sync,
+    );
+}
+
+/// Sequential executor for builds without the `thread_evolution` feature.
+#[derive(Debug, Default)]
+pub struct SequentialPool;
+
+impl EvolutionPool for SequentialPool {
+    fn for_each_map_mut(
+        &mut self,
+        maps: &mut [MapData],
+        _max_threads: usize,
+        f: impl Fn(usize, &mut MapData) + Sync,
+    ) {
+        maps.iter_mut().enumerate().for_each(|(i, map)| f(i, map));
+    }
+}
+
+#[cfg(feature = "thread_evolution")]
+impl EvolutionPool for scoped_threadpool::Pool {
+    fn for_each_map_mut(
+        &mut self,
+        maps: &mut [MapData],
+        max_threads: usize,
+        f: impl Fn(usize, &mut MapData) + Sync,
+    ) {
+        let threads = max_threads.min(self.thread_count() as usize).min(maps.len());
+        if threads <= 1 {
+            maps.iter_mut().enumerate().for_each(|(i, map)| f(i, map));
+            return;
+        }
+        let chunk_size = maps.len().div_ceil(threads);
+        self.scoped(|scope| {
+            let f = &f;
+            for (chunk_idx, chunk) in maps.chunks_mut(chunk_size).enumerate() {
+                let base = chunk_idx * chunk_size;
+                scope.execute(move || {
+                    chunk
+                        .iter_mut()
+                        .enumerate()
+                        .for_each(|(j, map)| f(base + j, map));
+                });
+            }
+        });
+    }
+}
+
 #[hotpath::measure]
-pub fn random_evolve(
+pub fn random_evolve<P: EvolutionPool>(
+    pool: &mut P,
+    max_threads: usize,
     rng: &mut Rng,
     maps: &mut Vec<MapData>,
     plants: usize,
@@ -134,24 +193,29 @@ pub fn random_evolve(
 ) {
     let best_evolution_data = sample_best_maps_evolution(maps, samples);
     maps.resize_with(plants, MapData::default);
-    maps.iter_mut()
-        .skip(samples)
-        .enumerate()
-        .for_each(|(i, map)| {
-            map.evolution_data = best_evolution_data[i % samples].clone();
-            map.evolve_random(rng, change_chance, change_entropy);
-        });
+
+    // Assign each child its parent genome (cheap Arc clones), then mutate with
+    // a per-map seeded RNG so the work can be split across threads.
+    let seeds: Vec<u64> = (0..maps.len()).map(|_| rng.random::<u64>()).collect();
+    pool.for_each_map_mut(&mut maps[samples..], max_threads, |i, map| {
+        map.evolution_data = best_evolution_data[i % samples].clone();
+        let mut map_rng = SmallRng::seed_from_u64(seeds[samples + i]);
+        map.evolve_random(&mut map_rng, change_chance, change_entropy);
+    });
+
     best_evolution_data
         .into_iter()
         .enumerate()
         .for_each(|(i, data)| {
             maps[i].evolution_data = data;
         });
-    maps.iter_mut().for_each(|map| map.restart());
+    pool.for_each_map_mut(maps, max_threads, |_, map| map.restart());
 }
 
 #[hotpath::measure]
-pub fn parents_random_evolve(
+pub fn parents_random_evolve<P: EvolutionPool>(
+    pool: &mut P,
+    max_threads: usize,
     rng: &mut Rng,
     maps: &mut Vec<MapData>,
     plants: usize,
@@ -169,12 +233,15 @@ pub fn parents_random_evolve(
         .for_each(|(i, data)| {
             maps[i].evolution_data = data;
         });
-    maps[samples..].iter_mut().for_each(|map| {
-        if rng.random_bool(PARENTS_EVOLUTION_EVOLVE_CHANCE) {
+
+    let seeds: Vec<u64> = (0..maps.len()).map(|_| rng.random::<u64>()).collect();
+    pool.for_each_map_mut(&mut maps[samples..], max_threads, |i, map| {
+        let mut map_rng = SmallRng::seed_from_u64(seeds[samples + i]);
+        if map_rng.random_bool(PARENTS_EVOLUTION_EVOLVE_CHANCE) {
             hotpath::measure_block!("parents_do_evolve", {
-                map.evolve_random(rng, change_chance, change_entropy);
+                map.evolve_random(&mut map_rng, change_chance, change_entropy);
             })
         }
     });
-    maps.iter_mut().for_each(|map| map.restart());
+    pool.for_each_map_mut(maps, max_threads, |_, map| map.restart());
 }
