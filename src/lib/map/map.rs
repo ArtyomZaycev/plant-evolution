@@ -1,4 +1,4 @@
-use std::{collections::{HashMap, HashSet}, sync::LazyLock};
+use std::{collections::HashMap, sync::LazyLock};
 
 use super::{map_cell::*, plant_cell::*};
 use crate::{
@@ -169,7 +169,7 @@ impl MapData {
 
     #[hotpath::measure]
     fn calc_nutrition(&self, x: usize, y: usize) -> (f32, f32, f32) {
-        let dxdy = &DXDY2_2D[y][x];
+        let dxdy = DXDY2_2D.slice(x, y);
 
         let mut air = 0.;
         let mut minerals = 0.;
@@ -266,7 +266,7 @@ impl MapData {
     /// `(x, y)`: the new cell and every cell in `GROWTH_RECALC_NEEDED_FOR`.
     fn populate_plant_inputs_local(&mut self, x: usize, y: usize) {
         self.populate_plant_input_at(x, y);
-        for &(jx, jy) in &GROWTH_RECALC_NEEDED_FOR[y][x] {
+        for &(jx, jy) in GROWTH_RECALC_NEEDED_FOR.slice(x, y) {
             if self.cell_is_some(jx, jy) {
                 self.populate_plant_input_at(jx, jy);
             }
@@ -409,7 +409,7 @@ impl MapData {
     /// per (cell, direction) pair, packed as `(pos, scores)`.
     fn collect_next_cell_growth_contributions(
         &self,
-        recalc_needed: Option<&HashSet<(usize, usize)>>,
+        recalc_needed: Option<&[(usize, usize)]>,
     ) -> Vec<(usize, [f32; NUMBER_OF_CELLS])> {
         let Some(needed) = recalc_needed else {
             // Full rebuild: every empty neighbor cell of every plant cell.
@@ -423,7 +423,7 @@ impl MapData {
                 // Height/xdist depend only on the source cell, not the direction.
                 let height = (1. - i as f32 / MAP_SIZE.1 as f32) * 2. - 1.;
                 let xdist = (j as f32 - PLANT_CENTER.0 as f32).abs() / (MAP_SIZE.0 as f32 / 2.);
-                for &(nj, ni, d) in &GROWTH_DIRECTION[i][j] {
+                for &(nj, ni, d) in GROWTH_DIRECTION.slice(j, i) {
                     if self.cells[ni * MAP_SIZE.0 + nj] == u8::MAX {
                         let mut scores = [0.; NUMBER_OF_CELLS];
                         Self::update_next_cell_growth_array(
@@ -448,7 +448,7 @@ impl MapData {
             if self.cells[ni * MAP_SIZE.0 + nj] != u8::MAX {
                 continue; // occupied cells are not growth targets
             }
-            for &(sx, sy, d) in &GROWTH_SOURCES[ni][nj] {
+            for &(sx, sy, d) in GROWTH_SOURCES.slice(nj, ni) {
                 self.push_source_contribution(sx, sy, d, nj, ni, &mut contributions);
             }
         }
@@ -531,12 +531,13 @@ impl MapData {
 
     /// Assumes new cells has grown at (x, y)
     fn recalc_next_cell_growth(&mut self, x: usize, y: usize) {
-        let recalc_needed = &GROWTH_RECALC_NEEDED_FOR[y][x];
+        let recalc_needed = GROWTH_RECALC_NEEDED_FOR.slice(x, y);
 
         // Drop the grown cell and every target that needs recalculation; their
         // scores are rebuilt from scratch below.
         self.all_next_cell_growth.retain(|entry| {
-            !((entry.x == x && entry.y == y) || recalc_needed.contains(&(entry.x, entry.y)))
+            !((entry.x == x && entry.y == y)
+                || recalc_needed.binary_search(&(entry.x, entry.y)).is_ok())
         });
 
         let contributions = self.collect_next_cell_growth_contributions(Some(recalc_needed));
@@ -587,7 +588,7 @@ impl MapData {
     /// at `(x, y)`, then rescans the cached scores for the new maximum.
     fn recalc_next_cell_suicide_local(&mut self, x: usize, y: usize) {
         self.update_suicide_score_at(x, y);
-        for &(jx, jy) in &GROWTH_RECALC_NEEDED_FOR[y][x] {
+        for &(jx, jy) in GROWTH_RECALC_NEEDED_FOR.slice(x, y) {
             if self.cell_is_some(jx, jy) {
                 self.update_suicide_score_at(jx, jy);
             }
