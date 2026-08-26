@@ -26,6 +26,11 @@ impl Default for SoilParameters {
     }
 }
 
+/// Terrain cell view type.
+///
+/// `MapData` stores the terrain in SoA form (`sunlight` per cell, `soil_minerals`
+/// and `soil_water` per row); this enum is constructed on demand via
+/// `MapData::map_cell` for UI display.
 #[derive(Debug, Clone, PartialEq)]
 pub enum MapCell {
     Air(AirParameters),

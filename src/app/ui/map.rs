@@ -35,7 +35,7 @@ pub fn draw_map(
             let color = if map.cell_is_some(j, i) {
                 visual_settings.plant_color
             } else {
-                match map.map[i][j] {
+                match map.map_cell(j, i) {
                     MapCell::Air(_) => visual_settings.air_color,
                     MapCell::Soil(_) => visual_settings.soil_color,
                 }

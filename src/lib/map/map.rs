@@ -1,4 +1,4 @@
-use std::{cell::LazyCell, collections::HashMap};
+use std::{collections::HashMap, sync::LazyLock};
 
 use super::{map_cell::*, plant_cell::*};
 use crate::{
@@ -44,13 +44,19 @@ pub struct MapData {
     pub all_next_cell_growth: HashMap<(usize, usize), [f32; NUMBER_OF_CELLS]>,
     /// Active cells with their environment input.
     pub cells_pos: Vec<PlantCellPos>,
-    pub map: [[MapCell; MAP_SIZE.0]; MAP_SIZE.1],
+    /// Sunlight per air cell (`y * MAP_SIZE.0 + x`, only rows below `GROUND_LEVEL` are stored).
+    pub sunlight: Vec<f32>,
+    /// Minerals per soil row (indexed by `y - GROUND_LEVEL`).
+    pub soil_minerals: Vec<f32>,
+    /// Water per soil row (indexed by `y - GROUND_LEVEL`).
+    pub soil_water: Vec<f32>,
     /// Dense cell-type grid (`y * MAP_SIZE.0 + x`), `u8::MAX` = empty cell.
     pub cells: Vec<u8>,
 }
 
 impl Default for MapData {
     fn default() -> Self {
+        let basic_terrain = LazyLock::force(&BASIC_TERRAIN);
         let mut s = Self {
             evolution_data: PlantEvolutionData::default(),
             next_cell_growth: (f32::NEG_INFINITY, 0, 0, 0),
@@ -61,7 +67,9 @@ impl Default for MapData {
             nutrition_per_tick: PlantNutrition::default(),
             all_next_cell_growth: HashMap::new(),
             cells_pos: vec![PlantCellPos::new(PLANT_CENTER.0, PLANT_CENTER.1)],
-            map: Self::BASIC_MAP.clone(),
+            sunlight: basic_terrain.sunlight.clone(),
+            soil_minerals: basic_terrain.soil_minerals.clone(),
+            soil_water: basic_terrain.soil_water.clone(),
             cells: Self::basic_cells(),
         };
         s.populate_plant_inputs();
@@ -102,31 +110,40 @@ impl MapData {
             .map(|pos| &pos.input)
     }
 
+    /// Terrain view at `(x, y)` for UI. The terrain itself is static
+    /// (air above `GROUND_LEVEL`, soil below); only sunlight changes.
+    pub fn map_cell(&self, x: usize, y: usize) -> MapCell {
+        if y < GROUND_LEVEL {
+            MapCell::Air(AirParameters {
+                sunlight: self.sunlight[y * MAP_SIZE.0 + x],
+            })
+        } else {
+            MapCell::Soil(SoilParameters {
+                minerals: self.soil_minerals[y - GROUND_LEVEL],
+                water: self.soil_water[y - GROUND_LEVEL],
+            })
+        }
+    }
+
     #[hotpath::measure]
     fn update_sunlight(&mut self, x: usize, y: usize) {
         let mut sunlight = if y == 0 {
             1.
+        } else if y - 1 < GROUND_LEVEL {
+            self.sunlight[(y - 1) * MAP_SIZE.0 + x] * 0.3
         } else {
-            match &self.map[y - 1][x] {
-                MapCell::Air(air_parameters) => air_parameters.sunlight * 0.3,
-                MapCell::Soil(_) => 0.,
-            }
+            0.
         };
 
-        for i in y + 1..MAP_SIZE.1 {
+        for i in y + 1..GROUND_LEVEL {
             if sunlight < 0.001 {
                 break;
             }
-            match &mut self.map[i][x] {
-                MapCell::Air(air_parameters) => {
-                    air_parameters.sunlight = sunlight;
-                    if self.cell_is_some(x, i) {
-                        sunlight *= SUNLIGHT_CELL_MULTIPLIER;
-                    } else {
-                        sunlight *= SUNLIGHT_AIR_MULTIPLIER;
-                    }
-                }
-                MapCell::Soil(_) => break,
+            self.sunlight[i * MAP_SIZE.0 + x] = sunlight;
+            if self.cell_is_some(x, i) {
+                sunlight *= SUNLIGHT_CELL_MULTIPLIER;
+            } else {
+                sunlight *= SUNLIGHT_AIR_MULTIPLIER;
             }
         }
     }
@@ -145,32 +162,21 @@ impl MapData {
         let mut air = 0.;
         let mut minerals = 0.;
         let mut water = 0.;
-        match &self.map[y][x] {
-            MapCell::Air(_) => {
-                for &(nx, ny, distance) in dxdy {
-                    match &self.map[ny][nx] {
-                        MapCell::Air(_) => {
-                            if self.cell_is_none(nx, ny) {
-                                air += distance * AIR_AIR_MULTIPLIER;
-                            } else {
-                                air += distance * AIR_CELL_MULTIPLIER;
-                            }
-                        }
-                        MapCell::Soil(_) => {}
+        if y < GROUND_LEVEL {
+            for &(nx, ny, distance) in dxdy {
+                if ny < GROUND_LEVEL {
+                    if self.cell_is_none(nx, ny) {
+                        air += distance * AIR_AIR_MULTIPLIER;
+                    } else {
+                        air += distance * AIR_CELL_MULTIPLIER;
                     }
                 }
             }
-            MapCell::Soil(_) => {
-                for &(nx, ny, distance) in dxdy {
-                    match &self.map[ny][nx] {
-                        MapCell::Air(_) => {}
-                        MapCell::Soil(soil_parameters) => {
-                            if self.cell_is_none(nx, ny) {
-                                minerals += soil_parameters.minerals * distance;
-                                water += soil_parameters.water * distance;
-                            }
-                        }
-                    }
+        } else {
+            for &(nx, ny, distance) in dxdy {
+                if ny >= GROUND_LEVEL && self.cell_is_none(nx, ny) {
+                    minerals += self.soil_minerals[ny - GROUND_LEVEL] * distance;
+                    water += self.soil_water[ny - GROUND_LEVEL] * distance;
                 }
             }
         }
@@ -211,9 +217,10 @@ impl MapData {
             };
             let (air, minerals, water) = self.calc_nutrition(j, i);
             let cells_proximity_data = self.calc_cells_proximity_data(j, i);
-            let sunlight = match &self.map[i][j] {
-                MapCell::Air(air_parameters) => air_parameters.sunlight,
-                MapCell::Soil(_) => 0.,
+            let sunlight = if i < GROUND_LEVEL {
+                self.sunlight[i * MAP_SIZE.0 + j]
+            } else {
+                0.
             };
             self.cells_pos[idx].input = PlantCellInput {
                 sunlight,
@@ -495,38 +502,54 @@ impl MapData {
     }
 }
 
-impl MapData {
-    const BASIC_MAP: LazyCell<[[MapCell; MAP_SIZE.0]; MAP_SIZE.1]> =
-        LazyCell::new(MapData::generate_basic_map);
+/// Number of air cells in the terrain (`GROUND_LEVEL` rows).
+const AIR_CELLS: usize = GROUND_LEVEL * MAP_SIZE.0;
+/// Number of soil rows in the terrain.
+const SOIL_ROWS: usize = MAP_SIZE.1 - GROUND_LEVEL;
 
-    fn generate_basic_map() -> [[MapCell; MAP_SIZE.0]; MAP_SIZE.1] {
-        let mut sunlight = 1.;
-        core::array::from_fn(|i| {
-            sunlight *= SUNLIGHT_AIR_MULTIPLIER;
-            core::array::from_fn(|_| {
-                if i < GROUND_LEVEL {
-                    MapCell::Air(AirParameters { sunlight })
-                } else {
-                    let depth = i - GROUND_LEVEL;
-                    let depth = depth as f32 / (MAP_SIZE.1 - GROUND_LEVEL) as f32;
-                    MapCell::Soil(SoilParameters {
-                        minerals: LOW_DEPTH_MINERALS
-                            + (HIGH_DEPTH_MINERALS - LOW_DEPTH_MINERALS).abs() * depth,
-                        water: HIGH_DEPTH_WATER
-                            + (HIGH_DEPTH_WATER - LOW_DEPTH_WATER).abs() * (1. - depth),
-                    })
-                }
-            })
-        })
+/// Static terrain in SoA form. Terrain never changes during a simulation:
+/// air rows (0..`GROUND_LEVEL`) carry sunlight, soil rows carry minerals/water
+/// that are constant per row (a function of depth only).
+#[derive(Clone)]
+struct BasicTerrain {
+    sunlight: Vec<f32>,
+    soil_minerals: Vec<f32>,
+    soil_water: Vec<f32>,
+}
+
+impl BasicTerrain {
+    fn generate() -> Self {
+        let mut sunlight = vec![0.; AIR_CELLS];
+        let mut soil_minerals = vec![0.; SOIL_ROWS];
+        let mut soil_water = vec![0.; SOIL_ROWS];
+        let mut row_sunlight = 1.;
+        for i in 0..GROUND_LEVEL {
+            row_sunlight *= SUNLIGHT_AIR_MULTIPLIER;
+            sunlight[i * MAP_SIZE.0..(i + 1) * MAP_SIZE.0].fill(row_sunlight);
+        }
+        for i in GROUND_LEVEL..MAP_SIZE.1 {
+            let depth = (i - GROUND_LEVEL) as f32 / SOIL_ROWS as f32;
+            soil_minerals[i - GROUND_LEVEL] = LOW_DEPTH_MINERALS
+                + (HIGH_DEPTH_MINERALS - LOW_DEPTH_MINERALS).abs() * depth;
+            soil_water[i - GROUND_LEVEL] =
+                HIGH_DEPTH_WATER + (HIGH_DEPTH_WATER - LOW_DEPTH_WATER).abs() * (1. - depth);
+        }
+        Self {
+            sunlight,
+            soil_minerals,
+            soil_water,
+        }
     }
+}
 
-    fn fill_as_basic_map(map: &mut [[MapCell; MAP_SIZE.0]; MAP_SIZE.1]) {
-        let mut sunlight = 1.;
-        // Soil is always the same, no need to update it
-        map[..GROUND_LEVEL].iter_mut().for_each(|row| {
-            sunlight *= SUNLIGHT_AIR_MULTIPLIER;
-            row.fill(MapCell::Air(AirParameters { sunlight }));
-        });
+static BASIC_TERRAIN: LazyLock<BasicTerrain> = LazyLock::new(BasicTerrain::generate);
+
+impl MapData {
+    fn fill_as_basic_map(&mut self) {
+        let basic = LazyLock::force(&BASIC_TERRAIN);
+        self.sunlight.copy_from_slice(&basic.sunlight);
+        self.soil_minerals.copy_from_slice(&basic.soil_minerals);
+        self.soil_water.copy_from_slice(&basic.soil_water);
     }
 
     fn basic_cells() -> Vec<u8> {
@@ -566,7 +589,7 @@ impl MapData {
 
             self.cells.fill(u8::MAX);
             self.cells[PLANT_CENTER.1 * MAP_SIZE.0 + PLANT_CENTER.0] = 0;
-            Self::fill_as_basic_map(&mut self.map);
+            self.fill_as_basic_map();
         });
         self.cells_pos.clear();
         self.cells_pos
@@ -591,7 +614,7 @@ impl MapData {
         self.cells_pos.iter().for_each(|pos| {
             let (j, i) = (pos.x, pos.y);
             let abilities = &self.evolution_data.cells_abilities[self.cell_t(j, i) as usize];
-            if abilities.seed && matches!(self.map[i][j], MapCell::Air(_)) {
+            if abilities.seed && i < GROUND_LEVEL {
                 seeds.push((j, i));
             }
         });

@@ -865,7 +865,7 @@ impl PlantEvolutionApp {
             Some((map_idx, x, y)) => {
                 ui.label(format!(
                     "({}, {}) => {}",
-                    x, y, self.maps[map_idx].map[y][x]
+                    x, y, self.maps[map_idx].map_cell(x, y)
                 ));
                 let map = &self.maps[map_idx];
                 let plant_info = if map.cell_is_some(x, y) {
