@@ -238,7 +238,14 @@ impl Engine {
         let mut state = InnerEngineState::Stale;
 
         loop {
-            if let Ok(command) = receiver.try_recv() {
+            // Block up to 20ms for a command while idle; poll without blocking
+            // while a simulation is running.
+            let command = match state {
+                InnerEngineState::Stale => receiver.recv_timeout(Duration::from_millis(100)).ok(),
+                _ => receiver.try_recv().ok(),
+            };
+
+            if let Some(command) = command {
                 match command {
                     EngineCommand::UpdateParameters(new_parameters) => {
                         maps_update_stopwatch.interval =
@@ -352,9 +359,7 @@ impl Engine {
             }
 
             match state {
-                InnerEngineState::Stale => {
-                    thread::sleep(Duration::from_millis(20));
-                }
+                InnerEngineState::Stale => {}
                 InnerEngineState::RunSimulation { autoevolve: None } => {
                     let use_local_growth = parameters.performance_parameters.use_local_growth;
                     maps.iter_mut().for_each(|map| {
