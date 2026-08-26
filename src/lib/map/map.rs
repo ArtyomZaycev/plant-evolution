@@ -291,39 +291,50 @@ impl MapData {
         self.plant_nutrition.energy += produced - self.total_passive_cost * ticks;
     }
 
-    // TODO: Measure performance agains simpler comparisons
-    /// Determenistic way of choosing next cell growth
+    // TODO: Measure performance against simpler comparisons
+    /// Deterministic ordering for choosing next cell growth.
+    /// True if `(w, x, y, c)` is strictly better than `(bw, bx, by, bc)` - it
+    /// mirrors the original tuple comparison `(w, -(dist as i32), -(c as i32),
+    /// x, y)` exactly: higher weight, then closer to center, then lower cell
+    /// type, then higher x, then higher y. Short-circuits on the first key.
     #[inline(always)]
-    fn compare_next_cell_growth(
-        x1: usize,
-        y1: usize,
-        c1: usize,
-        w1: f32,
-        x2: usize,
-        y2: usize,
-        c2: usize,
-        w2: f32,
-    ) -> std::cmp::Ordering {
-        (
-            // Weight (how much the plant wants to grow here)
-            w1,
-            // Horizontal distance from the center (less is better)
-            -((x1.abs_diff(PLANT_CENTER.0) + y1.abs_diff(PLANT_CENTER.1)) as i32),
-            // Cell type (less is better)
-            -(c1 as i32),
-            // Horizontal position
-            x1,
-            // Vertical position
-            y1,
-        )
-            .partial_cmp(&(
-                w2,
-                -((x2.abs_diff(PLANT_CENTER.0) + y2.abs_diff(PLANT_CENTER.1)) as i32),
-                -(c2 as i32),
-                x2,
-                y2,
-            ))
-            .unwrap()
+    fn is_better_growth(
+        w: f32,
+        x: usize,
+        y: usize,
+        c: usize,
+        bw: f32,
+        bx: usize,
+        by: usize,
+        bc: usize,
+    ) -> bool {
+        if w > bw {
+            return true;
+        }
+        if w < bw {
+            return false;
+        }
+        let d = x.abs_diff(PLANT_CENTER.0) + y.abs_diff(PLANT_CENTER.1);
+        let bd = bx.abs_diff(PLANT_CENTER.0) + by.abs_diff(PLANT_CENTER.1);
+        if d < bd {
+            return true;
+        }
+        if d > bd {
+            return false;
+        }
+        if c < bc {
+            return true;
+        }
+        if c > bc {
+            return false;
+        }
+        if x > bx {
+            return true;
+        }
+        if x < bx {
+            return false;
+        }
+        y > by
     }
 
     fn update_next_cell_growth_array(
@@ -351,18 +362,16 @@ impl MapData {
                 continue;
             }
             for (c, &w) in entry.scores.iter().enumerate() {
-                if Self::compare_next_cell_growth(
+                if Self::is_better_growth(
+                    w,
                     entry.x,
                     entry.y,
                     c,
-                    w,
+                    self.next_cell_growth.0,
                     self.next_cell_growth.1,
                     self.next_cell_growth.2,
                     self.next_cell_growth.3,
-                    self.next_cell_growth.0,
-                )
-                .is_gt()
-                {
+                ) {
                     self.next_cell_growth = (w, entry.x, entry.y, c);
                 }
             }
