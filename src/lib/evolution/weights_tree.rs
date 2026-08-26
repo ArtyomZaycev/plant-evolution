@@ -78,7 +78,7 @@ impl WeightsTree {
 
 impl Display for WeightsTree {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.formula.nodes.fmt(f)
+        f.write_str(&<TreeFormula<InputNode> as Formula<WeightsTreeParameters>>::str_expression(&self.formula))
     }
 }
 
