@@ -138,7 +138,7 @@ impl Default for PerformanceParameters {
             multithreading_enabled: cfg!(feature = "thread_evolution"),
             number_of_threads: DEFAULT_THREAD_COUNT,
 
-            use_local_growth: false,
+            use_local_growth: true,
             use_tick_many: false,
 
             enable_updates: true,
