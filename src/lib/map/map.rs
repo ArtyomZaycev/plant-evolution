@@ -263,13 +263,60 @@ impl MapData {
     }
 
     /// Recomputes only the inputs that can change after a cell grows at
-    /// `(x, y)`: the new cell and every cell in `GROWTH_RECALC_NEEDED_FOR`.
+    /// `(x, y)`: the new cell gets a full recompute, and every occupied cell in
+    /// `GROWTH_RECALC_NEEDED_FOR` gets only the fields that actually changed.
     fn populate_plant_inputs_local(&mut self, x: usize, y: usize) {
         self.populate_plant_input_at(x, y);
+
         for &(jx, jy) in GROWTH_RECALC_NEEDED_FOR.slice(x, y) {
-            if self.cell_is_some(jx, jy) {
-                self.populate_plant_input_at(jx, jy);
+            if !self.cell_is_some(jx, jy) {
+                continue;
             }
+            let dx = jx.abs_diff(x);
+            let dy = jy.abs_diff(y);
+            // calc_nutrition reads neighbors within squared distance <= 4.
+            let air = dx * dx + dy * dy <= 4;
+            // calc_cells_proximity_data reads the 4 cardinal neighbors.
+            let proximity = dx + dy == 1;
+            // update_sunlight only rewrites column x, below y.
+            let sunlight = jx == x && jy > y && jy < GROUND_LEVEL;
+            self.populate_plant_input_partial(jx, jy, air, proximity, sunlight);
+        }
+    }
+
+    /// Refreshes only the requested fields of cell `(x, y)`'s input. After a
+    /// grow, air/minerals/water, proximity, and sunlight change independently,
+    /// so recomputing only the affected ones avoids full `calc_nutrition` work
+    /// for the (mostly sunlight-only) recalc set.
+    fn populate_plant_input_partial(
+        &mut self,
+        x: usize,
+        y: usize,
+        air: bool,
+        proximity: bool,
+        sunlight: bool,
+    ) {
+        let slot = self.cell_slots[&(y * MAP_SIZE.0 + x)];
+
+        let nutrition = air.then(|| self.calc_nutrition(x, y));
+        let proximity_data = proximity.then(|| self.calc_cells_proximity_data(x, y));
+        let sun = if sunlight {
+            self.sunlight[y * MAP_SIZE.0 + x]
+        } else {
+            0.
+        };
+
+        let input = &mut self.cells_pos[slot].input;
+        if let Some((a, m, w)) = nutrition {
+            input.air = a;
+            input.minerals = m;
+            input.water = w;
+        }
+        if let Some(data) = proximity_data {
+            input.cells_proximity_data = data;
+        }
+        if sunlight {
+            input.sunlight = sun;
         }
     }
 
