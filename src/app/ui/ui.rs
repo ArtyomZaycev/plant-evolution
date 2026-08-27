@@ -343,7 +343,7 @@ impl PlantEvolutionApp {
                 cell_idx + 1
             ))
             .collapsible(false)
-            .resizable(false)
+            .resizable(true)
             .open(&mut is_open)
             .show(ui.ctx(), |ui| {
                 ui.label(format!("Cell volatility: {:.2}", evolution_data.volatility));
@@ -353,25 +353,27 @@ impl PlantEvolutionApp {
                     // TODO: Why always 0??
                     evolution_data.suicide_weights.to_string()
                 ));
-                ["Up", "Down", "Inwards", "Outwards"]
-                    .into_iter()
-                    .enumerate()
-                    .for_each(|(dir, dir_name)| {
-                        egui::CollapsingHeader::new(dir_name)
-                            .default_open(true)
-                            .show(ui, |ui| {
-                                evolution_data.weights[dir].iter().enumerate().for_each(
-                                    |(i, w)| {
-                                        ui.label(format!(
-                                            "{} (v={:.2}): {}",
-                                            i + 1,
-                                            w.volatility,
-                                            w.to_string()
-                                        ));
-                                    },
-                                );
-                            });
-                    });
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    ["Up", "Down", "Inwards", "Outwards"]
+                        .into_iter()
+                        .enumerate()
+                        .for_each(|(dir, dir_name)| {
+                            egui::CollapsingHeader::new(dir_name)
+                                .default_open(true)
+                                .show(ui, |ui| {
+                                    evolution_data.weights[dir].iter().enumerate().for_each(
+                                        |(i, w)| {
+                                            ui.label(format!(
+                                                "{} (v={:.2}): {}",
+                                                i + 1,
+                                                w.volatility,
+                                                w.to_string()
+                                            ));
+                                        },
+                                    );
+                                });
+                        });
+                });
             });
             if !is_open {
                 self.selected_decision_tree = None;
