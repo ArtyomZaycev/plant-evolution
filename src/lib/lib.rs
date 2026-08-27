@@ -1,5 +1,3 @@
-#![feature(sync_unsafe_cell)]
-
 pub mod consts;
 pub mod engine;
 pub mod evolution;
