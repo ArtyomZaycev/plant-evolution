@@ -5,10 +5,7 @@ use formula::{Formula, FormulaNode, Nodes, TreeFormula};
 use rand::RngExt;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    map::PlantCellInput,
-    precalc::NUMBER_OF_CELLS,
-};
+use crate::{map::PlantCellInput, precalc::NUMBER_OF_CELLS};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum InputNode {
@@ -66,7 +63,7 @@ pub struct WeightsTree {
 impl WeightsTree {
     pub fn new(nodes: Vec<FormulaNode<InputNode>>) -> Self {
         Self {
-            formula: Arc::new(TreeFormula::new(Nodes::new(nodes).unwrap()))
+            formula: Arc::new(TreeFormula::new(Nodes::new(nodes).unwrap())),
         }
     }
 
@@ -78,7 +75,9 @@ impl WeightsTree {
 
 impl Display for WeightsTree {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&<TreeFormula<InputNode> as Formula<WeightsTreeParameters>>::str_expression(&self.formula))
+        f.write_str(&<TreeFormula<InputNode> as Formula<
+            WeightsTreeParameters,
+        >>::str_expression(&self.formula))
     }
 }
 

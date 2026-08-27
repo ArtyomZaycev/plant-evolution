@@ -196,7 +196,7 @@ fn generate_recalc_needed_for() -> Flattened2D<(usize, usize)> {
                             }
                             res
                         }))
-                        .chain((y < GROUND_LEVEL).then(|| (x, GROUND_LEVEL)))
+                        .chain((y < GROUND_LEVEL).then_some((x, GROUND_LEVEL)))
                         .collect();
                     // Sorted + deduped so the slice supports binary search.
                     set.sort_unstable();

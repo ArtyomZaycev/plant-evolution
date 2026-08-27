@@ -5,12 +5,7 @@ use rand::{RngExt, SeedableRng, rngs::SmallRng};
 use serde::{Deserialize, Serialize};
 
 use super::{evolution_volatility::*, parents_evolution::*, random_evolution::*, weights_tree::*};
-use crate::{
-    evolution::consts::*,
-    map::*,
-    precalc::*,
-    utils::Rng,
-};
+use crate::{evolution::consts::*, map::*, precalc::*, utils::Rng};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CellEvolutionData {
@@ -111,7 +106,7 @@ fn sample_best_maps_evolution(maps: &mut Vec<MapData>, samples: usize) -> Vec<Pl
     // Can't use select_nth_unstable_by, since we don't want to shuffle first `sample` maps if they are the best
     // to avoid bloating WeightTree
     // And sample_best_maps_evolution takes ~2% of the time at most, it's not a hotpath
-    best_maps_idx.sort_by(|a, b| a.partial_cmp(&b).unwrap());
+    best_maps_idx.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
     best_maps_idx
         .iter()
@@ -156,7 +151,9 @@ impl EvolutionPool for scoped_threadpool::Pool {
         max_threads: usize,
         f: impl Fn(usize, &mut MapData) + Sync,
     ) {
-        let threads = max_threads.min(self.thread_count() as usize).min(maps.len());
+        let threads = max_threads
+            .min(self.thread_count() as usize)
+            .min(maps.len());
         if threads <= 1 {
             maps.iter_mut().enumerate().for_each(|(i, map)| f(i, map));
             return;

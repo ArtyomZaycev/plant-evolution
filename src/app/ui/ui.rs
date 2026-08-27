@@ -351,7 +351,7 @@ impl PlantEvolutionApp {
                     "Suicide (v={:.2}): {}",
                     evolution_data.suicide_weights.volatility,
                     // TODO: Why always 0??
-                    evolution_data.suicide_weights.to_string()
+                    *evolution_data.suicide_weights
                 ));
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     ["Up", "Down", "Inwards", "Outwards"]
@@ -367,7 +367,7 @@ impl PlantEvolutionApp {
                                                 "{} (v={:.2}): {}",
                                                 i + 1,
                                                 w.volatility,
-                                                w.to_string()
+                                                **w
                                             ));
                                         },
                                     );
@@ -867,7 +867,9 @@ impl PlantEvolutionApp {
             Some((map_idx, x, y)) => {
                 ui.label(format!(
                     "({}, {}) => {}",
-                    x, y, self.maps[map_idx].map_cell(x, y)
+                    x,
+                    y,
+                    self.maps[map_idx].map_cell(x, y)
                 ));
                 let map = &self.maps[map_idx];
                 let plant_info = if map.cell_is_some(x, y) {

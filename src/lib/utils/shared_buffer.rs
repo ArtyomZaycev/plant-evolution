@@ -149,7 +149,9 @@ impl State {
                 next ^= SWAPPED;
                 next &= !NEED_SWAP;
             }
-            match self.flags.compare_exchange_weak(flags, next, Ordering::AcqRel, Ordering::Acquire)
+            match self
+                .flags
+                .compare_exchange_weak(flags, next, Ordering::AcqRel, Ordering::Acquire)
             {
                 Ok(_) => break,
                 Err(actual) => flags = actual,

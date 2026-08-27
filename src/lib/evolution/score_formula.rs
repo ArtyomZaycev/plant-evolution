@@ -1,6 +1,10 @@
 use formula::Formula;
 
-use crate::{evolution::consts::{SCORE_NUTRITION_MULTIPLIER, SEED_SCORE, SEEDS_MIN_DISTANCE}, map::{MapData, PlantNutrition}, precalc::GROUND_LEVEL};
+use crate::{
+    evolution::consts::{SCORE_NUTRITION_MULTIPLIER, SEED_SCORE},
+    map::{MapData, PlantNutrition},
+    precalc::GROUND_LEVEL,
+};
 
 /*
 
@@ -53,15 +57,17 @@ pub enum SeedFormula {
 
 impl SeedFormula {
     fn collect_input(map: &MapData) -> SeedInput {
-        SeedInput { amount: map.cells_pos.iter().fold(0, |amount, pos| {
-            let (j, i) = (pos.x, pos.y);
-            let abilities = &map.evolution_data.cells_abilities[map.cell_t(j, i) as usize];
-            if abilities.seed && i < GROUND_LEVEL {
-                amount + 1
-            } else {
-                amount
-            }
-        }) }
+        SeedInput {
+            amount: map.cells_pos.iter().fold(0, |amount, pos| {
+                let (j, i) = (pos.x, pos.y);
+                let abilities = &map.evolution_data.cells_abilities[map.cell_t(j, i) as usize];
+                if abilities.seed && i < GROUND_LEVEL {
+                    amount + 1
+                } else {
+                    amount
+                }
+            }),
+        }
     }
 
     fn calculate_native(map: &MapData, distance: usize) -> f32 {
@@ -104,17 +110,14 @@ pub enum ScoreFormula {
 
 impl ScoreFormula {
     fn calculate_native(input: &MapInput<'_>) -> f32 {
-        input.seed_score
-            + (input.lowest_nutrition_per_tick
-                * SCORE_NUTRITION_MULTIPLIER)
-                .sqrt()
+        input.seed_score + (input.lowest_nutrition_per_tick * SCORE_NUTRITION_MULTIPLIER).sqrt()
     }
 
     #[inline]
     pub fn calculate(&self, input: &MapInput<'_>) -> f32 {
         match self {
             ScoreFormula::Native => Self::calculate_native(input),
-            ScoreFormula::Custom(formula) => formula.calculate(&input),
+            ScoreFormula::Custom(formula) => formula.calculate(input),
         }
     }
 }
@@ -132,25 +135,25 @@ impl MapScoreFormula {
             nutrition_per_tick: &map.nutrition_per_tick,
             passive_cost: map.total_passive_cost,
             lowest_nutrition: [
-                    map.plant_nutrition.sunlight,
-                    map.plant_nutrition.air,
-                    map.plant_nutrition.minerals,
-                    map.plant_nutrition.water,
-                    map.plant_nutrition.energy,
-                ]
-                .into_iter()
-                .reduce(f32::min)
-                .unwrap(),
+                map.plant_nutrition.sunlight,
+                map.plant_nutrition.air,
+                map.plant_nutrition.minerals,
+                map.plant_nutrition.water,
+                map.plant_nutrition.energy,
+            ]
+            .into_iter()
+            .reduce(f32::min)
+            .unwrap(),
             lowest_nutrition_per_tick: [
-                    map.nutrition_per_tick.sunlight,
-                    map.nutrition_per_tick.air,
-                    map.nutrition_per_tick.minerals,
-                    map.nutrition_per_tick.water,
-                    map.nutrition_per_tick.energy,
-                ]
-                .into_iter()
-                .reduce(f32::min)
-                .unwrap(),
+                map.nutrition_per_tick.sunlight,
+                map.nutrition_per_tick.air,
+                map.nutrition_per_tick.minerals,
+                map.nutrition_per_tick.water,
+                map.nutrition_per_tick.energy,
+            ]
+            .into_iter()
+            .reduce(f32::min)
+            .unwrap(),
             seed_score,
         }
     }
@@ -161,4 +164,3 @@ impl MapScoreFormula {
         self.map_formula.calculate(&input)
     }
 }
-

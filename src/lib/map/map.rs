@@ -329,11 +329,9 @@ impl MapData {
             let abilities = &self.evolution_data.cells_abilities[t as usize];
             self.total_passive_cost += abilities.passive_cost;
             nutrition = PlantNutrition {
-                sunlight: nutrition.sunlight
-                    + pos.input.sunlight * *abilities.sunlight_consumption,
+                sunlight: nutrition.sunlight + pos.input.sunlight * *abilities.sunlight_consumption,
                 air: nutrition.air + pos.input.air * *abilities.air_consumption,
-                minerals: nutrition.minerals
-                    + pos.input.minerals * *abilities.minerals_consumption,
+                minerals: nutrition.minerals + pos.input.minerals * *abilities.minerals_consumption,
                 water: nutrition.water + pos.input.water * *abilities.water_consumption,
                 energy: nutrition.energy + *abilities.energy_production_speed,
             };
@@ -679,8 +677,9 @@ impl MapData {
         self.search_cells(PLANT_CENTER.0, PLANT_CENTER.1, &mut ex_plants);
 
         let old_cells_pos = std::mem::take(&mut self.cells_pos);
-        let (kept, removed): (Vec<_>, Vec<_>) =
-            old_cells_pos.into_iter().partition(|pos| ex_plants[pos.y][pos.x]);
+        let (kept, removed): (Vec<_>, Vec<_>) = old_cells_pos
+            .into_iter()
+            .partition(|pos| ex_plants[pos.y][pos.x]);
         for pos in &removed {
             self.set_cell_t(pos.x, pos.y, u8::MAX);
         }
@@ -765,8 +764,8 @@ impl BasicTerrain {
         }
         for i in GROUND_LEVEL..MAP_SIZE.1 {
             let depth = (i - GROUND_LEVEL) as f32 / SOIL_ROWS as f32;
-            soil_minerals[i - GROUND_LEVEL] = LOW_DEPTH_MINERALS
-                + (HIGH_DEPTH_MINERALS - LOW_DEPTH_MINERALS).abs() * depth;
+            soil_minerals[i - GROUND_LEVEL] =
+                LOW_DEPTH_MINERALS + (HIGH_DEPTH_MINERALS - LOW_DEPTH_MINERALS).abs() * depth;
             soil_water[i - GROUND_LEVEL] =
                 HIGH_DEPTH_WATER + (HIGH_DEPTH_WATER - LOW_DEPTH_WATER).abs() * (1. - depth);
         }

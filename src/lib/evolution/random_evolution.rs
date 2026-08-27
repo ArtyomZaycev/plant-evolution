@@ -1,4 +1,4 @@
-use std::sync::{mpsc, Arc};
+use std::sync::{Arc, mpsc};
 
 use formula::{FormulaNode, OpNode};
 use rand::RngExt;
@@ -228,7 +228,7 @@ impl RandomEvolution for WeightsTree {
                     panic!("Unexpected transform_type");
                 }
             }
-            
+
             formula.nodes.compress();
         })
     }

@@ -151,11 +151,7 @@ impl Engine {
             .unwrap()
     }
 
-    fn do_tick_many(
-        map: &mut MapData,
-        number_of_ticks: u32,
-        use_local_growth: bool,
-    ) {
+    fn do_tick_many(map: &mut MapData, number_of_ticks: u32, use_local_growth: bool) {
         for _ in 0..number_of_ticks {
             map.tick(use_local_growth);
             if map.plant_nutrition.energy < 0. {
