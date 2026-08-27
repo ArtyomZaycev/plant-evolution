@@ -105,20 +105,17 @@ fn sample_best_maps_evolution(maps: &mut Vec<MapData>, samples: usize) -> Vec<Pl
     let mut best_maps_idx = maps
         .iter()
         .enumerate()
-        .map(|(i, map)| (map.calculate_score(), i))
+        .map(|(i, map)| (-map.calculate_score(), i))
         .collect::<Vec<_>>();
 
-    // Select the top `samples` scores with an O(n) partition instead of a
-    // full O(n log n) sort.
-    let count = best_maps_idx.len().min(samples);
-    if count > 0 && count < best_maps_idx.len() {
-        let _ = best_maps_idx
-            .select_nth_unstable_by(count - 1, |a, b| b.0.partial_cmp(&a.0).unwrap());
-    }
+    // Can't use select_nth_unstable_by, since we don't want to shuffle first `sample` maps if they are the best
+    // to avoid bloating WeightTree
+    // And sample_best_maps_evolution takes ~2% of the time at most, it's not a hotpath
+    best_maps_idx.sort_by(|a, b| a.partial_cmp(&b).unwrap());
 
     best_maps_idx
         .iter()
-        .take(count)
+        .take(samples)
         .map(|(_, i)| maps[*i].evolution_data.clone())
         .collect::<Vec<_>>()
 }
