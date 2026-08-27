@@ -30,9 +30,9 @@ math-formula-egui = { path = "../math-formula-egui", features = ["tabulon_formul
 default = ["thread_evolution"]
 stable_rng = []
 thread_evolution = ["dep:scoped_threadpool"]
-hotpath = ["hotpath/hotpath", "stable_rng"]
-hotpath-cpu = ["hotpath/hotpath-cpu", "stable_rng"]
-hotpath-alloc = ["hotpath/hotpath-alloc", "stable_rng"]
+hotpath = ["hotpath/hotpath"]
+hotpath-cpu = ["hotpath/hotpath-cpu"]
+hotpath-alloc = ["hotpath/hotpath-alloc"]
 
 [profile.bench]
 debug = true
