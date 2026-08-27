@@ -176,6 +176,9 @@ impl RandomEvolution for WeightsTree {
             match transform_type {
                 0 => match &mut nodes[idx] {
                     FormulaNode::Value(value) => {
+                        if !value.is_normal() {
+                            *value = 0.;
+                        }
                         apply_change_chance(change_chance, rng.random(), || {
                             randomize_value(value, rng.random(), change_entropy);
                         });
@@ -225,6 +228,8 @@ impl RandomEvolution for WeightsTree {
                     panic!("Unexpected transform_type");
                 }
             }
+            
+            formula.nodes.compress();
         })
     }
 }

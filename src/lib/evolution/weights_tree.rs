@@ -28,7 +28,7 @@ impl formula::ParameterId for InputNode {
             InputNode::Air => "air".to_owned(),
             InputNode::Minerals => "minerals".to_owned(),
             InputNode::Water => "water".to_owned(),
-            InputNode::Proximity { dir, ctype } => format!("proximity[{dir}][{ctype}]"),
+            InputNode::Proximity { dir, ctype } => format!("proximity{dir}{ctype}"),
             InputNode::Height => "height".to_owned(),
             InputNode::XDist => "xdist".to_owned(),
         }
