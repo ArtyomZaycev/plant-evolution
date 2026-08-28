@@ -32,7 +32,12 @@ struct SaveFileInfo {
     pub version: usize,
 }
 
-pub fn save_maps(folder: PathBuf, selection: &SaveSelection, maps: &Vec<MapData>, score_formula: &MapScoreFormula) -> SaveLog {
+pub fn save_maps(
+    folder: PathBuf,
+    selection: &SaveSelection,
+    maps: &Vec<MapData>,
+    score_formula: &MapScoreFormula,
+) -> SaveLog {
     let mut save_log = SaveLog {
         time: SystemTime::now(),
         path: Default::default(),

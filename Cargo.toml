@@ -23,8 +23,8 @@ chrono = "0.4.45"
 scoped_threadpool = { version = "0.1.9", optional = true }
 directories-next = "2.0.0"
 egui_plot = "0.37.0"
-math-formula = { path = "../math-formula", features = ["randgen", "profiler", "serde"] }
-math-formula-egui = { path = "../math-formula-egui", features = ["tabulon_formula", "profiler"] }
+math-formula = { path = "../math-formula", features = ["randgen", "profiler", "serde", "tabulon_formula"] }
+math-formula-egui = { path = "../math-formula-egui" }
 
 [features]
 default = ["thread_evolution"]

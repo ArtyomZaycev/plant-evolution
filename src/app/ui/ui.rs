@@ -3,7 +3,8 @@ use std::{sync::atomic::Ordering, time::SystemTime};
 use egui::{Align2, Button, CollapsingHeader, Color32, FontId, Pos2, Rect, Sense, TextEdit, Vec2};
 
 use plant_evolution_lib::{
-    consts::DEFAULT_STOPWATCH_INTERVAL, engine::*, evolution::MapScoreFormula, map::*, precalc::*, utils::*,
+    consts::DEFAULT_STOPWATCH_INTERVAL, engine::*, evolution::MapScoreFormula, map::*, precalc::*,
+    utils::*,
 };
 
 use crate::{
@@ -302,7 +303,7 @@ impl PlantEvolutionApp {
 
         self.trail.push(
             &self.maps[0],
-                &self.score_formula,
+            &self.score_formula,
             self.engine.state.total_evolutions.load(Ordering::Relaxed),
         );
 

@@ -1,9 +1,13 @@
-use std::{cell::OnceCell, sync::Arc};
+use std::{cell::OnceCell, hash::Hash};
 
-use formula::{Formula, ParameterId, Parameters};
+use formula::{
+    Formula, Nodes, ParameterId, ParameterIdAll, Parameters, TabulonFormula, TreeArrayFormula, TreeFormula, format::{FormulaFormatter, FullOpFormatter},
+};
 
 use crate::{
-    evolution::consts::{SCORE_NUTRITION_MULTIPLIER, SEED_SCORE, SEEDS_MIN_DISTANCE}, map::{MapData, PlantNutrition}, precalc::GROUND_LEVEL,
+    evolution::consts::{SCORE_NUTRITION_MULTIPLIER, SEED_SCORE, SEEDS_MIN_DISTANCE},
+    map::{MapData, PlantNutrition},
+    precalc::GROUND_LEVEL,
 };
 
 /*
@@ -12,7 +16,7 @@ use crate::{
         score = seed_result + sqrt(lowest_nutrition_per_tick * 100)
 */
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NutritionId {
     Sunlight,
     Air,
@@ -21,20 +25,15 @@ pub enum NutritionId {
     Energy,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MapInputId {
+    SeedsScore(usize), // 1..=10
     CellsAmount,
     Nutrition(NutritionId),
     NutritionPerTick(NutritionId),
     PassiveCost,
     LowestNutrition,
     LowestNutritionPerTick,
-    SeedScore,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum SeedInputId {
-    Amount,
 }
 
 impl ParameterId for NutritionId {
@@ -49,39 +48,50 @@ impl ParameterId for NutritionId {
     }
 }
 
+impl ParameterIdAll for NutritionId {
+    fn get_all() -> impl Iterator<Item = (String, Self)> {
+        [
+            NutritionId::Sunlight, NutritionId::Air, NutritionId::Minerals, NutritionId::Water, NutritionId::Energy
+        ].into_iter().map(|id| (id.get_name(), id))
+    }
+}
+
 impl ParameterId for MapInputId {
     fn get_name(&self) -> String {
         match self {
+            MapInputId::SeedsScore(distance) => format!("seeds_score_{}", distance),
             MapInputId::CellsAmount => "cells_amount".to_owned(),
             MapInputId::Nutrition(nutrition_id) => format!("total_{}", nutrition_id.get_name()),
             MapInputId::NutritionPerTick(nutrition_id) => format!("{}_pt", nutrition_id.get_name()),
             MapInputId::PassiveCost => "passive_cost".to_owned(),
             MapInputId::LowestNutrition => "lowest_nutrition".to_owned(),
             MapInputId::LowestNutritionPerTick => "lowest_nutrition_pt".to_owned(),
-            MapInputId::SeedScore => "seeds_score".to_owned(),
         }
     }
 }
 
-impl ParameterId for SeedInputId {
-    fn get_name(&self) -> String {
-        match self {
-            SeedInputId::Amount => "amount".to_owned(),
-        }
+impl ParameterIdAll for MapInputId {
+    fn get_all() -> impl Iterator<Item = (String, Self)> {
+        [
+            MapInputId::PassiveCost,
+            MapInputId::LowestNutrition,
+            MapInputId::LowestNutritionPerTick,
+            MapInputId::CellsAmount,
+        ]
+        .into_iter()
+        .chain((1..=10).map(|distance| MapInputId::SeedsScore(distance)))
+        .chain(NutritionId::get_all().map(|(_, id)| MapInputId::Nutrition(id)))
+        .chain(NutritionId::get_all().map(|(_, id)| MapInputId::NutritionPerTick(id)))
+        .map(|id| (id.get_name(), id))
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct MapInput<'a> {
     map: &'a MapData,
+    seeds_score: [OnceCell<f32>; 10], // 1..=10
     lowest_nutrition: OnceCell<f32>,
     lowest_nutrition_per_tick: f32,
-    seed_score: f32,
-}
-
-#[derive(Debug, Clone)]
-pub struct SeedInput {
-    amount: usize,
 }
 
 impl Parameters<NutritionId> for PlantNutrition {
@@ -109,127 +119,83 @@ fn get_lowest_nutrition(nutrition: &PlantNutrition) -> f32 {
     .unwrap()
 }
 
+fn calculate_seeds_score(map: &MapData, distance: usize) -> f32 {
+    let mut seeds = vec![];
+
+    map.cells_pos.iter().for_each(|pos| {
+        let (j, i) = (pos.x, pos.y);
+        let abilities = &map.evolution_data.cells_abilities[map.cell_t(j, i) as usize];
+        if abilities.seed && i < GROUND_LEVEL {
+            seeds.push((j, i));
+        }
+    });
+
+    let mut seeds_score: f32 = 0.;
+    for &(x, y) in &seeds {
+        let mut cnt = 0;
+        for &(x2, y2) in &seeds {
+            if x.abs_diff(x2) + y.abs_diff(y2) < distance {
+                cnt += 1;
+            }
+        }
+        seeds_score += 1. / cnt as f32;
+    }
+
+    seeds_score
+}
+
 impl Parameters<MapInputId> for MapInput<'_> {
     fn get_value(&self, id: &MapInputId) -> f32 {
         match id {
+            MapInputId::SeedsScore(distance) => *self.seeds_score[*distance].get_or_init(|| calculate_seeds_score(self.map, distance + 1)),
             MapInputId::CellsAmount => self.map.cells_pos.len() as f32,
             MapInputId::Nutrition(nutrition_id) => self.map.plant_nutrition.get_value(nutrition_id),
-            MapInputId::NutritionPerTick(nutrition_id) => self.map.nutrition_per_tick.get_value(nutrition_id),
+            MapInputId::NutritionPerTick(nutrition_id) => {
+                self.map.nutrition_per_tick.get_value(nutrition_id)
+            }
             MapInputId::PassiveCost => self.map.total_passive_cost,
-            MapInputId::LowestNutrition => *self.lowest_nutrition.get_or_init(|| get_lowest_nutrition(&self.map.plant_nutrition)),
+            MapInputId::LowestNutrition => *self
+                .lowest_nutrition.get_or_init(|| get_lowest_nutrition(&self.map.plant_nutrition)),
             MapInputId::LowestNutritionPerTick => self.lowest_nutrition_per_tick,
-            MapInputId::SeedScore => self.seed_score,
-        }
-    }
-}
-
-impl Parameters<SeedInputId> for SeedInput {
-    fn get_value(&self, id: &SeedInputId) -> f32 {
-        match id {
-            SeedInputId::Amount => self.amount as f32,
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub enum SeedFormula {
-    Default { seed_distance: usize, multiplier: f32 },
-    Custom(Arc<dyn Formula<SeedInput> + Send + Sync>),
+pub struct DefaultScoreParameters {
+    seed_distance: usize,
+    seed_multiplier: f32,
+    nutrition_multiplier: f32,
 }
 
-impl Default for SeedFormula {
+impl Default for DefaultScoreParameters {
     fn default() -> Self {
-        Self::Default { seed_distance: SEEDS_MIN_DISTANCE, multiplier: SEED_SCORE }
-    }
-}
-
-impl SeedFormula {
-    fn collect_input(map: &MapData) -> SeedInput {
-        SeedInput {
-            amount: map.cells_pos.iter().fold(0, |amount, pos| {
-                let (j, i) = (pos.x, pos.y);
-                let abilities = &map.evolution_data.cells_abilities[map.cell_t(j, i) as usize];
-                if abilities.seed && i < GROUND_LEVEL {
-                    amount + 1
-                } else {
-                    amount
-                }
-            }),
-        }
-    }
-
-    fn calculate_native(map: &MapData, distance: usize, multiplier: f32) -> f32 {
-        let mut seeds = vec![];
-
-        map.cells_pos.iter().for_each(|pos| {
-            let (j, i) = (pos.x, pos.y);
-            let abilities = &map.evolution_data.cells_abilities[map.cell_t(j, i) as usize];
-            if abilities.seed && i < GROUND_LEVEL {
-                seeds.push((j, i));
-            }
-        });
-
-        let mut seeds_score: f32 = 0.;
-        for &(x, y) in &seeds {
-            let mut cnt = 0;
-            for &(x2, y2) in &seeds {
-                if x.abs_diff(x2) + y.abs_diff(y2) < distance {
-                    cnt += 1;
-                }
-            }
-            seeds_score += 1. / cnt as f32;
-        }
-
-        seeds_score * multiplier
-    }
-
-    #[inline]
-    fn calculate(&self, map: &MapData) -> f32 {
-        match self {
-            SeedFormula::Default { seed_distance, multiplier } => Self::calculate_native(map, *seed_distance, *multiplier),
-            SeedFormula::Custom(formula) => formula.calculate(&Self::collect_input(map)),
+        Self {
+            seed_distance: SEEDS_MIN_DISTANCE,
+            seed_multiplier: SEED_SCORE,
+            nutrition_multiplier: SCORE_NUTRITION_MULTIPLIER,
         }
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum ScoreFormula {
+#[derive(Debug)]
+pub enum MapScoreFormula {
     /// seed_score + sqrt(lowest_nutrition_per_tick * multiplier)
-    Default { multiplier: f32 },
-    Custom(Arc<dyn for<'a> Formula<MapInput<'a>> + Send + Sync>),
+    Native(DefaultScoreParameters),
+    Custom(Box<dyn for<'a> Formula<MapInput<'a>> + Send>),
 }
 
-impl Default for ScoreFormula {
+impl Default for MapScoreFormula {
     fn default() -> Self {
-        Self::Default { multiplier: SCORE_NUTRITION_MULTIPLIER }
+        Self::Native(DefaultScoreParameters::default())
     }
-}
-
-impl ScoreFormula {
-    #[inline]
-    fn calculate_native(input: &MapInput<'_>, multiplier: f32) -> f32 {
-        input.seed_score + (input.lowest_nutrition_per_tick * multiplier).sqrt()
-    }
-
-    #[inline]
-    fn calculate(&self, input: &MapInput<'_>) -> f32 {
-        match self {
-            ScoreFormula::Default { multiplier: lowest_nutrition_multiplier } => Self::calculate_native(input, *lowest_nutrition_multiplier),
-            ScoreFormula::Custom(formula) => formula.calculate(input),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct MapScoreFormula {
-    seed_formula: SeedFormula,
-    map_formula: ScoreFormula,
 }
 
 impl MapScoreFormula {
-    fn collect_input<'a>(map: &'a MapData, seed_score: f32) -> MapInput<'a> {
+    fn collect_input<'a>(map: &'a MapData) -> MapInput<'a> {
         MapInput {
             map,
+            seeds_score: std::array::repeat(OnceCell::new()),
             lowest_nutrition: OnceCell::new(),
             lowest_nutrition_per_tick: [
                 map.nutrition_per_tick.sunlight,
@@ -241,13 +207,48 @@ impl MapScoreFormula {
             .into_iter()
             .reduce(f32::min)
             .unwrap(),
-            seed_score,
         }
     }
 
     pub fn calculate(&self, map: &MapData) -> f32 {
-        let seed_score = self.seed_formula.calculate(map);
-        let input = Self::collect_input(map, seed_score);
-        self.map_formula.calculate(&input)
+        match self {
+            MapScoreFormula::Native(parameters) => {
+                calculate_seeds_score(map, parameters.seed_distance) * parameters.seed_multiplier + (get_lowest_nutrition(&map.nutrition_per_tick) * parameters.nutrition_multiplier).sqrt()
+            },
+            MapScoreFormula::Custom(formula) => formula.calculate(&Self::collect_input(map)),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum EngineType {
+    Tree,
+    TreeArray,
+    Tabulon,
+}
+
+#[derive(Debug, Clone)]
+pub enum MapScoreFormulaPrototype {
+    Native(DefaultScoreParameters),
+    Custom {
+        nodes: Nodes<MapInputId>,
+        engine: EngineType,
+    },
+}
+
+impl MapScoreFormulaPrototype {
+    pub fn build(&self) -> MapScoreFormula {
+        match self {
+            MapScoreFormulaPrototype::Native(parameters) => MapScoreFormula::Native(parameters.clone()),
+            MapScoreFormulaPrototype::Custom { nodes, engine } => MapScoreFormula::Custom(match engine {
+                EngineType::Tree => Box::new(TreeFormula::new(nodes.clone())),
+                EngineType::TreeArray => {
+                    Box::new(TreeArrayFormula::try_from_nodes_vec(nodes.clone()).unwrap())
+                }
+                EngineType::Tabulon => Box::new(
+                    TabulonFormula::new(FullOpFormatter::format_nodes(&nodes, 0).unwrap()).unwrap(),
+                ),
+            }),
+        }
     }
 }

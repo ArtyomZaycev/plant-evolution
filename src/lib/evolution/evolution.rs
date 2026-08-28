@@ -5,7 +5,12 @@ use rand::{RngExt, SeedableRng, rngs::SmallRng};
 use serde::{Deserialize, Serialize};
 
 use super::{evolution_volatility::*, parents_evolution::*, random_evolution::*, weights_tree::*};
-use crate::{evolution::{MapScoreFormula, consts::*}, map::*, precalc::*, utils::Rng};
+use crate::{
+    evolution::{MapScoreFormula, consts::*},
+    map::*,
+    precalc::*,
+    utils::Rng,
+};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CellEvolutionData {
@@ -96,7 +101,11 @@ pub fn run_evolution<F: FnMut(&mut Vec<MapData>)>(
 }
 
 #[hotpath::measure]
-fn sample_best_maps_evolution(maps: &mut Vec<MapData>, score_formula: &MapScoreFormula, samples: usize) -> Vec<PlantEvolutionData> {
+fn sample_best_maps_evolution(
+    maps: &mut Vec<MapData>,
+    score_formula: &MapScoreFormula,
+    samples: usize,
+) -> Vec<PlantEvolutionData> {
     let mut best_maps_idx = maps
         .iter()
         .enumerate()
