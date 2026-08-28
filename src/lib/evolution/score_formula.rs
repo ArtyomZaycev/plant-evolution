@@ -7,8 +7,7 @@ use crate::{
 };
 
 /*
-
-    Current:
+    Default:
         seed_result = DEFAULT (seed_distance = 5) * 20
         score = seed_result + sqrt(lowest_nutrition_per_tick * 100)
 */
@@ -135,7 +134,7 @@ impl Parameters<SeedInputId> for SeedInput {
 #[derive(Debug, Clone)]
 pub enum SeedFormula {
     Default { seed_distance: usize, multiplier: f32 },
-    Custom(Arc<dyn Formula<SeedInput> + Send>),
+    Custom(Arc<dyn Formula<SeedInput> + Send + Sync>),
 }
 
 impl Default for SeedFormula {
@@ -197,7 +196,7 @@ impl SeedFormula {
 pub enum ScoreFormula {
     /// seed_score + sqrt(lowest_nutrition_per_tick * multiplier)
     Default { multiplier: f32 },
-    Custom(Arc<dyn for<'a> Formula<MapInput<'a>> + Send>),
+    Custom(Arc<dyn for<'a> Formula<MapInput<'a>> + Send + Sync>),
 }
 
 impl Default for ScoreFormula {
@@ -221,7 +220,7 @@ impl ScoreFormula {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct MapScoreFormula {
     seed_formula: SeedFormula,
     map_formula: ScoreFormula,

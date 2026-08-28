@@ -4,6 +4,7 @@ use std::{fs::create_dir_all, time::SystemTime};
 use chrono::Local;
 use serde::{Deserialize, Serialize};
 
+use crate::evolution::MapScoreFormula;
 use crate::map::MapData;
 
 use super::parameters::*;
@@ -31,7 +32,7 @@ struct SaveFileInfo {
     pub version: usize,
 }
 
-pub fn save_maps(folder: PathBuf, selection: &SaveSelection, maps: &Vec<MapData>) -> SaveLog {
+pub fn save_maps(folder: PathBuf, selection: &SaveSelection, maps: &Vec<MapData>, score_formula: &MapScoreFormula) -> SaveLog {
     let mut save_log = SaveLog {
         time: SystemTime::now(),
         path: Default::default(),
@@ -84,7 +85,7 @@ pub fn save_maps(folder: PathBuf, selection: &SaveSelection, maps: &Vec<MapData>
             let mut maps_score = maps
                 .iter()
                 .enumerate()
-                .map(|(i, map)| (map.calculate_score(), i))
+                .map(|(i, map)| (score_formula.calculate(map), i))
                 .collect::<Vec<_>>();
             maps_score.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap().reverse());
 

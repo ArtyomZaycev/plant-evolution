@@ -844,44 +844,6 @@ impl MapData {
         self.grow_plant(use_local_growth_recalculation);
         self.ticks += 1;
     }
-
-    #[hotpath::measure]
-    pub fn calculate_score(&self) -> f32 {
-        let mut seeds = vec![];
-
-        self.cells_pos.iter().for_each(|pos| {
-            let (j, i) = (pos.x, pos.y);
-            let abilities = &self.evolution_data.cells_abilities[self.cell_t(j, i) as usize];
-            if abilities.seed && i < GROUND_LEVEL {
-                seeds.push((j, i));
-            }
-        });
-
-        let mut seeds_score: f32 = 0.;
-        for &(x, y) in &seeds {
-            let mut cnt = 0;
-            for &(x2, y2) in &seeds {
-                if (x != x2 || y != y2) && x.abs_diff(x2) + y.abs_diff(y2) < SEEDS_MIN_DISTANCE {
-                    cnt += 1;
-                }
-            }
-            seeds_score += 1. / (cnt + 1) as f32;
-        }
-
-        (seeds_score * SEED_SCORE)
-            + ([
-                self.nutrition_per_tick.sunlight,
-                self.nutrition_per_tick.air,
-                self.nutrition_per_tick.minerals,
-                self.nutrition_per_tick.water,
-                self.nutrition_per_tick.energy,
-            ]
-            .into_iter()
-            .reduce(f32::min)
-            .unwrap()
-                * SCORE_NUTRITION_MULTIPLIER)
-                .sqrt()
-    }
 }
 
 impl RandomEvolution for MapData {

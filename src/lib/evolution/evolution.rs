@@ -5,7 +5,7 @@ use rand::{RngExt, SeedableRng, rngs::SmallRng};
 use serde::{Deserialize, Serialize};
 
 use super::{evolution_volatility::*, parents_evolution::*, random_evolution::*, weights_tree::*};
-use crate::{evolution::consts::*, map::*, precalc::*, utils::Rng};
+use crate::{evolution::{MapScoreFormula, consts::*}, map::*, precalc::*, utils::Rng};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CellEvolutionData {
@@ -96,11 +96,11 @@ pub fn run_evolution<F: FnMut(&mut Vec<MapData>)>(
 }
 
 #[hotpath::measure]
-fn sample_best_maps_evolution(maps: &mut Vec<MapData>, samples: usize) -> Vec<PlantEvolutionData> {
+fn sample_best_maps_evolution(maps: &mut Vec<MapData>, score_formula: &MapScoreFormula, samples: usize) -> Vec<PlantEvolutionData> {
     let mut best_maps_idx = maps
         .iter()
         .enumerate()
-        .map(|(i, map)| (-map.calculate_score(), i))
+        .map(|(i, map)| (-score_formula.calculate(map), i))
         .collect::<Vec<_>>();
 
     // Can't use select_nth_unstable_by, since we don't want to shuffle first `sample` maps if they are the best
@@ -180,12 +180,13 @@ pub fn random_evolve<P: EvolutionPool>(
     max_threads: usize,
     rng: &mut Rng,
     maps: &mut Vec<MapData>,
+    score_formula: &MapScoreFormula,
     plants: usize,
     samples: usize,
     change_chance: f32,
     change_entropy: f32,
 ) {
-    let best_evolution_data = sample_best_maps_evolution(maps, samples);
+    let best_evolution_data = sample_best_maps_evolution(maps, score_formula, samples);
     maps.resize_with(plants, MapData::default);
 
     // Assign each child its parent genome (cheap Arc clones), then mutate with
@@ -212,12 +213,13 @@ pub fn parents_random_evolve<P: EvolutionPool>(
     max_threads: usize,
     rng: &mut Rng,
     maps: &mut Vec<MapData>,
+    score_formula: &MapScoreFormula,
     plants: usize,
     samples: usize,
     change_chance: f32,
     change_entropy: f32,
 ) {
-    let best_evolution_data = sample_best_maps_evolution(maps, samples);
+    let best_evolution_data = sample_best_maps_evolution(maps, score_formula, samples);
     maps.resize_with(plants, MapData::default);
     parent_combine(rng, &best_evolution_data, &mut maps[samples..]);
 

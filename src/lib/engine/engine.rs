@@ -17,6 +17,8 @@ use crate::{
 
 pub enum EngineCommand {
     UpdateParameters(EngineParameters),
+    UpdateViewedMaps(Vec<usize>),
+    UpdateScoreFormula(MapScoreFormula),
 
     Load(String),
 
@@ -28,7 +30,6 @@ pub enum EngineCommand {
     Stop,
     RunTicks,
     RunSimulationa(u32),
-    UpdateViewedMaps(Vec<usize>),
 
     Die,
 }
@@ -179,6 +180,7 @@ impl Engine {
         rng: &mut Rng,
         parameters: &EvolutionParameters,
         maps: &mut Vec<MapData>,
+        score_formula: &MapScoreFormula,
     ) {
         if parameters.parent_evolution {
             parents_random_evolve(
@@ -186,6 +188,7 @@ impl Engine {
                 max_threads,
                 rng,
                 maps,
+                score_formula,
                 parameters.plants,
                 parameters.samples,
                 parameters.change_chance,
@@ -197,6 +200,7 @@ impl Engine {
                 max_threads,
                 rng,
                 maps,
+                score_formula,
                 parameters.plants,
                 parameters.samples,
                 parameters.change_chance,
@@ -228,6 +232,8 @@ impl Engine {
         let mut maps = maps_accessor.as_inner().read().unwrap().get_data();
         let mut viewed_maps = None;
 
+        let mut score_formula: MapScoreFormula = MapScoreFormula::default();
+
         let mut last_save = SaveMark::default();
 
         let mut state = InnerEngineState::Stale;
@@ -246,6 +252,12 @@ impl Engine {
                         maps_update_stopwatch.interval =
                             new_parameters.performance_parameters.slow_update_interval;
                         parameters = new_parameters;
+                    }
+                    EngineCommand::UpdateViewedMaps(new_viewed_maps) => {
+                        viewed_maps = Some(new_viewed_maps);
+                    }
+                    EngineCommand::UpdateScoreFormula(new_score_formula) => {
+                        score_formula = new_score_formula;
                     }
 
                     EngineCommand::Load(_) => {
@@ -285,6 +297,7 @@ impl Engine {
                             &mut rng,
                             &parameters.evolution_parameters,
                             &mut maps,
+                            &score_formula,
                         );
                         shared_state.total_evolutions.update(
                             Ordering::Relaxed,
@@ -306,10 +319,6 @@ impl Engine {
                         state = InnerEngineState::RunSimulation {
                             autoevolve: Some(autoevolve_at),
                         };
-                    }
-
-                    EngineCommand::UpdateViewedMaps(new_viewed_maps) => {
-                        viewed_maps = Some(new_viewed_maps);
                     }
 
                     EngineCommand::Die => {
@@ -345,6 +354,7 @@ impl Engine {
                     ),
                     &parameters.saving_parameters.selection,
                     &maps,
+                    &score_formula,
                 );
                 last_save = SaveMark {
                     time: save_log.time,
@@ -418,6 +428,7 @@ impl Engine {
                             &mut rng,
                             &parameters.evolution_parameters,
                             &mut maps,
+                            &score_formula,
                         );
                         shared_state.total_evolutions.update(
                             Ordering::Relaxed,

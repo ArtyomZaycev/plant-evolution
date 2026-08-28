@@ -3,7 +3,7 @@ use std::{sync::atomic::Ordering, time::SystemTime};
 use egui::{Align2, Button, CollapsingHeader, Color32, FontId, Pos2, Rect, Sense, TextEdit, Vec2};
 
 use plant_evolution_lib::{
-    consts::DEFAULT_STOPWATCH_INTERVAL, engine::*, map::*, precalc::*, utils::*,
+    consts::DEFAULT_STOPWATCH_INTERVAL, engine::*, evolution::MapScoreFormula, map::*, precalc::*, utils::*,
 };
 
 use crate::{
@@ -56,6 +56,8 @@ pub struct PlantEvolutionApp {
     maps_update_stopwatch: Stopwatch,
     maps: VersionedData<Vec<MapData>>,
 
+    score_formula: MapScoreFormula,
+
     highlighted_map: Option<usize>,
     hovered_cell: Option<(usize, usize, usize)>,
     highlighted_cell: Option<(usize, usize, usize)>,
@@ -77,6 +79,7 @@ impl PlantEvolutionApp {
             trail: MapsTrail::new(engine.state.rng_seed.load(Ordering::Relaxed)),
             maps_update_stopwatch: Stopwatch::new(DEFAULT_STOPWATCH_INTERVAL),
             maps,
+            score_formula: MapScoreFormula::default(),
             visual_settings: VisualSettings::default(),
             show_trail: false,
             parameters,
@@ -270,6 +273,7 @@ impl PlantEvolutionApp {
                 simulation_save_folder_path(folder, simulation_id),
                 selection,
                 &self.maps,
+                &self.score_formula,
             ),
             false,
         );
@@ -298,6 +302,7 @@ impl PlantEvolutionApp {
 
         self.trail.push(
             &self.maps[0],
+                &self.score_formula,
             self.engine.state.total_evolutions.load(Ordering::Relaxed),
         );
 
@@ -697,7 +702,7 @@ impl PlantEvolutionApp {
         });
         ui.label(format!(
             "Score: {:.2}",
-            self.maps[map_idx].calculate_score(),
+            self.score_formula.calculate(&self.maps[map_idx]),
         ));
 
         ui.separator();

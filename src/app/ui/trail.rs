@@ -2,7 +2,7 @@ use std::{cell::RefCell, time::SystemTime};
 
 use egui::{Color32, Pos2, Rect, Sense, Vec2};
 use egui_plot::{Line, Plot, Points};
-use plant_evolution_lib::{map::*, precalc::MAP_SIZE};
+use plant_evolution_lib::{evolution::MapScoreFormula, map::*, precalc::MAP_SIZE};
 
 use crate::ui::{map::*, settings::VisualSettings};
 
@@ -69,9 +69,9 @@ impl MapsTrail {
         self.trail.last().map(|v| v.total_evolutions)
     }
 
-    pub fn push(&mut self, map: &MapData, total_evolutions: u32) {
+    pub fn push(&mut self, map: &MapData, score_formula: &MapScoreFormula, total_evolutions: u32) {
         if self.record {
-            let score = map.calculate_score();
+            let score = score_formula.calculate(map);
             if score > self.last_score().unwrap_or(f32::NEG_INFINITY)
                 && total_evolutions > self.last_evolutions().unwrap_or(0)
             {
